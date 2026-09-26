@@ -81,7 +81,7 @@ export default function AdminUsers() {
                     <tr key={u.id}>
                       <td>
                         <div className="row">
-                          <span className="avatar" style={{ background: "var(--ink)", width: 30, height: 30, fontSize: 11 }}>
+                          <span className="avatar" style={{ background: "var(--brand)", width: 30, height: 30, fontSize: 11 }}>
                             {initials(u.full_name || u.email)}
                           </span>
                           <div>

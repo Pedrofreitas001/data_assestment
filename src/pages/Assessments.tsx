@@ -71,7 +71,7 @@ export default function Assessments() {
                       <td>
                         <div className="row">
                           <div className="grow">
-                            <Bar value={s.progress * 100} thin />
+                            <Bar value={s.progress * 100} thin brand />
                           </div>
                           <span className="xs muted num">{Math.round(s.progress * 100)}%</span>
                         </div>

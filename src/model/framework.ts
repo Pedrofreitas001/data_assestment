@@ -532,14 +532,17 @@ export interface Band {
   min: number;
   max: number;
   summary: string;
+  color: string;
+  soft: string;
+  fg: string;
 }
 
 export const BANDS: Band[] = [
-  { level: 1, label: "Inicial", min: 0, max: 20, summary: "Dados dispersos, sem dono e sem rotina. Decisões por experiência." },
-  { level: 2, label: "Reativo", min: 20, max: 40, summary: "Relatórios existem, mas dependem de pessoas e de retrabalho manual." },
-  { level: 3, label: "Definido", min: 40, max: 60, summary: "Fontes e KPIs conhecidos, com rotina; ainda frágil em integração e qualidade." },
-  { level: 4, label: "Gerenciado", min: 60, max: 80, summary: "Dados consolidados, com owners, monitoramento e uso tático recorrente." },
-  { level: 5, label: "Otimizado", min: 80, max: 101, summary: "Dado governado como ativo: automação, qualidade medida e uso preditivo." },
+  { level: 1, label: "Inicial", min: 0, max: 20, summary: "Dados dispersos, sem dono e sem rotina. Decisões por experiência.", color: "#e5484d", soft: "#fdecec", fg: "#ffffff" },
+  { level: 2, label: "Reativo", min: 20, max: 40, summary: "Relatórios existem, mas dependem de pessoas e de retrabalho manual.", color: "#f76b15", soft: "#fff0e5", fg: "#ffffff" },
+  { level: 3, label: "Definido", min: 40, max: 60, summary: "Fontes e KPIs conhecidos, com rotina; ainda frágil em integração e qualidade.", color: "#f5a524", soft: "#fff6e0", fg: "#3d2800" },
+  { level: 4, label: "Gerenciado", min: 60, max: 80, summary: "Dados consolidados, com owners, monitoramento e uso tático recorrente.", color: "#2fa36b", soft: "#e6f6ee", fg: "#ffffff" },
+  { level: 5, label: "Otimizado", min: 80, max: 101, summary: "Dado governado como ativo: automação, qualidade medida e uso preditivo.", color: "#1f4fd8", soft: "#e8eefd", fg: "#ffffff" },
 ];
 
 export function bandForScore(pct: number | null | undefined): Band | null {
@@ -550,12 +553,15 @@ export function bandForLevel(level: number): Band {
   return BANDS[Math.max(1, Math.min(5, level)) - 1];
 }
 
-/** Tom de cinza por score (0–100) — usado em heatmaps e barras. */
+/** Cor da faixa de maturidade para um score (0–100) — heatmaps, barras e anéis. */
 export function toneFor(pct: number | null | undefined): { bg: string; fg: string } {
   if (pct === null || pct === undefined) return { bg: "var(--tone-empty)", fg: "var(--ink-3)" };
-  const tones = ["#e9e9e7", "#c9c9c6", "#9a9a96", "#5c5c59", "#1f1f1e"];
-  const i = Math.min(4, Math.floor(pct / 20));
-  return { bg: tones[i], fg: i >= 3 ? "#fafaf9" : "#1f1f1e" };
+  const b = bandForScore(pct)!;
+  return { bg: b.color, fg: b.fg };
+}
+
+export function colorFor(pct: number | null | undefined): string {
+  return pct === null || pct === undefined ? "var(--line-2)" : bandForScore(pct)!.color;
 }
 
 // ---------------------------------------------------------------------

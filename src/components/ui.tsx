@@ -1,6 +1,6 @@
 import { useEffect, type ReactNode } from "react";
 import { X } from "lucide-react";
-import { BANDS, type Band } from "../model/framework";
+import { BANDS, colorFor, type Band } from "../model/framework";
 
 export function PageHead({ eyebrow, title, desc, actions }: { eyebrow?: ReactNode; title: ReactNode; desc?: ReactNode; actions?: ReactNode }) {
   return (
@@ -118,11 +118,12 @@ export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: { key:
   );
 }
 
-export function Bar({ value, thin }: { value: number | null | undefined; thin?: boolean }) {
+/** Barra de progresso. Por padrão a cor segue a faixa de maturidade do valor; `brand` usa a cor da marca. */
+export function Bar({ value, thin, brand }: { value: number | null | undefined; thin?: boolean; brand?: boolean }) {
   const v = Math.max(0, Math.min(100, value ?? 0));
   return (
     <div className={`bar ${thin ? "thin" : ""}`}>
-      <span style={{ width: `${v}%` }} />
+      <span style={{ width: `${v}%`, background: brand ? "var(--brand)" : colorFor(value) }} />
     </div>
   );
 }
@@ -134,7 +135,7 @@ export function BandScale({ band, computed }: { band: Band | null; computed?: Ba
         {BANDS.map((b) => {
           const on = band && b.level <= band.level;
           const cap = !on && computed && band && b.level <= computed.level && b.level > band.level;
-          return <div key={b.level} className={`seg ${on ? "on" : ""} ${cap ? "cap" : ""}`} title={`${b.level} · ${b.label}`} />;
+          return <div key={b.level} className={`seg ${on ? "on" : ""} ${cap ? "cap" : ""}`} style={on ? { background: b.color } : undefined} title={`${b.level} · ${b.label}`} />;
         })}
       </div>
       <div className="band-labels">
@@ -152,8 +153,10 @@ export function LevelPill({ level, label, light }: { level: number | null | unde
   if (!level) return <span className="badge badge-dashed">Sem nível</span>;
   const b = BANDS[level - 1];
   return (
-    <span className={`level-pill ${light ? "light" : ""}`}>
-      <span className="lv">{level}</span>
+    <span className="level-pill" style={light ? { background: b.soft, color: "var(--ink)" } : { background: b.color, color: b.fg }}>
+      <span className="lv" style={light ? { background: b.color, color: b.fg } : { color: b.color }}>
+        {level}
+      </span>
       {label ?? b.label}
     </span>
   );
@@ -162,12 +165,12 @@ export function LevelPill({ level, label, light }: { level: number | null | unde
 export function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
     rascunho: { label: "Rascunho", cls: "badge-dashed" },
-    em_revisao: { label: "Em revisão", cls: "badge-soft" },
-    concluido: { label: "Concluído", cls: "badge-solid" },
-    em_validacao: { label: "Em validação", cls: "badge-soft" },
-    validado: { label: "Validado", cls: "badge-solid" },
+    em_revisao: { label: "Em revisão", cls: "badge-brand" },
+    concluido: { label: "Concluído", cls: "badge-ok" },
+    em_validacao: { label: "Em validação", cls: "badge-brand" },
+    validado: { label: "Validado", cls: "badge-ok" },
     descontinuado: { label: "Descontinuado", cls: "badge-dashed" },
-    ativo: { label: "Ativo", cls: "badge-soft" },
+    ativo: { label: "Ativo", cls: "badge-ok" },
     pausado: { label: "Pausado", cls: "badge-dashed" },
     encerrado: { label: "Encerrado", cls: "badge-dashed" },
   };

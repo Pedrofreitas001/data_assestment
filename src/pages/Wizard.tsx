@@ -320,7 +320,7 @@ export default function Wizard() {
                   {score.answered}/{score.total}
                 </span>
               </div>
-              <Bar value={score.progress * 100} thin />
+              <Bar value={score.progress * 100} thin brand />
               <div className="row-between small">
                 <span className="muted">Confiabilidade</span>
                 <span>{score.confidence.label}</span>
@@ -612,7 +612,7 @@ function QuestionsStep({
                 {q.tags.length > 0 && (
                   <div className="q-tags">
                     {q.tags.map((t) => (
-                      <span key={t} className={`badge ${t === "Crítico" || t === "Fundacional" ? "badge-solid" : "badge-soft"}`}>
+                      <span key={t} className={`badge ${t === "Crítico" ? "badge-risk" : t === "Fundacional" ? "badge-solid" : "badge-brand"}`}>
                         {t === "Fundacional" && <Lock size={10} />}
                         {t}
                       </span>

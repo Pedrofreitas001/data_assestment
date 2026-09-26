@@ -232,7 +232,7 @@ export default function Catalog() {
                         <td className="small">{c.holder || <span style={{ color: "var(--risk)" }}>ninguém</span>}</td>
                         <td className="small">{c.vault_location || <span style={{ color: "var(--risk)" }}>não registrado</span>}</td>
                         <td>
-                          <span className={`badge ${c.status === "ativa" ? "badge-solid" : c.status === "desconhecida" || c.status === "expirada" ? "badge-risk" : "badge-soft"}`}>{credLabel[c.status]}</span>
+                          <span className={`badge ${c.status === "ativa" ? "badge-ok" : c.status === "desconhecida" || c.status === "expirada" ? "badge-risk" : "badge-soft"}`}>{credLabel[c.status]}</span>
                         </td>
                         <td className="small muted">{c.last_verified_at ? fmtDate(c.last_verified_at) : "nunca"}</td>
                       </tr>
@@ -630,7 +630,7 @@ function Lineage({ assets, onOpen }: { assets: DataAsset[]; onOpen: (a: DataAsse
         {links.map((l) => {
           const on = related ? related.has(l.from) && related.has(l.to) : false;
           return (
-            <path key={l.id} d={l.d} fill="none" stroke={on ? "var(--ink)" : "var(--line-2)"} strokeWidth={on ? 1.8 : 1.2} style={{ color: on ? "var(--ink)" : "var(--line-2)", opacity: related && !on ? 0.3 : 1 }} markerEnd="url(#arrow)" />
+            <path key={l.id} d={l.d} fill="none" stroke={on ? "var(--brand)" : "var(--ink-4)"} strokeWidth={on ? 1.8 : 1.2} style={{ color: on ? "var(--brand)" : "var(--ink-4)", opacity: related && !on ? 0.3 : 1 }} markerEnd="url(#arrow)" />
           );
         })}
       </svg>

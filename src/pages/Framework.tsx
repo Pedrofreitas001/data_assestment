@@ -31,8 +31,8 @@ export default function Framework() {
         <div className="stack" style={{ gap: 20 }}>
           <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
             {BANDS.map((b) => (
-              <div key={b.level} className="card card-pad" style={{ background: b.level === 5 ? "var(--ink)" : undefined, color: b.level === 5 ? "#fff" : undefined }}>
-                <div className="serif" style={{ fontSize: 44, lineHeight: 1 }}>
+              <div key={b.level} className="card card-pad" style={{ borderTop: `4px solid ${b.color}` }}>
+                <div className="serif" style={{ fontSize: 44, lineHeight: 1, color: b.color }}>
                   {b.level}
                 </div>
                 <div style={{ fontWeight: 600, margin: "8px 0 4px" }}>{b.label}</div>
@@ -166,7 +166,7 @@ export default function Framework() {
                     {d.checks.map((c) => (
                       <tr key={c.id}>
                         <td className="small">
-                          {c.prompt} {c.critical && <span className="badge badge-solid">Crítico</span>}
+                          {c.prompt} {c.critical && <span className="badge badge-risk">Crítico</span>}
                         </td>
                         <td className="small">{QUALITY_DIMS.find((q) => q.key === c.quality)?.label}</td>
                         <td className="small muted">{c.action}</td>

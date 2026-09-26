@@ -305,7 +305,7 @@ export default function Result() {
                     <div>
                       <div className="row wrap" style={{ gap: 8 }}>
                         <span className="ttl">{dim.title}</span>
-                        {tier && <span className={`badge ${tier === "critico" ? "badge-solid" : "badge-soft"}`}>{TIER_LABEL[tier]}</span>}
+                        {tier && <span className={`badge ${tier === "critico" ? "badge-risk" : tier === "atencao" ? "badge-warn" : "badge-ok"}`}>{TIER_LABEL[tier]}</span>}
                       </div>
                       <div className="txt">{tier ? DIM_PLAYBOOK[dim.key][tier] : "Sem respostas nesta dimensão."}</div>
                     </div>

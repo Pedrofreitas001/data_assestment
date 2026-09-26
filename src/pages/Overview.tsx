@@ -130,7 +130,7 @@ export default function Overview() {
                   <span className="muted" style={{ fontSize: 16 }}>/{deliverables.length}</span>
                 </span>
                 <div style={{ width: 120 }}>
-                  <Bar value={(doneCount / deliverables.length) * 100} />
+                  <Bar value={(doneCount / deliverables.length) * 100} brand />
                 </div>
               </div>
               <div className="stack" style={{ gap: 8 }}>

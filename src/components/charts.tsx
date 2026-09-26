@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { QUALITY_DIMS, toneFor, type OpDomain, type QualityDim } from "../model/framework";
+import { QUALITY_DIMS, colorFor, toneFor, type OpDomain, type QualityDim } from "../model/framework";
 
 /** Radar monocromático — até 10 eixos. */
 export function Radar({ axes, size = 320, compare }: { axes: { label: string; value: number | null }[]; size?: number; compare?: (number | null)[] }) {
@@ -15,17 +15,17 @@ export function Radar({ axes, size = 320, compare }: { axes: { label: string; va
   return (
     <svg viewBox={`0 0 ${size} ${size}`} width="100%" style={{ maxWidth: size }} role="img" aria-label="Radar de maturidade por dimensão">
       {[20, 40, 60, 80, 100].map((g) => (
-        <polygon key={g} points={poly(axes.map(() => g))} fill={g === 100 ? "var(--surface)" : "none"} stroke="var(--line)" strokeWidth={1} />
+        <polygon key={g} points={poly(axes.map(() => g))} fill={g === 100 ? "var(--brand-50)" : "none"} stroke="var(--line-2)" strokeWidth={1} />
       ))}
       {axes.map((_, i) => {
         const [x, y] = pt(i, 100);
         return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke="var(--line)" />;
       })}
       {compare && <polygon points={poly(compare)} fill="none" stroke="var(--ink-4)" strokeDasharray="4 3" strokeWidth={1.5} />}
-      <polygon points={poly(axes.map((a) => a.value))} fill="rgba(11,11,11,0.08)" stroke="var(--ink)" strokeWidth={1.8} strokeLinejoin="round" />
+      <polygon points={poly(axes.map((a) => a.value))} fill="rgba(31,79,216,0.14)" stroke="var(--brand)" strokeWidth={1.8} strokeLinejoin="round" />
       {axes.map((a, i) => {
         const [x, y] = pt(i, a.value ?? 0);
-        return <circle key={i} cx={x} cy={y} r={3.2} fill="var(--ink)" />;
+        return <circle key={i} cx={x} cy={y} r={4} fill={colorFor(a.value)} stroke="#fff" strokeWidth={1.5} />;
       })}
       {axes.map((a, i) => {
         const [x, y] = pt(i, 122);
@@ -59,14 +59,14 @@ export function ScoreRing({ value, size = 128, label }: { value: number | null; 
         cy={size / 2}
         r={r}
         fill="none"
-        stroke="var(--ink)"
+        stroke={colorFor(value)}
         strokeWidth={stroke}
         strokeDasharray={`${(c * v) / 100} ${c}`}
         strokeLinecap="round"
         transform={`rotate(-90 ${size / 2} ${size / 2})`}
         style={{ transition: "stroke-dasharray .4s ease" }}
       />
-      <text x="50%" y="50%" dy={label ? -2 : 6} textAnchor="middle" fontFamily="var(--serif)" fontSize={size * 0.28} fill="var(--ink)">
+      <text x="50%" y="50%" dy={label ? -2 : 6} textAnchor="middle" fontFamily="var(--serif)" fontWeight={700} fontSize={size * 0.26} fill="var(--ink)">
         {value === null ? "—" : Math.round(v)}
       </text>
       {label && (

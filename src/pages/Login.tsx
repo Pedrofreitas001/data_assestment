@@ -3,7 +3,6 @@ import { ArrowRight } from "lucide-react";
 import { useAuth } from "../context/auth";
 import { IS_DEMO } from "../lib/supabase";
 import { Field, MoulisMark, Spinner } from "../components/ui";
-import { toneFor } from "../model/framework";
 
 type Mode = "password" | "magic" | "signup" | "reset";
 
@@ -15,8 +14,7 @@ function ArtGrid() {
       {cells.map((v, i) => {
         const x = (i % 8) * 52;
         const y = Math.floor(i / 8) * 52;
-        const t = toneFor(Math.min(99, v));
-        return <rect key={i} x={x} y={y} width="46" height="46" rx="6" fill={t.bg} opacity={0.08 + (i % 8) * 0.06} />;
+        return <rect key={i} x={x} y={y} width="46" height="46" rx="8" fill="#ffffff" opacity={0.04 + (v / 100) * 0.22} />;
       })}
     </svg>
   );
@@ -70,13 +68,13 @@ export default function Login() {
           </span>
         </div>
         <div>
-          <p className="eyebrow" style={{ color: "#8a8a84" }}>
+          <p className="eyebrow" style={{ color: "#c7d5ff" }}>
             Assessment de maturidade de dados
           </p>
           <h1>Dados que a operação consegue confiar.</h1>
           <p>Diagnóstico de maturidade, catálogo de dados e glossário de KPIs para PMEs de varejo e logística — com um copiloto de IA que ajuda a preencher, interpretar e priorizar.</p>
         </div>
-        <p className="xs" style={{ color: "#6f6f69", margin: 0 }}>
+        <p className="xs" style={{ color: "#b9c8f5", margin: 0 }}>
           Baseado em DAMA-DMBOK · DGI · DCAM · NIST · LGPD
         </p>
         <ArtGrid />
