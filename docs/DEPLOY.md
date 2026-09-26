@@ -43,15 +43,15 @@ Recomendado: configure SMTP próprio (*Authentication → SMTP*) — o SMTP padr
 
 ## 4. Primeiro uso
 
-1. Entre como admin → **Painel da gestora → Novo cliente**.
-2. **Usuários → Convidar**: papel *Cliente* + empresa. O cliente recebe o e-mail, entra e define a senha em **Conta**.
+1. Entre como admin → **Clientes → Novo cliente**.
+2. **Clientes → aba Usuários → Convidar**: papel *Cliente* + empresa. O cliente recebe o e-mail, entra e define a senha em **Conta**.
 3. Consultores: papel *Consultor* (veem todos os clientes, não gerenciam usuários).
 
 ## Segurança já embutida
 
 - **RLS** no Postgres: cliente só lê/escreve a própria organização; o papel e a empresa não podem ser alterados pelo próprio usuário (trigger).
 - `/api/llm` exige sessão Supabase válida, tem limite de 30 req/min por usuário e **remove padrões de segredo** (tokens, JWT, `senha=`, chaves privadas) antes de enviar ao modelo.
-- Catálogo de credenciais **bloqueia** o salvamento de textos que parecem senhas/tokens — guarda só quem detém, onde está o cofre e a validade.
+- O glossário e o copiloto **bloqueiam** textos que parecem senhas/tokens.
 - `SUPABASE_SERVICE_ROLE_KEY` só é usada em `/api/admin-invite`, que confere se quem chamou é admin.
 
 ## Checklist pós-deploy

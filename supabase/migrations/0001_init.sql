@@ -55,52 +55,6 @@ create table if not exists public.assessments (
 );
 create index if not exists assessments_org_idx on public.assessments(organization_id, updated_at desc);
 
--- ---------- Catálogo de dados: ativos ----------
-create table if not exists public.data_assets (
-  id uuid primary key default gen_random_uuid(),
-  organization_id uuid not null references public.organizations(id) on delete cascade,
-  name text not null,
-  asset_type text not null check (asset_type in ('sistema','banco','api','planilha','pipeline','relatorio','arquivo')),
-  system text,
-  domain text,
-  description text,
-  location text,
-  owner text,
-  steward text,
-  access_method text,
-  refresh_frequency text,
-  layer text check (layer in ('origem','bronze','prata','ouro')),
-  sensitivity text check (sensitivity in ('publico_interno','restrito','confidencial','pessoal_lgpd')),
-  pipeline_level smallint check (pipeline_level between 1 and 5),
-  quality_status text check (quality_status in ('nao_avaliado','critico','atencao','confiavel')),
-  upstream uuid[] not null default '{}',
-  tags text[] not null default '{}',
-  notes text,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-create index if not exists data_assets_org_idx on public.data_assets(organization_id);
-
--- ---------- Catálogo de dados: registro de credenciais ----------
--- IMPORTANTE: guarda a GOVERNANÇA da credencial (quem, onde, validade),
--- nunca o segredo. Senhas/tokens ficam em cofre (1Password, Bitwarden, Vault).
-create table if not exists public.credentials (
-  id uuid primary key default gen_random_uuid(),
-  organization_id uuid not null references public.organizations(id) on delete cascade,
-  asset_id uuid references public.data_assets(id) on delete set null,
-  name text not null,
-  credential_type text,
-  holder text,
-  vault_location text,
-  status text not null default 'desconhecida' check (status in ('ativa','expirada','desconhecida','revogar','pendente')),
-  expires_at date,
-  last_verified_at date,
-  notes text,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-create index if not exists credentials_org_idx on public.credentials(organization_id);
-
 -- ---------- Glossário de KPIs ----------
 create table if not exists public.kpis (
   id uuid primary key default gen_random_uuid(),
@@ -124,7 +78,6 @@ create table if not exists public.kpis (
   exclusions text,
   source_tables text,
   lineage text,
-  asset_ids uuid[] not null default '{}',
   quality_checks text,
   consumers text,
   status text not null default 'rascunho' check (status in ('rascunho','em_validacao','validado','descontinuado')),
@@ -140,7 +93,7 @@ create or replace function public.touch_updated_at() returns trigger
 language plpgsql as $$ begin new.updated_at = now(); return new; end $$;
 
 do $$ declare t text; begin
-  foreach t in array array['organizations','profiles','assessments','data_assets','credentials','kpis'] loop
+  foreach t in array array['organizations','profiles','assessments','kpis'] loop
     execute format('drop trigger if exists trg_touch_%1$s on public.%1$s', t);
     execute format('create trigger trg_touch_%1$s before update on public.%1$s for each row execute function public.touch_updated_at()', t);
   end loop;
@@ -206,8 +159,6 @@ for each row execute function public.guard_profile_update();
 alter table public.organizations enable row level security;
 alter table public.profiles      enable row level security;
 alter table public.assessments   enable row level security;
-alter table public.data_assets   enable row level security;
-alter table public.credentials   enable row level security;
 alter table public.kpis          enable row level security;
 
 -- organizations
@@ -230,7 +181,7 @@ create policy prof_admin_delete on public.profiles for delete using (public.is_a
 
 -- tabelas por organização (mesma regra para todas)
 do $$ declare t text; begin
-  foreach t in array array['assessments','data_assets','credentials','kpis'] loop
+  foreach t in array array['assessments','kpis'] loop
     execute format('drop policy if exists %1$s_rw on public.%1$s', t);
     execute format($p$create policy %1$s_rw on public.%1$s for all
       using (public.is_staff() or organization_id = public.my_org())
@@ -247,6 +198,5 @@ select
   (select a.level from public.assessments a where a.organization_id = o.id order by a.updated_at desc limit 1) as last_level,
   (select a.status from public.assessments a where a.organization_id = o.id order by a.updated_at desc limit 1) as last_status,
   (select max(a.updated_at) from public.assessments a where a.organization_id = o.id) as last_activity,
-  (select count(*) from public.data_assets d where d.organization_id = o.id) as assets,
   (select count(*) from public.kpis k where k.organization_id = o.id) as kpis
 from public.organizations o;

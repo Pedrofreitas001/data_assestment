@@ -5,22 +5,20 @@ import { useOrg } from "../context/org";
 import { callSkill, type ChatTurn } from "../lib/llm";
 import { orgSnapshot } from "../lib/snapshot";
 import { miniMarkdown } from "../lib/format";
-import { looksLikeSecret } from "../model/catalogOptions";
+import { looksLikeSecret } from "../model/kpiOptions";
 import { AiMark, Spinner } from "./ui";
 
 const PAGE_NAMES: Record<string, string> = {
-  "": "Visão geral",
-  assessments: "Assessment de maturidade",
-  catalogo: "Catálogo de dados",
+  "": "Início",
+  assessments: "Diagnóstico de maturidade",
   glossario: "Glossário de KPIs",
   framework: "Framework / manual",
-  admin: "Painel da gestora",
+  admin: "Clientes",
 };
 
 const SUGGESTIONS: Record<string, string[]> = {
   "": ["O que mais trava o próximo nível?", "Resuma o diagnóstico em 3 frases"],
   assessments: ["Como diferencio 'Parcial' de 'Sim com controle'?", "O que é a tabela DIM de-para?"],
-  catalogo: ["Quais ativos devo cadastrar primeiro?", "Como registrar credenciais sem expor senhas?"],
   glossario: ["Quais KPIs uma PME de varejo deve ter?", "Como escrever premissas de um KPI?"],
   framework: ["Por que o owner limita o nível?", "Explique bronze, prata e ouro"],
   admin: ["Como comparar clientes na carteira?"],
@@ -42,7 +40,7 @@ export default function Copilot() {
     const t = text.trim();
     if (!t || busy) return;
     if (looksLikeSecret(t)) {
-      setMsgs((m) => [...m, { role: "user", content: "•••• (mensagem bloqueada)" }, { role: "assistant", content: "**Isso parece uma senha ou token.** Não enviei a mensagem. Se esse segredo foi compartilhado em algum lugar, revogue/rotacione e guarde-o num cofre (1Password, Bitwarden). No Catálogo registre apenas *onde* ele está e *quem* responde." }]);
+      setMsgs((m) => [...m, { role: "user", content: "•••• (mensagem bloqueada)" }, { role: "assistant", content: "**Isso parece uma senha ou token.** Não enviei a mensagem. Se esse segredo foi compartilhado em algum lugar, revogue/rotacione e guarde-o num cofre (1Password, Bitwarden). Registre apenas *onde* ele está guardado e *quem* responde por ele." }]);
       setInput("");
       return;
     }
@@ -87,7 +85,7 @@ export default function Copilot() {
           <div className="stack" style={{ gap: 12 }}>
             <div className="msg msg-ai">
               <p>
-                Olá! Conheço o framework Moulis e os dados de <b>{org?.name ?? "sua empresa"}</b>. Posso explicar perguntas do assessment, interpretar resultados e sugerir como preencher o catálogo e o glossário.
+                Olá! Conheço o framework Moulis e os dados de <b>{org?.name ?? "sua empresa"}</b>. Posso explicar perguntas do diagnóstico, interpretar resultados e ajudar no glossário de KPIs.
               </p>
             </div>
             <div className="suggest">

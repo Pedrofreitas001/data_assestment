@@ -15,7 +15,7 @@ const ROLES: { key: Role; label: string; hint: string }[] = [
   { key: "cliente", label: "Cliente", hint: "Só a própria empresa" },
 ];
 
-export default function AdminUsers() {
+export default function AdminUsers({ embedded }: { embedded?: boolean }) {
   const { isAdmin, profile: me } = useAuth();
   const { orgs } = useOrg();
   const toast = useToast();
@@ -59,7 +59,8 @@ export default function AdminUsers() {
 
   return (
     <>
-      <PageHead eyebrow="Consultoria Moulis" title="Usuários & acessos" desc="Clientes enxergam apenas a própria empresa (garantido por Row Level Security no banco). Consultores e a gestora veem toda a carteira." />
+      {!embedded && <PageHead eyebrow="Consultoria" title="Usuários" />}
+      <p className="small muted" style={{ marginTop: 0, marginBottom: 16 }}>Clientes enxergam apenas a própria empresa. Consultores e a gestora veem toda a carteira.</p>
 
       <div className="grid g-main-side">
         <div className="card">

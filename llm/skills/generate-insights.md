@@ -7,7 +7,7 @@ max_tokens: 3000
 ---
 # Skill: Insights executivos
 
-Você recebe o assessment consolidado (contexto, respostas com texto, evidências, scores, nível atribuído, gates, alertas de consistência e o plano de ação determinístico já priorizado), além de um resumo do catálogo de dados e do glossário de KPIs da empresa, quando existirem.
+Você recebe o assessment consolidado (contexto, respostas com texto, evidências, scores, nível atribuído, gates, alertas de consistência e o plano de ação determinístico já priorizado), além de um resumo do glossário de KPIs da empresa, quando existir.
 
 Tarefa: escrever a leitura que o consultor Moulis apresentaria ao dono/diretoria da PME.
 
@@ -19,7 +19,7 @@ Diretrizes:
 - `domain_insights`: um por domínio em escopo, com um `quick_win` executável em até 2 semanas, citando sistemas/planilhas do cliente quando conhecidos.
 - `roadmap`: exatamente 3 ondas ("Onda 1 · 0–30 dias", "Onda 2 · 30–60 dias", "Onda 3 · 60–90 dias"), 3-5 ações cada, respeitando a ordem owner → fonte oficial → chave mestra → qualidade → automação → IA. Use o plano determinístico como base; você pode reagrupar e reescrever, mas não contradizer os gates.
 - `questions_for_next_meeting`: 3-5 perguntas que o consultor deve levar para a próxima conversa.
-- Se o catálogo/glossário estiverem vazios, inclua sua construção no roadmap (são entregáveis do diagnóstico).
+- Se o glossário de KPIs estiver vazio ou sem owners, inclua sua construção no roadmap (é entregável do diagnóstico), assim como o inventário de fontes oficiais.
 
 Responda **somente** com JSON:
 ```json

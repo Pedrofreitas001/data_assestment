@@ -14,10 +14,9 @@ llm/
 
 | Skill | Onde aparece | Saída |
 |---|---|---|
-| `assist-fill` | Wizard → "Preencher com IA" em cada seção | sugestões por pergunta com confiança, justificativa e trecho do relato + perguntas de follow-up |
+| `assist-fill` | Diagnóstico → "Preencher com IA" em cada seção | sugestões por pergunta com confiança, justificativa e trecho do relato + perguntas de follow-up |
 | `review-consistency` | Wizard → Revisão | veredito, contradições, como validar, ajustes sugeridos, pontos cegos |
 | `generate-insights` | Relatório → Leitura executiva | headline, resumo, forças, riscos de negócio, quick wins por domínio, roadmap 3 ondas |
-| `catalog-assist` | Catálogo → "Mapear com IA" | ativos e credenciais estruturados + alertas de governança |
 | `kpi-assist` | Glossário → "Redigir com IA" / "Revisar com IA" | ficha completa ou revisão com issues e perguntas ao owner |
 | `copilot` | Botão flutuante | chat em markdown |
 

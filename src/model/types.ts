@@ -57,53 +57,6 @@ export interface Assessment {
   updated_at?: string;
 }
 
-export type AssetType = "sistema" | "banco" | "api" | "planilha" | "pipeline" | "relatorio" | "arquivo";
-export type Sensitivity = "publico_interno" | "restrito" | "confidencial" | "pessoal_lgpd";
-export type Layer = "origem" | "bronze" | "prata" | "ouro";
-
-export interface DataAsset {
-  id: string;
-  organization_id: string;
-  name: string;
-  asset_type: AssetType;
-  system: string | null;
-  domain: string | null;
-  description: string | null;
-  location: string | null;
-  owner: string | null;
-  steward: string | null;
-  access_method: string | null;
-  refresh_frequency: string | null;
-  layer: Layer | null;
-  sensitivity: Sensitivity | null;
-  pipeline_level: number | null;
-  quality_status: "nao_avaliado" | "critico" | "atencao" | "confiavel" | null;
-  upstream: string[];
-  tags: string[];
-  notes: string | null;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export type CredentialStatus = "ativa" | "expirada" | "desconhecida" | "revogar" | "pendente";
-
-/** Registro de credencial — NUNCA armazena o segredo, só a governança dele. */
-export interface CredentialRecord {
-  id: string;
-  organization_id: string;
-  asset_id: string | null;
-  name: string;
-  credential_type: string | null;
-  holder: string | null;
-  vault_location: string | null;
-  status: CredentialStatus;
-  expires_at: string | null;
-  last_verified_at: string | null;
-  notes: string | null;
-  created_at?: string;
-  updated_at?: string;
-}
-
 export type KpiStatus = "rascunho" | "em_validacao" | "validado" | "descontinuado";
 
 export interface Kpi {
@@ -128,7 +81,6 @@ export interface Kpi {
   exclusions: string | null;
   source_tables: string | null;
   lineage: string | null;
-  asset_ids: string[];
   quality_checks: string | null;
   consumers: string | null;
   status: KpiStatus;
@@ -138,13 +90,11 @@ export interface Kpi {
   updated_at?: string;
 }
 
-export type TableName = "organizations" | "assessments" | "data_assets" | "credentials" | "kpis" | "profiles";
+export type TableName = "organizations" | "assessments" | "kpis" | "profiles";
 
 export interface TableRow {
   organizations: Organization;
   assessments: Assessment;
-  data_assets: DataAsset;
-  credentials: CredentialRecord;
   kpis: Kpi;
   profiles: Profile;
 }

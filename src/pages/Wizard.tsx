@@ -67,7 +67,7 @@ function buildSections(a: Assessment): Section[] {
   }));
   const doms: Section[] = scopedDomains(a).map((d) => ({
     key: d.key,
-    group: "Consistência da operação",
+    group: "Qualidade por área",
     title: d.title,
     desc: `${d.description} Fontes típicas: ${d.typicalSources.join(", ")}.`,
     kind: "questions",
@@ -145,7 +145,7 @@ export default function Wizard() {
   };
 
   if (loading) return <LoadingPage />;
-  if (!a || !score) return <Empty title="Assessment não encontrado" action={<Link className="btn" to="/assessments">Voltar</Link>} />;
+  if (!a || !score) return <Empty title="Diagnóstico não encontrado" action={<Link className="btn" to="/assessments">Voltar</Link>} />;
 
   const sec = sections[Math.min(step, sections.length - 1)];
   const setAnswer = (qid: string, v: number | undefined) =>
@@ -178,14 +178,14 @@ export default function Wizard() {
           </Link>
           <div>
             <p className="eyebrow" style={{ margin: 0 }}>
-              {org?.name} · Assessment
+              {org?.name} · Diagnóstico
             </p>
             <input
               className="serif"
               value={a.title}
               onChange={(e) => update((x) => ({ ...x, title: e.target.value }))}
-              aria-label="Título do assessment"
-              style={{ fontSize: 26, border: "none", background: "transparent", padding: 0, outline: "none", width: "min(520px, 70vw)" }}
+              aria-label="Título do diagnóstico"
+              style={{ fontSize: 24, fontWeight: 700, letterSpacing: "-0.02em", border: "none", background: "transparent", padding: 0, outline: "none", width: "min(520px, 70vw)" }}
             />
           </div>
         </div>
@@ -218,7 +218,7 @@ export default function Wizard() {
 
       <div className="wizard">
         {/* Stepper */}
-        <nav className="stepper" aria-label="Seções do assessment">
+        <nav className="stepper" aria-label="Seções do diagnóstico">
           {sections.map((s, i) => {
             const p = sectionProgress(s);
             const header = s.group !== lastGroup ? <div className="stepper-group">{s.group}</div> : null;
@@ -279,7 +279,7 @@ export default function Wizard() {
                 pending.current = null;
                 clearTimeout(timer.current);
                 await saveAssessment(next);
-                toast(status === "concluido" ? "Assessment concluído" : "Status atualizado");
+                toast(status === "concluido" ? "Diagnóstico concluído" : "Status atualizado");
                 if (status === "concluido") nav(`/assessments/${a.id}/resultado`);
               }}
             />
@@ -306,7 +306,7 @@ export default function Wizard() {
         <aside className="wizard-rail stack" style={{ position: "sticky", top: 24 }}>
           <div className="card card-pad" style={{ textAlign: "center" }}>
             <p className="section-title" style={{ textAlign: "left" }}>
-              Leitura ao vivo
+              Resultado parcial
             </p>
             <ScoreRing value={score.overall} size={132} label={score.band ? score.band.label.toUpperCase() : "SCORE"} />
             <div style={{ marginTop: 14, textAlign: "left" }}>
@@ -341,22 +341,6 @@ export default function Wizard() {
               )}
             </div>
           </div>
-          <div className="card card-pad">
-            <p className="section-title">Capacidades</p>
-            {score.dims.map(({ dim, score: v }) => (
-              <div key={dim.key} className="row small" style={{ padding: "5px 0" }}>
-                <span className="mono xs muted" style={{ width: 22 }}>
-                  {dim.code}
-                </span>
-                <div className="grow">
-                  <Bar value={v} thin />
-                </div>
-                <span className="num xs" style={{ width: 24, textAlign: "right" }}>
-                  {v === null ? "—" : Math.round(v)}
-                </span>
-              </div>
-            ))}
-          </div>
         </aside>
       </div>
     </div>
@@ -377,16 +361,16 @@ function ContextStep({ a, setCtx, update }: { a: Assessment; setCtx: (p: Partial
       <div className="section-hero">
         <span className="code">Etapa 0</span>
         <h2>Contexto da empresa</h2>
-        <p>O contexto calibra a leitura: a IA usa estas informações para interpretar respostas e as regras de consistência cruzam segmento e sistemas com as respostas.</p>
+        <p>Algumas informações rápidas para calibrar o diagnóstico.</p>
       </div>
       <div className="card card-pad">
         <div className="form-section">
           <h4>Identificação</h4>
           <div className="form-grid">
-            <Field label="Escopo do diagnóstico" hint="Empresa toda, uma área ou uma unidade.">
+            <Field label="Escopo do diagnóstico">
               <input className="input" value={a.scope || ""} onChange={(e) => update((x) => ({ ...x, scope: e.target.value }))} />
             </Field>
-            <Field label="Respondentes" hint="Nome e cargo de quem está respondendo.">
+            <Field label="Quem está respondendo">
               <input className="input" value={a.respondent || ""} onChange={(e) => update((x) => ({ ...x, respondent: e.target.value }))} placeholder="Ex.: Marina (Dir. Comercial) + Tiago (BI)" />
             </Field>
             <Field label="Segmento">
@@ -404,18 +388,6 @@ function ContextStep({ a, setCtx, update }: { a: Assessment; setCtx: (p: Partial
                   <option key={s}>{s}</option>
                 ))}
               </select>
-            </Field>
-            <Field label="Faturamento anual (faixa)">
-              <input className="input" value={c.faturamento || ""} onChange={(e) => setCtx({ faturamento: e.target.value })} placeholder="Ex.: R$ 30–50 mi" />
-            </Field>
-            <Field label="Lojas / CDs">
-              <input className="input" value={c.lojas_cds || ""} onChange={(e) => setCtx({ lojas_cds: e.target.value })} placeholder="Ex.: 12 lojas, 1 CD" />
-            </Field>
-            <Field label="SKUs ativos (aprox.)">
-              <input className="input" value={c.skus || ""} onChange={(e) => setCtx({ skus: e.target.value })} />
-            </Field>
-            <Field label="Time de dados">
-              <input className="input" value={c.time_dados || ""} onChange={(e) => setCtx({ time_dados: e.target.value })} placeholder="Ex.: 1 analista + TI terceirizada" />
             </Field>
           </div>
         </div>
@@ -442,20 +414,17 @@ function ContextStep({ a, setCtx, update }: { a: Assessment; setCtx: (p: Partial
           </form>
         </div>
         <div className="form-section">
-          <h4>Dores e objetivo</h4>
+          <h4>Principais dificuldades</h4>
           <div className="form-grid">
-            <Field label="Principais dores com dados hoje" full>
-              <textarea className="textarea" value={c.dores || ""} onChange={(e) => setCtx({ dores: e.target.value })} placeholder="Ex.: faturamento do e-commerce não bate com o ERP; ninguém confia no saldo de estoque…" />
-            </Field>
-            <Field label="O que a empresa quer conseguir com dados em 6 meses?" full>
-              <textarea className="textarea" value={c.objetivo || ""} onChange={(e) => setCtx({ objetivo: e.target.value })} style={{ minHeight: 64 }} />
+            <Field label="O que mais incomoda hoje nos dados da empresa?" full>
+              <textarea className="textarea" value={c.dores || ""} onChange={(e) => setCtx({ dores: e.target.value })} placeholder="Ex.: os números de vendas não batem entre sistemas; o relatório leva dias para sair…" />
             </Field>
           </div>
         </div>
         <div className="form-section">
-          <h4>Domínios da operação em escopo</h4>
+          <h4>Áreas avaliadas</h4>
           <p className="small muted" style={{ marginTop: -4 }}>
-            Cada domínio adiciona um checklist de consistência (4–5 pontos). Selecione os que fazem parte da operação.
+            Selecione as áreas da empresa que entram no diagnóstico. Cada uma adiciona 4 ou 5 perguntas.
           </p>
           <div className="grid g-2" style={{ gap: 8 }}>
             {DOMAINS.map((d) => {
@@ -473,7 +442,7 @@ function ContextStep({ a, setCtx, update }: { a: Assessment; setCtx: (p: Partial
               );
             })}
           </div>
-          {!domains.length && <p className="xs muted" style={{ marginTop: 8 }}>Nenhum selecionado = todos os domínios entram no assessment.</p>}
+          {!domains.length && <p className="xs muted" style={{ marginTop: 8 }}>Nenhuma selecionada = todas as áreas entram.</p>}
         </div>
       </div>
     </>
@@ -541,7 +510,7 @@ function QuestionsStep({
     <>
       <div className="section-hero">
         {section.code && <span className="code">{section.code} · {section.refs}</span>}
-        {!section.code && <span className="code">Checklist de consistência</span>}
+        {!section.code && <span className="code">Qualidade dos dados</span>}
         <h2>{section.title}</h2>
         <p>{section.desc}</p>
       </div>

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowUpRight, Building2, Pencil, Plus, Trash2 } from "lucide-react";
 import { useOrg } from "../context/org";
 import { useAuth } from "../context/auth";
@@ -10,10 +10,11 @@ import { relTime } from "../lib/format";
 import { DIMENSIONS, SEGMENTS, SIZE_BANDS, bandForScore } from "../model/framework";
 import { scoreAssessment } from "../model/scoring";
 import type { Assessment, Organization } from "../model/types";
-import { Bar, Drawer, Empty, Field, LevelPill, LoadingPage, PageHead, Stat, StatusBadge, Tabs } from "../components/ui";
+import { Bar, Drawer, Empty, Field, LevelPill, LoadingPage, Metrics, PageHead, StatusBadge, Tabs } from "../components/ui";
+import AdminUsers from "./AdminUsers";
 import { MatrixHeatmap } from "../components/charts";
 
-type Tab = "carteira" | "comparativo";
+type Tab = "carteira" | "comparativo" | "usuarios";
 
 export default function Admin() {
   const { reloadOrgs, setOrgId } = useOrg();
@@ -22,9 +23,10 @@ export default function Admin() {
   const nav = useNavigate();
   const orgs = useRows("organizations", null, { all: true });
   const assessments = useRows("assessments", null, { all: true });
-  const assets = useRows("data_assets", null, { all: true });
   const kpis = useRows("kpis", null, { all: true });
-  const [tab, setTab] = useState<Tab>("carteira");
+  const [params, setParams] = useSearchParams();
+  const tab = (params.get("tab") as Tab) || "carteira";
+  const setTab = (t: Tab) => setParams(t === "carteira" ? {} : { tab: t });
   const [edit, setEdit] = useState<Organization | null>(null);
 
   const rows = useMemo(() => {
@@ -38,13 +40,12 @@ export default function Admin() {
           latest,
           s,
           count: list.length,
-          assets: assets.rows.filter((a) => a.organization_id === o.id).length,
           kpis: kpis.rows.filter((k) => k.organization_id === o.id).length,
           activity: [o.updated_at, latest?.updated_at].filter(Boolean).sort().pop(),
         };
       })
       .sort((a, b) => String(b.activity || "").localeCompare(String(a.activity || "")));
-  }, [orgs.rows, assessments.rows, assets.rows, kpis.rows]);
+  }, [orgs.rows, assessments.rows, kpis.rows]);
 
   if (orgs.loading || assessments.loading) return <LoadingPage />;
 
@@ -64,8 +65,8 @@ export default function Admin() {
     <>
       <PageHead
         eyebrow="Consultoria Moulis"
-        title="Painel da gestora"
-        desc="Carteira de clientes, estágio de cada diagnóstico e comparação de maturidade entre empresas."
+        title="Clientes"
+        desc="Carteira, andamento dos diagnósticos e acessos."
         actions={
           <button className="btn btn-primary" onClick={() => setEdit({ id: "", name: "", segment: null, size: null, city: null, contact_name: null, contact_email: null, status: "ativo", notes: null })}>
             <Plus size={16} /> Novo cliente
@@ -73,14 +74,18 @@ export default function Admin() {
         }
       />
 
-      <div className="grid g-4" style={{ marginBottom: 22 }}>
-        <Stat label="Clientes ativos" value={active.length} foot={`${rows.length} no total`} />
-        <Stat label="Maturidade média" value={avg === null ? "—" : Math.round(avg)} foot={avgBand ? `Nível ${avgBand.level} · ${avgBand.label}` : "Sem dados"} />
-        <Stat label="Assessments concluídos" value={done} foot={`${assessments.rows.length} no total`} />
-        <Stat label="Clientes sem diagnóstico" value={noAssessment} foot={noAssessment ? "Oportunidade de iniciar a Fase 0" : "Todos iniciados"} />
+      <div style={{ marginBottom: 24 }}>
+        <Metrics
+          items={[
+            { label: "Clientes ativos", value: active.length },
+            { label: "Maturidade média", value: avg === null ? "—" : Math.round(avg), hint: avgBand ? `Nível ${avgBand.level} · ${avgBand.label}` : undefined },
+            { label: "Diagnósticos concluídos", value: done },
+            { label: "Sem diagnóstico", value: noAssessment },
+          ]}
+        />
       </div>
 
-      <Tabs<Tab> value={tab} onChange={setTab} tabs={[{ key: "carteira", label: "Carteira", count: rows.length }, { key: "comparativo", label: "Comparativo de maturidade" }]} />
+      <Tabs<Tab> value={tab} onChange={setTab} tabs={[{ key: "carteira", label: "Carteira", count: rows.length }, { key: "comparativo", label: "Comparativo" }, { key: "usuarios", label: "Usuários" }]} />
 
       {tab === "carteira" && (
         <div className="card">
@@ -94,18 +99,17 @@ export default function Admin() {
                 <thead>
                   <tr>
                     <th>Cliente</th>
-                    <th>Último assessment</th>
+                    <th>Diagnóstico</th>
                     <th style={{ width: 130 }}>Progresso</th>
                     <th>Score</th>
                     <th>Nível</th>
-                    <th>Catálogo</th>
                     <th>KPIs</th>
                     <th>Atividade</th>
                     <th />
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map(({ o, latest, s, assets: na, kpis: nk, activity }) => (
+                  {rows.map(({ o, latest, s, kpis: nk, activity }) => (
                     <tr key={o.id} className="click" onClick={() => openOrg(o.id)}>
                       <td>
                         <div className="cell-title row" style={{ gap: 8 }}>
@@ -113,7 +117,7 @@ export default function Admin() {
                         </div>
                         <div className="cell-sub">{[o.segment, o.size].filter(Boolean).join(" · ") || "—"}</div>
                       </td>
-                      <td>{latest ? <><StatusBadge status={latest.status} /><div className="cell-sub">{latest.title}</div></> : <span className="badge badge-dashed">Não iniciado</span>}</td>
+                      <td>{latest ? <StatusBadge status={latest.status} /> : <span className="badge badge-dashed">Não iniciado</span>}</td>
                       <td>
                         {s ? (
                           <div className="row">
@@ -130,7 +134,6 @@ export default function Admin() {
                         {s?.overall == null ? "—" : Math.round(s.overall)}
                       </td>
                       <td>{s ? <LevelPill level={s.band?.level} light /> : "—"}</td>
-                      <td className="num small">{na}</td>
                       <td className="num small">{nk}</td>
                       <td className="small muted nowrap">{relTime(activity)}</td>
                       <td onClick={(e) => e.stopPropagation()}>
@@ -155,7 +158,7 @@ export default function Admin() {
       {tab === "comparativo" && (
         <div className="card card-pad">
           <p className="small muted" style={{ marginTop: 0 }}>
-            Último assessment de cada cliente. Colunas D1–D8 = capacidades; OP = consistência da operação. Clique no nome para abrir o cliente.
+            Último diagnóstico de cada cliente. D1–D8 = capacidades; OP = qualidade por área. Clique no nome para abrir.
           </p>
           {scored.length ? (
             <MatrixHeatmap
@@ -167,7 +170,7 @@ export default function Admin() {
               }))}
             />
           ) : (
-            <Empty title="Sem assessments pontuados ainda" />
+            <Empty title="Nenhum diagnóstico pontuado ainda" />
           )}
           <div className="row wrap small muted" style={{ marginTop: 16, gap: 16 }}>
             {DIMENSIONS.map((d) => (
@@ -178,6 +181,8 @@ export default function Admin() {
           </div>
         </div>
       )}
+
+      {tab === "usuarios" && <AdminUsers embedded />}
 
       {edit && (
         <OrgDrawer

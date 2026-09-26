@@ -22,7 +22,7 @@ export function Radar({ axes, size = 320, compare }: { axes: { label: string; va
         return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke="var(--line)" />;
       })}
       {compare && <polygon points={poly(compare)} fill="none" stroke="var(--ink-4)" strokeDasharray="4 3" strokeWidth={1.5} />}
-      <polygon points={poly(axes.map((a) => a.value))} fill="rgba(31,79,216,0.14)" stroke="var(--brand)" strokeWidth={1.8} strokeLinejoin="round" />
+      <polygon points={poly(axes.map((a) => a.value))} fill="rgba(17,17,17,0.06)" stroke="var(--brand)" strokeWidth={1.8} strokeLinejoin="round" />
       {axes.map((a, i) => {
         const [x, y] = pt(i, a.value ?? 0);
         return <circle key={i} cx={x} cy={y} r={4} fill={colorFor(a.value)} stroke="#fff" strokeWidth={1.5} />;

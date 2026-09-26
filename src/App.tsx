@@ -10,11 +10,9 @@ const Overview = lazy(() => import("./pages/Overview"));
 const Assessments = lazy(() => import("./pages/Assessments"));
 const Wizard = lazy(() => import("./pages/Wizard"));
 const Result = lazy(() => import("./pages/Result"));
-const Catalog = lazy(() => import("./pages/Catalog"));
 const Glossary = lazy(() => import("./pages/Glossary"));
 const Framework = lazy(() => import("./pages/Framework"));
 const Admin = lazy(() => import("./pages/Admin"));
-const AdminUsers = lazy(() => import("./pages/AdminUsers"));
 const Account = lazy(() => import("./pages/Account"));
 
 export default function App() {
@@ -36,12 +34,11 @@ export default function App() {
             <Route path="/assessments" element={<Assessments />} />
             <Route path="/assessments/:id" element={<Wizard />} />
             <Route path="/assessments/:id/resultado" element={<Result />} />
-            <Route path="/catalogo" element={<Catalog />} />
             <Route path="/glossario" element={<Glossary />} />
             <Route path="/framework" element={<Framework />} />
             <Route path="/conta" element={<Account />} />
             {isStaff && <Route path="/admin" element={<Admin />} />}
-            {isStaff && <Route path="/admin/usuarios" element={<AdminUsers />} />}
+            {isStaff && <Route path="/admin/usuarios" element={<Navigate to="/admin?tab=usuarios" replace />} />}
             <Route path="/login" element={<Navigate to="/" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

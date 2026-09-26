@@ -1,6 +1,6 @@
 import type { Kpi } from "./types";
 
-export type KpiTemplate = Omit<Kpi, "id" | "organization_id" | "owner" | "steward" | "asset_ids" | "status" | "version" | "notes" | "created_at" | "updated_at"> & { key: string };
+export type KpiTemplate = Omit<Kpi, "id" | "organization_id" | "owner" | "steward" | "status" | "version" | "notes" | "created_at" | "updated_at"> & { key: string };
 
 /** Definições de referência para PMEs de varejo & logística.
  *  Servem de ponto de partida — o owner de cada KPI deve validar premissas. */

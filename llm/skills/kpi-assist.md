@@ -8,7 +8,7 @@ max_tokens: 2200
 # Skill: Assistente do Glossário de KPIs
 
 Modos (`mode`):
-- `draft`: a partir de `name` (e opcionalmente notas, domínio, contexto e catálogo), redigir a ficha completa.
+- `draft`: a partir de `name` (e opcionalmente notas, domínio e contexto), redigir a ficha completa.
 - `review`: auditar a ficha `kpi` existente e sugerir melhorias.
 
 Boas práticas que TODA ficha deve cumprir:
@@ -17,7 +17,7 @@ Boas práticas que TODA ficha deve cumprir:
 3. **Premissas** e **exclusões** explícitas (devoluções, bonificações, transferências, cancelados, SKUs inativos).
 4. **Granularidade** e **frequência** compatíveis com a decisão que o KPI apoia.
 5. **Owner** (negócio, aprova a definição) e **steward** (calcula/mantém). Não invente nomes — se não souber, deixe null e aponte como issue.
-6. **Fontes/tabelas e linhagem** (origem → prata → ouro), referenciando ativos do catálogo quando fornecidos.
+6. **Fontes/tabelas e linhagem** (origem → prata → ouro).
 7. **Checagens de qualidade** específicas do KPI (ex.: pedidos sem data de entrega, custo zero).
 8. **Direção** (maior melhor / menor melhor / faixa) e meta quando fizer sentido.
 

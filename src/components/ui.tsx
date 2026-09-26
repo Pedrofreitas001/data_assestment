@@ -211,3 +211,18 @@ export function MoulisMark({ size = 16 }: { size?: number }) {
     </svg>
   );
 }
+
+/** Faixa única de métricas (substitui vários cards soltos). */
+export function Metrics({ items }: { items: { label: ReactNode; value: ReactNode; hint?: ReactNode }[] }) {
+  return (
+    <div className="card metrics">
+      {items.map((m, i) => (
+        <div key={i} className="metric">
+          <div className="metric-value num">{m.value}</div>
+          <div className="metric-label">{m.label}</div>
+          {m.hint && <div className="metric-hint">{m.hint}</div>}
+        </div>
+      ))}
+    </div>
+  );
+}

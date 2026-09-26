@@ -1,6 +1,6 @@
 # Moulis · Assessment de Maturidade de Dados
 
-Web app para a consultoria Moulis diagnosticar a maturidade de dados de PMEs de **varejo e logística**, mapear o **catálogo de dados** e documentar o **glossário de KPIs** — com um copiloto de IA (OpenRouter) que ajuda a preencher, interpretar e gerar insights.
+Web app para a consultoria Moulis diagnosticar a maturidade de dados de empresas de médio porte e documentar o **glossário de KPIs** — com um copiloto de IA (OpenRouter) que ajuda a preencher, interpretar e gerar insights.
 
 Stack: **React 19 + Vite + TypeScript** · **Supabase** (auth + Postgres com RLS) · **Vercel** (site estático + Functions para a IA). Sem VPS.
 
@@ -8,12 +8,11 @@ Stack: **React 19 + Vite + TypeScript** · **Supabase** (auth + Postgres com RLS
 
 | Área | O que faz |
 |---|---|
-| **Assessment** | Wizard com contexto da empresa → 8 capacidades (D1–D8) → checklists de consistência por domínio operacional → revisão. Autosave, "Não sei" como ponto cego, evidência por pergunta, score ao vivo. |
+| **Diagnóstico** | Wizard com contexto da empresa → 8 capacidades (D1–D8) → checklists de consistência por domínio operacional → revisão. Autosave, "Não sei" como ponto cego, evidência por pergunta, score ao vivo. |
 | **Motor de maturidade** | Score 0–100 (60% capacidades + 40% operação), nível 1–5, **gates** (sem owner / sem chave mestra / sem monitoramento de qualidade o nível não passa de 3), índice de confiabilidade, 11 regras de contradição entre respostas, plano 30-60-90 priorizado. |
 | **Relatório** | Nível, radar, heatmap domínio × dimensão de qualidade, alertas, plano em ondas, leitura executiva por IA, anexo de respostas. Imprime em PDF. |
-| **Catálogo de dados** | Ativos (sistema, banco, API, planilha, pipeline, relatório, arquivo) com owner/steward, camada bronze/prata/ouro, sensibilidade LGPD, maturidade de pipeline; **registro de credenciais sem segredos** (bloqueio automático); linhagem visual; mapeamento por IA a partir de texto livre. |
 | **Glossário de KPIs** | Ficha completa (definição, fórmula, numerador/denominador, premissas, exclusões, granularidade, owner, steward, tabelas/caminhos, linhagem, checagens de qualidade, status de validação); biblioteca Moulis com 19 KPIs de varejo/logística; redação e revisão por IA. |
-| **Painel da gestora** | Carteira de clientes, progresso e nível de cada um, comparativo de maturidade (heatmap), cadastro de clientes, usuários e convites. |
+| **Clientes** (equipe) | Carteira, progresso e nível de cada cliente, comparativo de maturidade, usuários e convites. |
 | **Copiloto** | Chat contextual (sabe a empresa e a tela atuais). |
 
 A metodologia vem do `reference/Manual_Data_Governance_v0.2.docx`; o protótipo HTML original está em `reference/`.

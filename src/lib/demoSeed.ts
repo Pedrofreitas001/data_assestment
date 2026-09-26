@@ -1,6 +1,6 @@
 // Dados fictícios para o modo demonstração (sem Supabase configurado).
 import { KPI_LIBRARY } from "../model/kpiLibrary";
-import type { Assessment, CredentialRecord, DataAsset, Kpi, Organization, Profile, TableName } from "../model/types";
+import type { Assessment, Kpi, Organization, Profile, TableName } from "../model/types";
 import { scoreAssessment } from "../model/scoring";
 
 const ORG_A = "00000000-0000-4000-8000-00000000000a";
@@ -65,41 +65,19 @@ export function demoSeed(): Record<TableName, unknown[]> {
   const sB = scoreAssessment(assessB);
   assessB.score = sB.overall; assessB.level = sB.band?.level ?? null;
 
-  const asset = (p: Partial<DataAsset> & Pick<DataAsset, "id" | "name" | "asset_type">): DataAsset => ({
-    organization_id: ORG_A, system: null, domain: null, description: null, location: null, owner: null, steward: null, access_method: null,
-    refresh_frequency: null, layer: null, sensitivity: null, pipeline_level: null, quality_status: "nao_avaliado", upstream: [], tags: [], notes: null,
-    created_at: daysAgo(5), updated_at: daysAgo(2), ...p,
-  });
-  const A1 = "00000000-0000-4000-8000-00000000c001", A2 = "00000000-0000-4000-8000-00000000c002", A3 = "00000000-0000-4000-8000-00000000c003",
-    A4 = "00000000-0000-4000-8000-00000000c004", A5 = "00000000-0000-4000-8000-00000000c005", A6 = "00000000-0000-4000-8000-00000000c006";
-  const assets: DataAsset[] = [
-    asset({ id: A1, name: "Winthor — Notas fiscais de saída", asset_type: "sistema", system: "TOTVS Winthor", domain: "comercial", description: "Faturamento por NF/item, todas as lojas.", location: "Oracle on-premise (servidor da matriz)", owner: "Marina (Dir. Comercial)", steward: "Tiago (Analista BI)", access_method: "Conexão direta ao banco", refresh_frequency: "Tempo real", layer: "origem", sensitivity: "restrito", pipeline_level: 2, quality_status: "atencao" }),
-    asset({ id: A2, name: "VTEX — Pedidos e-commerce", asset_type: "api", system: "VTEX", domain: "ecommerce", description: "Pedidos, itens, descontos, status. Contém dados de clientes.", location: "API OMS VTEX", owner: "Rafael (Ger. E-commerce)", steward: null, access_method: "API REST", refresh_frequency: "Diária", layer: "origem", sensitivity: "pessoal_lgpd", pipeline_level: 1, quality_status: "critico", tags: ["LGPD"] }),
-    asset({ id: A3, name: "DE-PARA SKU VTEX × Winthor", asset_type: "planilha", system: "Google Sheets", domain: "cadastro", description: "Tabela mestra (DIM) de SKU. Cobre ~70% do catálogo.", location: "Drive › Dados › Cadastro › DEPARA_SKU.xlsx", owner: null, steward: "Tiago (Analista BI)", access_method: "Export manual (CSV/Excel)", refresh_frequency: "Manual / irregular", layer: "prata", sensitivity: "publico_interno", pipeline_level: 1, quality_status: "atencao", tags: ["chave-mestra"] }),
-    asset({ id: A4, name: "Script consolida_vendas.py", asset_type: "pipeline", system: "Python", domain: "comercial", description: "Junta NF Winthor + pedidos VTEX usando o DE-PARA e grava no PostgreSQL.", location: "Notebook do Tiago (sem repositório)", owner: "Marina (Dir. Comercial)", steward: "Tiago (Analista BI)", access_method: "Conexão direta ao banco", refresh_frequency: "Manual / irregular", layer: "prata", sensitivity: "restrito", pipeline_level: 1, quality_status: "nao_avaliado", upstream: [A1, A2, A3] }),
-    asset({ id: A5, name: "Painel de Vendas Diárias", asset_type: "relatorio", system: "Power BI", domain: "comercial", description: "Faturamento, ticket e margem por loja/canal.", location: "app.powerbi.com › Workspace Comercial", owner: "Marina (Dir. Comercial)", steward: "Tiago (Analista BI)", access_method: "Conector nativo (BI)", refresh_frequency: "Diária", layer: "ouro", sensitivity: "restrito", pipeline_level: 3, quality_status: "atencao", upstream: [A4] }),
-    asset({ id: A6, name: "Saldo de estoque por loja", asset_type: "arquivo", system: "TOTVS Winthor", domain: "estoque", description: "Relatório 1122 exportado toda manhã.", location: "Pasta compartilhada \\\\srv\\estoque", owner: null, steward: null, access_method: "Relatório do sistema", refresh_frequency: "Diária", layer: "bronze", sensitivity: "publico_interno", pipeline_level: 1, quality_status: "critico" }),
-  ];
-
-  const creds: CredentialRecord[] = [
-    { id: "00000000-0000-4000-8000-00000000d001", organization_id: ORG_A, asset_id: A2, name: "VTEX AppKey/AppToken (OMS)", credential_type: "API key / token", holder: "Rafael (Ger. E-commerce)", vault_location: "E-mail do fornecedor (migrar para cofre)", status: "ativa", expires_at: null, last_verified_at: daysAgo(3).slice(0, 10), notes: "Gerada pela agência; ninguém sabe se há outras chaves ativas.", created_at: daysAgo(3), updated_at: daysAgo(3) },
-    { id: "00000000-0000-4000-8000-00000000d002", organization_id: ORG_A, asset_id: A1, name: "Usuário de leitura Oracle Winthor", credential_type: "Usuário e senha", holder: "TI terceirizada", vault_location: null, status: "desconhecida", expires_at: null, last_verified_at: null, notes: "Script usa o usuário pessoal do Tiago.", created_at: daysAgo(3), updated_at: daysAgo(3) },
-    { id: "00000000-0000-4000-8000-00000000d003", organization_id: ORG_A, asset_id: null, name: "Google Ads API (OAuth)", credential_type: "OAuth (client id/secret)", holder: null, vault_location: null, status: "pendente", expires_at: null, last_verified_at: null, notes: "Necessária para ROI de campanha.", created_at: daysAgo(2), updated_at: daysAgo(2) },
-  ];
-
   const lib = (key: string) => KPI_LIBRARY.find((k) => k.key === key)!;
   const kpiFrom = (key: string, id: string, extra: Partial<Kpi>): Kpi => {
     const { key: _k, ...t } = lib(key);
     void _k;
-    return { ...t, id, organization_id: ORG_A, owner: null, steward: null, asset_ids: [], status: "rascunho", version: "1.0", notes: null, created_at: daysAgo(4), updated_at: daysAgo(2), ...extra };
+    return { ...t, id, organization_id: ORG_A, owner: null, steward: null, status: "rascunho", version: "1.0", notes: null, created_at: daysAgo(4), updated_at: daysAgo(2), ...extra };
   };
   const kpis: Kpi[] = [
-    kpiFrom("faturamento_liquido", "00000000-0000-4000-8000-00000000e001", { owner: "Marina (Dir. Comercial)", steward: "Tiago (Analista BI)", status: "em_validacao", asset_ids: [A1, A2, A5], notes: "Diverge ~3% entre VTEX e Winthor: VTEX usa data do pedido, Winthor a data da NF." }),
-    kpiFrom("ruptura", "00000000-0000-4000-8000-00000000e002", { owner: null, steward: "Tiago (Analista BI)", asset_ids: [A6] }),
+    kpiFrom("faturamento_liquido", "00000000-0000-4000-8000-00000000e001", { owner: "Marina (Dir. Comercial)", steward: "Tiago (Analista BI)", status: "em_validacao", notes: "Diverge ~3% entre VTEX e Winthor: VTEX usa data do pedido, Winthor a data da NF." }),
+    kpiFrom("ruptura", "00000000-0000-4000-8000-00000000e002", { owner: null, steward: "Tiago (Analista BI)" }),
     kpiFrom("acuracidade_inventario", "00000000-0000-4000-8000-00000000e003", { owner: null, status: "rascunho" }),
   ];
 
   const profiles: Profile[] = [{ id: DEMO_USER_ID, email: "gestora@moulis.demo", full_name: "Gestora Moulis (demo)", role: "admin", organization_id: null, created_at: daysAgo(90) }];
 
-  return { organizations: orgs, assessments: [assessA, assessB], data_assets: assets, credentials: creds, kpis, profiles };
+  return { organizations: orgs, assessments: [assessA, assessB], kpis, profiles };
 }
