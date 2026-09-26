@@ -1,0 +1,1595 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Assessment de Maturidade de Dados</title>
+<style>
+:root{
+  --brand-blue:#0b4da2;
+  --brand-blue-dark:#083b7d;
+  --blue-active:#1d5fb8;
+  --ink:#111111;
+  --gray-700:#50545a;
+  --gray-500:#7a7f86;
+  --gray-300:#dedfe2;
+  --gray-200:#e6e7ea;
+  --border:#dedfe2;
+  --th:#3c4045;
+  --page-bg:#f5f5f6;
+  --white:#ffffff;
+  --green:#1c8a5c;
+  --amber:#b7791f;
+  --red:#b4222c;
+  --radius:6px;
+  /* faixas de maturidade */
+  --band-inicial:#a9201c;
+  --band-emergente:#df6007;
+  --band-desenvolvimento:#cfb053;
+  --band-avancado:#24a92d;
+  --band-otimizado:#087f60;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth; scroll-padding-top:env(safe-area-inset-top,0px);}
+html,body,button,input,select,textarea{
+  font-family:'Segoe UI','Inter',system-ui,-apple-system,Arial,sans-serif;
+  font-weight:normal;
+}
+body{ margin:0; color:var(--ink); background:var(--page-bg); line-height:1.55; font-size:13px; }
+b,strong{ font-weight:600; color:var(--ink); }
+
+.topbar{
+  background:var(--brand-blue); color:var(--white); min-height:58px;
+  display:flex; align-items:center; padding:calc(10px + env(safe-area-inset-top,0px)) 20px 10px; gap:14px;
+  position:sticky; top:0; z-index:30; flex-wrap:wrap;
+}
+.topbar .logo-badge{
+  width:30px; height:30px; border-radius:7px; background:rgba(255,255,255,0.18);
+  display:flex; align-items:center; justify-content:center; font-weight:700; font-size:12px; flex-shrink:0;
+}
+.topbar .bar-divider{ width:1px; height:22px; background:rgba(255,255,255,0.32); flex-shrink:0; }
+.topbar .app-name{ font-size:13px; font-weight:400; opacity:.95; }
+.topbar .spacer{ flex:1; }
+.topbar .doc-pill{ font-size:12px; background:rgba(255,255,255,0.16); padding:5px 10px; border-radius:var(--radius); font-weight:400; white-space:nowrap; }
+
+.page{ max-width:1360px; margin:0 auto; padding:24px 24px 90px; transition:margin-left .2s ease; }
+body.agent-open .page{ margin-left:calc(460px + 48px); margin-right:auto; }
+@media (max-width:1500px){ body.agent-open .page{ margin-left:auto; } }
+body.agent-open.preview-hidden .page{ margin-left:calc(460px + 48px); margin-right:auto; max-width:none; }
+
+.hero-card{
+  background:var(--white); border:1px solid var(--border); border-radius:var(--radius);
+  padding:22px 26px; margin-bottom:18px;
+}
+.hero-card .eyebrow{ font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--gray-500); font-weight:600; margin:0 0 8px; }
+.hero-card h1{ font-size:18px; font-weight:600; margin:0 0 8px; color:var(--ink); }
+.hero-card p.lead{ font-size:13px; color:var(--gray-700); max-width:820px; margin:0; }
+.progress-wrap{ margin-top:16px; display:flex; align-items:center; gap:12px; }
+.progress-bar-track{ flex:1; height:8px; background:var(--gray-200); border-radius:999px; overflow:hidden; }
+.progress-bar-fill{ height:100%; background:linear-gradient(90deg,var(--brand-blue),var(--blue-active)); border-radius:999px; transition:width .25s ease, background .25s ease; width:0%; }
+.progress-label{ font-size:11.5px; color:var(--gray-500); font-weight:600; white-space:nowrap; }
+
+.preview-head-row{ display:flex; align-items:flex-start; justify-content:space-between; gap:14px; flex-wrap:wrap; }
+.seg-toggle{ display:inline-flex; border:1px solid var(--gray-300); border-radius:var(--radius); overflow:hidden; flex-shrink:0; }
+.seg-btn{ font-size:11.5px; font-weight:600; letter-spacing:.02em; text-transform:uppercase; padding:7px 14px; border:none; background:var(--white); color:var(--gray-700); cursor:pointer; }
+.seg-btn + .seg-btn{ border-left:1px solid var(--gray-300); }
+.seg-btn:hover{ background:#fafafb; }
+.seg-btn.active{ background:var(--brand-blue); color:var(--white); }
+
+.layout{ display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,0.95fr); gap:18px; align-items:start; }
+.layout > .form-col, .layout > .preview-wrap{ min-width:0; }
+@media (max-width:1080px){ .layout{ grid-template-columns:1fr; } }
+.layout.hide-preview{ grid-template-columns:1fr; }
+.layout.hide-preview .preview-wrap{ display:none; }
+
+.card-surface{ background:var(--white); border:1px solid var(--border); border-radius:var(--radius); }
+.section-block{ padding:22px 24px 24px; margin-bottom:16px; }
+.step-label{ font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--brand-blue); font-weight:600; margin:0 0 8px; }
+.section-block h2{ font-size:15px; font-weight:600; color:var(--ink); margin:0 0 4px; }
+.section-block p.desc{ color:var(--gray-700); font-size:12px; max-width:760px; margin:0 0 16px; }
+
+.field-grid{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px; margin-bottom:14px; }
+.field-grid.cols-3{ grid-template-columns:repeat(3, minmax(0,1fr)); }
+@media (max-width:560px){ .field-grid, .field-grid.cols-3{ grid-template-columns:1fr; } }
+.field{ display:flex; flex-direction:column; gap:5px; }
+.field.full{ grid-column:1 / -1; }
+.field label{ font-size:11px; font-weight:600; letter-spacing:.02em; text-transform:uppercase; color:var(--gray-500); }
+.field .hint{ font-size:11px; color:var(--gray-500); font-weight:400; text-transform:none; letter-spacing:0; margin-top:2px; }
+.field input[type=text], .field input[type=date], .field select, .field textarea{
+  font-size:13px; color:var(--ink); background:var(--white); border:1px solid var(--gray-300); border-radius:var(--radius); padding:8px 10px; outline:none; width:100%; font-family:inherit;
+}
+.field input:focus, .field select:focus, .field textarea:focus{ border-color:var(--brand-blue); }
+.field textarea{ resize:vertical; min-height:64px; line-height:1.5; }
+
+.btn{
+  display:inline-flex; align-items:center; gap:8px; font-size:12.5px; font-weight:500; border-radius:var(--radius); padding:9px 16px; cursor:pointer; border:1px solid var(--border);
+  background:var(--white); color:var(--ink);
+}
+.btn:hover{ background:#fafafb; }
+.btn.primary{ background:var(--brand-blue); border-color:var(--brand-blue); color:var(--white); }
+.btn.primary:hover{ background:var(--brand-blue-dark); }
+.btn.ghost{ border-style:dashed; color:var(--gray-700); }
+.btn.small{ padding:5px 12px; font-size:11.5px; }
+.actions-row{ display:flex; flex-wrap:wrap; gap:10px; margin-top:6px; }
+.status-note{ font-size:11.5px; color:var(--gray-500); margin-top:8px; min-height:16px; }
+.status-note.ok{ color:var(--green); }
+.status-note.err{ color:var(--red); }
+
+.preview-wrap{ position:sticky; top:78px; }
+#preview{ min-width:0; max-width:100%; }
+
+.question-block{ margin-bottom:20px; }
+.question-block:last-child{ margin-bottom:0; }
+.question-prompt{ font-size:13px; font-weight:600; color:var(--ink); margin:0 0 3px; }
+.question-type-hint{ font-size:11px; color:var(--gray-500); margin:0 0 10px; }
+.level-list{ display:flex; flex-direction:column; gap:6px; }
+.level-opt{
+  display:flex; align-items:flex-start; gap:10px; padding:10px 12px; border:1px solid var(--gray-300); border-radius:var(--radius); cursor:pointer; background:var(--white); transition:border-color .12s ease, background .12s ease;
+}
+.level-opt:hover{ border-color:var(--brand-blue); background:#fafcff; }
+.level-opt.selected{ border-color:var(--brand-blue); background:#eaf1fb; }
+.level-opt input{ margin-top:2px; accent-color:var(--brand-blue); flex-shrink:0; }
+.level-opt .level-badge{
+  flex-shrink:0; width:22px; height:22px; border-radius:50%; background:var(--gray-200); color:var(--gray-700); font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center;
+}
+.level-opt.selected .level-badge{ background:var(--brand-blue); color:var(--white); }
+.level-opt .level-text{ font-size:12.5px; color:var(--ink); line-height:1.5; }
+
+.heatmap-row{ display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); gap:8px; }
+@media (max-width:820px){ .heatmap-row{ grid-template-columns:repeat(3, minmax(0,1fr)); } }
+.heat-cell{
+  border-radius:var(--radius); padding:10px 8px; text-align:center; min-height:64px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+  color:#fff; cursor:default;
+}
+.heat-cell .hc-code{ font-size:10px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; opacity:.92; }
+.heat-cell .hc-pct{ font-size:16px; font-weight:700; }
+.heat-cell .hc-label{ font-size:9.5px; font-weight:600; text-transform:uppercase; letter-spacing:.01em; opacity:.95; }
+.heat-cell.empty{ background:var(--gray-200) !important; color:var(--gray-500) !important; }
+
+.band-pill{
+  display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; padding:5px 13px; border-radius:999px; color:#fff;
+}
+.score-hero{ display:flex; align-items:center; gap:18px; flex-wrap:wrap; }
+.score-hero .score-num{ font-size:40px; font-weight:700; color:var(--ink); line-height:1; }
+.score-hero .score-sub{ font-size:11.5px; color:var(--gray-500); }
+
+.callout{ margin-top:14px; background:#f5f7fa; border:1px solid var(--border); border-left:3px solid var(--brand-blue); border-radius:var(--radius); color:var(--ink); padding:14px 18px; font-size:12.5px; overflow-wrap:anywhere; }
+.callout .label{ font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--brand-blue); margin-bottom:6px; display:block; font-weight:700; }
+.callout.warn{ border-left-color:var(--band-emergente); background:#fff6ee; }
+
+table.queue{ width:100%; border-collapse:collapse; font-size:12px; margin-top:4px; }
+table.queue th{ background:#fafafb; color:var(--th); font-weight:600; font-size:11.5px; text-align:left; padding:9px 10px; border-bottom:1px solid var(--border); }
+table.queue td{ padding:9px 10px; border-bottom:1px solid var(--border); vertical-align:top; color:var(--gray-700); }
+table.queue tr:last-child td{ border-bottom:none; }
+.badge{ font-size:10.5px; padding:2px 8px; border-radius:10px; border:1px solid var(--border); white-space:nowrap; }
+.link-btn{ background:none; border:none; padding:0; color:var(--brand-blue); font-size:12px; cursor:pointer; text-decoration:underline; margin-right:6px; }
+.empty-note{ color:var(--gray-500); font-size:12px; padding:10px 0; }
+footer{ padding:20px 24px 40px; font-size:11.5px; color:var(--gray-500); max-width:1360px; margin:0 auto; }
+
+.tabs-bar{ display:flex; gap:4px; margin-bottom:18px; border-bottom:1px solid var(--border); flex-wrap:wrap; align-items:center; }
+.tab-btn{ font-size:13px; font-weight:500; color:var(--gray-700); background:none; border:none; border-bottom:2px solid transparent; padding:10px 4px; margin-right:20px; cursor:pointer; }
+.tab-btn:hover{ color:var(--ink); }
+.tab-btn.active{ color:var(--brand-blue-dark); border-bottom-color:var(--brand-blue); font-weight:700; }
+.tab-panel{ display:none; }
+.tab-panel.active{ display:block; }
+
+.agent-fab{
+  position:fixed; left:24px; bottom:calc(24px + env(safe-area-inset-bottom,0px)); width:56px; height:56px; border-radius:50%; background:var(--brand-blue); color:var(--white); border:none; font-size:22px; cursor:pointer;
+  box-shadow:0 4px 14px rgba(11,77,162,0.35); z-index:50;
+}
+.agent-fab:hover{ background:var(--brand-blue-dark); }
+.agent-fab.hidden{ display:none; }
+.agent-panel{
+  position:fixed; left:24px; bottom:calc(24px + env(safe-area-inset-bottom,0px)); width:460px; max-width:calc(100vw - 32px);
+  height:calc(100vh - 48px); max-height:840px; background:var(--white); border:1px solid var(--border);
+  border-radius:8px; box-shadow:0 10px 34px rgba(0,0,0,0.22); z-index:50;
+  display:flex; flex-direction:column; overflow:hidden;
+}
+.agent-panel.hidden{ display:none; }
+.agent-header{
+  background:var(--brand-blue); color:var(--white); padding:12px 16px; font-size:13px; font-weight:600;
+  display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
+}
+.agent-close{ background:none; border:none; color:var(--white); font-size:18px; cursor:pointer; line-height:1; }
+.agent-messages{ flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:8px; }
+.agent-msg{ font-size:12.5px; line-height:1.5; padding:8px 12px; border-radius:12px; max-width:88%; white-space:pre-wrap; overflow-wrap:anywhere; }
+.agent-msg-bot{ background:var(--page-bg); color:var(--ink); align-self:flex-start; border-bottom-left-radius:2px; }
+.agent-msg-user{ background:var(--brand-blue); color:var(--white); align-self:flex-end; border-bottom-right-radius:2px; }
+.agent-chips{ display:flex; flex-wrap:wrap; gap:6px; align-self:flex-start; max-width:100%; margin:-2px 0 2px; }
+.agent-chip{
+  font-size:11.5px; padding:6px 11px; border-radius:999px; border:1px solid var(--brand-blue);
+  background:var(--white); color:var(--brand-blue-dark); cursor:pointer; text-align:left;
+}
+.agent-chip:hover{ background:#eaf1fb; }
+.agent-chip.selected{ background:var(--brand-blue); color:#fff; }
+.agent-review{ border-top:1px solid var(--border); padding:12px 14px; flex-shrink:0; max-height:44%; overflow-y:auto; }
+.agent-review.hidden{ display:none; }
+.agent-review-title{ font-size:11.5px; color:var(--gray-700); margin:0 0 8px; }
+.agent-submit-wrap{ padding:12px 14px 0; flex-shrink:0; }
+.agent-submit-wrap.hidden{ display:none; }
+.agent-input-row{ display:flex; gap:8px; padding:12px 14px calc(12px + env(safe-area-inset-bottom,0px)); border-top:1px solid var(--border); flex-shrink:0; margin:0; }
+.agent-input-row input{ flex:1; font-size:12.5px; border:1px solid var(--gray-300); border-radius:var(--radius); padding:8px 10px; font-family:inherit; }
+
+.section-approval{ display:flex; align-items:center; gap:8px; margin:6px 0 12px; flex-wrap:wrap; }
+.approval-badge{ font-size:10.5px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; padding:4px 10px; border-radius:10px; border:1px solid var(--border); background:#fafafb; color:var(--gray-500); }
+.approval-badge.approved{ color:var(--green); background:#eefaf3; border-color:#b9e3c9; }
+.section-approval .btn{ padding:5px 12px; font-size:11.5px; }
+
+.painel-toolbar{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+.painel-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(270px, 1fr)); gap:14px; }
+.painel-card{ background:var(--white); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; cursor:pointer; transition:box-shadow .12s ease, border-color .12s ease; }
+.painel-card:hover{ border-color:var(--brand-blue); box-shadow:0 4px 14px rgba(11,77,162,0.12); }
+.painel-card .pc-title{ font-size:13.5px; font-weight:700; color:var(--brand-blue-dark); margin:0 0 4px; overflow-wrap:anywhere; }
+.painel-card .pc-meta{ font-size:11.5px; color:var(--gray-700); margin:0 0 10px; }
+.painel-card .pc-heat{ display:grid; grid-template-columns:repeat(6,1fr); gap:3px; margin-bottom:10px; }
+.painel-card .pc-heat span{ height:20px; border-radius:3px; }
+.painel-card .pc-footer{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.painel-card.aggregate{ border-left:3px solid var(--brand-blue); }
+.group-select{ font-size:12.5px; border:1px solid var(--gray-300); border-radius:var(--radius); padding:7px 10px; background:#fff; }
+
+.kv-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin-bottom:16px; }
+.kv-box{ background:#fafafb; border:1px solid var(--gray-300); border-radius:var(--radius); padding:8px 12px; }
+.kv-box .kv-label{ display:block; font-size:10px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; color:var(--gray-500); margin-bottom:3px; }
+.kv-box .kv-value{ display:block; font-size:12.5px; color:var(--ink); overflow-wrap:anywhere; }
+
+.result-grid{ display:grid; grid-template-columns:minmax(0,340px) minmax(0,1fr); gap:18px; align-items:start; }
+@media (max-width:900px){ .result-grid{ grid-template-columns:1fr; } }
+.radar-wrap{ display:flex; align-items:center; justify-content:center; }
+.breakdown-item{ border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; margin-bottom:10px; }
+.breakdown-item .bi-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; flex-wrap:wrap; }
+.breakdown-item .bi-head h4{ font-size:13px; margin:0; color:var(--ink); font-weight:700; }
+.bi-q{ font-size:12px; color:var(--gray-700); margin:4px 0; padding-left:10px; border-left:2px solid var(--gray-200); }
+.bi-q b{ color:var(--ink); }
+.ctx-list dt{ font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.02em; color:var(--gray-500); margin-top:10px; }
+.ctx-list dd{ font-size:12.5px; color:var(--ink); margin:2px 0 0; }
+
+.manual-dim{ border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; margin-bottom:14px; }
+.manual-dim h3{ font-size:14.5px; margin:0 0 4px; color:var(--brand-blue-dark); }
+.manual-dim p.desc{ font-size:12.5px; color:var(--gray-700); margin:0 0 14px; }
+.tier-grid{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px; }
+@media (max-width:820px){ .tier-grid{ grid-template-columns:1fr; } }
+.tier-box{ border-radius:var(--radius); padding:12px 14px; font-size:12px; color:#fff; }
+.tier-box .tier-title{ font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; margin-bottom:6px; display:block; }
+.tier-box.tier-critico{ background:var(--band-emergente); }
+.tier-box.tier-atencao{ background:var(--band-desenvolvimento); color:#2a2004; }
+.tier-box.tier-maduro{ background:var(--band-avancado); }
+
+/* Tema fixo: fundo branco + azul (estilo BTG) — nunca escurece,
+   independentemente do tema do sistema/navegador do usuário. */
+:root, :root[data-theme="dark"], :root[data-theme="light"]{
+  color-scheme: light;
+}
+</style>
+</head>
+<body>
+<div class="topbar">
+<span class="logo-badge" id="logo-badge">MD</span>
+<span class="app-name" id="topbar-org">Sua Empresa</span>
+<div class="bar-divider"></div>
+<span class="app-name">Assessment de Maturidade de Dados</span>
+<div class="spacer"></div>
+<div class="doc-pill" id="backend-pill">Modo local (sem backend configurado)</div>
+</div>
+
+<div class="page">
+
+<div class="hero-card">
+<p class="eyebrow" id="hero-eyebrow">Governança de Dados • Ferramenta interna</p>
+<h1 id="hero-title">Assessment de Maturidade de Dados</h1>
+<p class="lead" id="hero-lead">Preencha o diagnóstico da sua área — o gestor pode responder com apoio dos analistas. Ao final você recebe o resultado interativo com heatmap, radar e próximos passos recomendados.</p>
+<div class="progress-wrap">
+  <div class="progress-bar-track"><div class="progress-bar-fill" id="progress-fill"></div></div>
+  <span class="progress-label" id="progress-label">0 de 0 perguntas respondidas</span>
+</div>
+<div class="actions-row" style="margin-top:14px;">
+  <button type="button" class="btn primary" id="btn-new-registration">+ Novo assessment</button>
+  <button type="button" class="btn primary" id="btn-agent-start">💬 Preencher com ajuda do assistente</button>
+</div>
+</div>
+
+<div class="tabs-bar">
+  <button type="button" class="tab-btn active" data-tab="form">Formulário</button>
+  <button type="button" class="tab-btn" data-tab="painel">Painel de acompanhamento</button>
+  <button type="button" class="tab-btn" data-tab="manual">Manual &amp; próximos passos</button>
+  <span style="flex:1;"></span>
+  <button type="button" class="btn ghost" id="btn-toggle-preview" style="margin:6px 0; align-self:center;">Ocultar ficha técnica</button>
+</div>
+
+<!-- FORMULÁRIO -->
+<div id="tab-form" class="tab-panel active">
+  <div class="layout">
+    <div class="form-col" id="form-col"></div>
+    <div class="preview-wrap">
+      <div class="card-surface section-block">
+        <div class="preview-head-row">
+          <div>
+            <p class="step-label">Ficha técnica (ao vivo)</p>
+            <h2>Vai sendo preenchida enquanto você responde</h2>
+          </div>
+        </div>
+        <div id="preview"></div>
+      </div>
+    </div>
+  </div>
+  <div class="card-surface section-block">
+    <p class="step-label">Fila local</p>
+    <h2>Assessments desta máquina</h2>
+    <p class="desc">Guardados no navegador (localStorage) e, se um backend estiver configurado, também enviados para lá.</p>
+    <div id="queue-wrap"><p class="empty-note">Nenhum assessment gerado ainda.</p></div>
+  </div>
+</div>
+
+<!-- PAINEL -->
+<div id="tab-painel" class="tab-panel">
+  <div class="card-surface section-block">
+    <p class="step-label">Painel</p>
+    <h2>Acompanhamento dos assessments</h2>
+    <p class="desc">Clique em qualquer área para ver o resultado interativo (heatmap, radar, resumo e próximos passos).</p>
+    <div class="painel-toolbar">
+      <select class="group-select" id="painel-groupby">
+        <option value="area">Ver por Área</option>
+        <option value="gestor">Ver por Gestor</option>
+        <option value="setor">Ver por Setor/Diretoria</option>
+      </select>
+      <button type="button" class="btn ghost small" id="btn-painel-refresh">Atualizar</button>
+    </div>
+    <div id="painel-wrap"><p class="empty-note">Carregando...</p></div>
+  </div>
+</div>
+
+<!-- MANUAL -->
+<div id="tab-manual" class="tab-panel">
+  <div class="card-surface section-block">
+    <p class="step-label">Manual</p>
+    <h2>Guia de maturidade &amp; próximos passos por dimensão</h2>
+    <p class="desc">Referência fixa — a mesma recomendação usada automaticamente na tela de resultado de cada área, de acordo com a faixa em que ela pontuou.</p>
+    <div id="manual-wrap"></div>
+  </div>
+</div>
+
+<!-- RESULTADO -->
+<div id="tab-resultado" class="tab-panel">
+  <div id="resultado-wrap"></div>
+</div>
+
+</div>
+
+<footer>Ferramenta interna • assessment de maturidade de dados, gerado a partir de um modelo configurável (edite <code>DIMENSIONS</code>/<code>APP_CONFIG</code> no código para reaproveitar em outro projeto).</footer>
+
+<button type="button" id="agent-fab" class="agent-fab" aria-label="Abrir assistente">💬</button>
+<div id="agent-panel" class="agent-panel hidden">
+  <div class="agent-header">
+    <span>Assistente de preenchimento</span>
+    <div style="display:flex; gap:10px; align-items:center;">
+      <button type="button" id="agent-minimize" class="agent-close" title="Minimizar">−</button>
+      <button type="button" id="agent-close" class="agent-close" title="Fechar">×</button>
+    </div>
+  </div>
+  <div id="agent-messages" class="agent-messages"></div>
+  <div id="agent-review" class="agent-review hidden"></div>
+  <div id="agent-submit-wrap" class="agent-submit-wrap hidden">
+    <button type="button" id="agent-submit" class="btn primary" style="width:100%;">Enviar assessment</button>
+  </div>
+  <form id="agent-input-row" class="agent-input-row">
+    <input type="text" id="agent-input" placeholder="Digite sua resposta..." autocomplete="off">
+    <button type="submit" class="btn primary">Enviar</button>
+  </form>
+</div>
+
+<script>
+// =====================================================================
+// CONFIGURAÇÃO DO PROJETO — troque estes valores para reaproveitar o
+// mesmo app em outro projeto/empresa sem tocar no resto do código.
+// =====================================================================
+const APP_CONFIG = {
+  orgName: "Sua Empresa",
+  programName: "Assessment de Maturidade de Dados",
+  subtitle: "Meça o estágio de maturidade de dados de cada área — fontes, KPIs, consolidação e uso na tomada de decisão.",
+  level1Label: "Diretoria / Setor",
+  level2Label: "Área / Squad",
+  logoText: "MD"
+};
+
+// Faixas de classificação (0-100%).
+const BANDS = [
+  { min: 0,  max: 20,  key: "inicial",         label: "Inicial",             color: "#a9201c", textColor: "#ffffff" },
+  { min: 20, max: 40,  key: "emergente",       label: "Emergente",           color: "#df6007", textColor: "#ffffff" },
+  { min: 40, max: 60,  key: "desenvolvimento", label: "Em Desenvolvimento",  color: "#cfb053", textColor: "#2a2004" },
+  { min: 60, max: 80,  key: "avancado",        label: "Avançado",            color: "#24a92d", textColor: "#ffffff" },
+  { min: 80, max: 101, key: "otimizado",       label: "Otimizado",           color: "#087f60", textColor: "#ffffff" },
+];
+function bandFor(pct) {
+  if (pct === null || pct === undefined || isNaN(pct)) return null;
+  return BANDS.find(b => pct >= b.min && pct < b.max) || BANDS[BANDS.length - 1];
+}
+function normalizeTxt(s) {
+  return (s || "").toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+// =====================================================================
+// DIMENSÕES — cada pergunta: type "single" (1 nível vale) ou "multi"
+// (pontua pelo nível MAIS ALTO marcado). Cada nível: text (aparece no
+// formulário) + kw (palavras/expressões que o assistente reconhece em
+// respostas livres — heurística local, sem API externa).
+// =====================================================================
+const DIMENSIONS = [
+  {
+    key: "d1", code: "D1", title: "Uso Analítico de Dados",
+    description: "O quanto a área realmente usa dados para tomar decisões — não só para reportar o que já aconteceu.",
+    questions: [
+      {
+        id: "d1_p1", type: "multi",
+        prompt: "Quais destes usos de dados já acontecem hoje na área? (marque todos que já acontecem)",
+        levels: [
+          { level: 1, text: "Não usamos dados de forma estruturada para decisões", kw: ["nao usamos dados", "nada estruturado", "sem uso de dados", "nao ha uso formal"] },
+          { level: 2, text: "Usamos dados para relatórios pontuais, quando alguém pede", kw: ["relatorio pontual", "quando pedem", "sob demanda", "as vezes", "eventual"] },
+          { level: 3, text: "Acompanhamos indicadores/KPIs de forma recorrente", kw: ["acompanhamos indicadores", "kpi recorrente", "painel mensal", "report mensal", "acompanhamento periodico", "dashboard fixo"] },
+          { level: 4, text: "Usamos dados para embasar decisões táticas do dia a dia", kw: ["decisao do dia a dia", "decisao tatica", "no dia a dia usamos", "operacional"] },
+          { level: 5, text: "Usamos dados para decisões estratégicas, planejamento e cenários", kw: ["decisao estrategica", "planejamento", "cenarios", "projecoes", "forecast estrategico"] },
+        ],
+      },
+      {
+        id: "d1_p2", type: "single",
+        prompt: "Como os relatórios e análises da área são produzidos hoje?",
+        levels: [
+          { level: 1, text: "Manual, direto em planilha", kw: ["manual em planilha", "excel manual", "tudo na mao", "copiar e colar"] },
+          { level: 2, text: "Planilha com fórmulas e macros", kw: ["planilha com formula", "macro", "excel avancado", "vba"] },
+          { level: 3, text: "BI básico, com um painel simples", kw: ["bi basico", "power bi simples", "um painel simples", "dashboard basico"] },
+          { level: 4, text: "BI com múltiplas fontes integradas", kw: ["bi com varias fontes", "multiplas fontes integradas", "power bi avancado", "varias bases conectadas"] },
+          { level: 5, text: "Self-service — o próprio time monta as análises", kw: ["self service", "o time monta", "autonomia para analisar", "self-service"] },
+          { level: 6, text: "Modelos analíticos/preditivos incorporados à rotina", kw: ["modelo preditivo", "machine learning", "modelo estatistico", "ciencia de dados no dia a dia"] },
+        ],
+      },
+      {
+        id: "d1_p3", type: "single",
+        prompt: "Com que frequência a área usa dados para embasar uma decisão relevante (não apenas pra reportar)?",
+        levels: [
+          { level: 1, text: "Raramente ou nunca", kw: ["raramente", "nunca", "quase nunca"] },
+          { level: 2, text: "Esporadicamente (mensal ou menos)", kw: ["mensal", "esporadico", "de vez em quando", "poucas vezes por ano"] },
+          { level: 3, text: "Regularmente (semanal)", kw: ["semanal", "toda semana", "regularmente"] },
+          { level: 4, text: "Constantemente (diário ou em tempo real)", kw: ["diario", "todo dia", "tempo real", "constantemente"] },
+        ],
+      },
+    ],
+    context: [
+      { id: "d1_ctx_obs", label: "Algo específico sobre como a área usa dados hoje que vale registrar?", type: "textarea" },
+    ],
+  },
+  {
+    key: "d2", code: "D2", title: "Dados & Infraestrutura",
+    description: "As fontes de dados da área, se elas são confiáveis e se estão disponíveis quando precisam.",
+    questions: [
+      {
+        id: "d2_p4", type: "single",
+        prompt: "Como você avalia a confiabilidade dos dados que a área usa para tomar decisões?",
+        levels: [
+          { level: 1, text: "Muito baixa — não confiamos nos números", kw: ["nao confiamos", "muito baixa confiabilidade", "dados nao confiaveis"] },
+          { level: 2, text: "Baixa — frequentemente encontramos inconsistências", kw: ["baixa confiabilidade", "inconsistencias frequentes", "muitos erros"] },
+          { level: 3, text: "Média — funciona, mas exige verificação", kw: ["media confiabilidade", "exige verificacao", "precisamos checar"] },
+          { level: 4, text: "Alta — raramente encontramos problemas", kw: ["alta confiabilidade", "raramente tem problema", "confiavel"] },
+          { level: 5, text: "Muito alta — confiamos plenamente", kw: ["muito alta", "confiamos plenamente", "totalmente confiavel"] },
+        ],
+      },
+      {
+        id: "d2_p5", type: "single",
+        prompt: "A área tem clareza sobre quais são as fontes oficiais de cada informação crítica?",
+        levels: [
+          { level: 1, text: "Não há clareza — cada um usa a fonte que achar melhor", kw: ["nao ha clareza", "cada um usa a que quiser", "sem fonte oficial"] },
+          { level: 2, text: "Parcial — depende de quem você perguntar", kw: ["depende de quem pergunta", "parcialmente claro", "varia por pessoa"] },
+          { level: 3, text: "Sim — está claro e é do conhecimento de todos", kw: ["esta claro", "fonte oficial definida", "todo mundo sabe a fonte"] },
+        ],
+      },
+      {
+        id: "d2_p6", type: "single",
+        prompt: "Os dados necessários para a gestão da área estão disponíveis e atualizados no momento em que você precisa deles?",
+        levels: [
+          { level: 1, text: "Não — frequentemente faltam ou estão desatualizados", kw: ["nao disponivel", "desatualizado", "sempre falta", "atraso grande"] },
+          { level: 2, text: "Parcialmente — depende da fonte/momento", kw: ["parcialmente disponivel", "as vezes atrasa", "depende do dia"] },
+          { level: 3, text: "Sim — disponíveis e atualizados quando precisamos", kw: ["disponivel e atualizado", "sempre disponivel", "em dia"] },
+        ],
+      },
+    ],
+    context: [
+      { id: "d2_ctx_fontes", label: "Quais são as 2-3 principais fontes de dados usadas pela área hoje?", type: "textarea" },
+      { id: "d2_ctx_kpis", label: "Quais são os 3-5 KPIs mais importantes que a área acompanha?", type: "textarea" },
+    ],
+  },
+  {
+    key: "d3", code: "D3", title: "Pessoas & Skills",
+    description: "O nível de habilidade analítica do time, o risco de dependência de uma única pessoa e o quanto já se automatiza.",
+    questions: [
+      {
+        id: "d3_p7", type: "single",
+        prompt: "Qual é o nível de habilidade analítica predominante na área hoje?",
+        levels: [
+          { level: 1, text: "Excel básico", kw: ["excel basico", "so excel simples"] },
+          { level: 2, text: "Excel avançado / BI básico", kw: ["excel avancado", "bi basico", "power bi simples"] },
+          { level: 3, text: "SQL e BI avançado", kw: ["sql", "bi avancado", "consultas sql"] },
+          { level: 4, text: "Python ou R combinado com SQL", kw: ["python", "linguagem r", "python e sql"] },
+          { level: 5, text: "Ciência de dados e modelagem estatística", kw: ["ciencia de dados", "modelagem estatistica", "machine learning", "data science"] },
+        ],
+      },
+      {
+        id: "d3_p8", type: "single",
+        prompt: "Se a pessoa que mais conhece os dados da área saísse amanhã, o que aconteceria?",
+        levels: [
+          { level: 1, text: "Seria um problema sério — o conhecimento está só na cabeça dela", kw: ["problema serio", "so na cabeca dela", "ninguem mais sabe", "risco alto de saida"] },
+          { level: 2, text: "Levaria semanas para reconstruir o conhecimento", kw: ["levaria semanas", "demoraria para reconstruir"] },
+          { level: 3, text: "Existe documentação básica que ajudaria", kw: ["documentacao basica", "tem algum registro", "ajudaria um pouco"] },
+          { level: 4, text: "O conhecimento está bem distribuído e documentado, sem risco", kw: ["bem distribuido", "documentado", "sem risco", "varias pessoas sabem"] },
+        ],
+      },
+      {
+        id: "d3_p9", type: "single",
+        prompt: "Quantos processos da área são cobertos por alguma automação hoje?",
+        levels: [
+          { level: 1, text: "Nenhum", kw: ["nenhuma automacao", "nenhum processo automatizado", "zero automacao"] },
+          { level: 2, text: "Poucos, pontuais", kw: ["poucos automatizados", "automacao pontual", "alguns processos"] },
+          { level: 3, text: "Boa parte", kw: ["boa parte automatizada", "varios processos automatizados"] },
+          { level: 4, text: "A maioria dos processos críticos", kw: ["maioria automatizada", "quase tudo automatizado", "processos criticos automatizados"] },
+        ],
+      },
+      {
+        id: "d3_p10", type: "single",
+        prompt: "Há interesse do time em se capacitar em dados, SQL, automação ou IA?",
+        levels: [
+          { level: 1, text: "Nenhum interesse", kw: ["nenhum interesse", "ninguem quer", "sem interesse"] },
+          { level: 2, text: "Interesse baixo", kw: ["interesse baixo", "pouco interesse"] },
+          { level: 3, text: "Interesse moderado", kw: ["interesse moderado", "interesse medio"] },
+          { level: 4, text: "Interesse alto", kw: ["interesse alto", "bastante interesse", "time quer aprender"] },
+          { level: 5, text: "Muito alto — o time já busca se capacitar por conta própria", kw: ["muito alto", "busca por conta propria", "ja estuda sozinho", "time engajado"] },
+        ],
+      },
+    ],
+    context: [
+      { id: "d3_ctx_horas", label: "Quantas horas por mês, em média, o time dedica a tarefas manuais de dados (consolidar planilhas, montar relatório, etc.)?", type: "text" },
+    ],
+  },
+  {
+    key: "d4", code: "D4", title: "Integração & Consolidação de Dados",
+    description: "Como a área combina dados de mais de uma fonte, e se existe um caminho claro (de onde vem, como se transforma, onde é usado) para os indicadores críticos.",
+    questions: [
+      {
+        id: "d4_p11", type: "single",
+        prompt: "Quando a área precisa combinar dados de mais de uma fonte, como isso é feito hoje?",
+        levels: [
+          { level: 1, text: "Não combina — cada fonte é usada isoladamente, e os números podem divergir", kw: ["nao combina", "fontes isoladas", "numeros diferentes", "cada fonte separada"] },
+          { level: 2, text: "Combinação manual, copiando e colando entre planilhas", kw: ["copiar e colar", "manual entre planilhas", "junto na mao"] },
+          { level: 3, text: "Combinação semi-automatizada (Power Query, fórmulas complexas, PROCV entre bases)", kw: ["power query", "procv", "vlookup", "formula complexa", "semi automatizado"] },
+          { level: 4, text: "Combinação automatizada via pipeline/ETL, mas cada fonte ainda usa suas próprias definições/colunas", kw: ["pipeline", "etl", "automatizado mas sem padrao", "cada fonte com sua definicao"] },
+          { level: 5, text: "Combinação automatizada com dicionário de dados e regras padronizadas — fonte única da verdade", kw: ["fonte unica da verdade", "single source of truth", "dicionario de dados", "padronizado entre fontes"] },
+        ],
+      },
+      {
+        id: "d4_p12", type: "single",
+        prompt: "Existe um mapeamento do caminho do dado (de onde vem, como é transformado, onde é consumido) para os indicadores mais críticos da área?",
+        levels: [
+          { level: 1, text: "Não existe", kw: ["nao existe mapeamento", "sem mapeamento", "nao sabemos o caminho"] },
+          { level: 2, text: "Existe informalmente, na cabeça de alguém", kw: ["informalmente", "na cabeca de alguem", "ninguem documentou"] },
+          { level: 3, text: "Existe documentado parcialmente, para alguns indicadores", kw: ["documentado parcialmente", "alguns indicadores documentados"] },
+          { level: 4, text: "Existe documentado e atualizado para os indicadores críticos (linhagem completa)", kw: ["linhagem completa", "documentado e atualizado", "data lineage", "mapeamento completo"] },
+        ],
+      },
+    ],
+    context: [
+      { id: "d4_ctx_divergencia", label: "Quando duas fontes ou áreas apresentam números diferentes para o mesmo indicador, o que normalmente acontece?", type: "textarea" },
+      { id: "d4_ctx_sistemas", label: "Quais sistemas/fontes hoje \"conversam\" bem entre si, e quais não conversam?", type: "textarea" },
+    ],
+  },
+  {
+    key: "d5", code: "D5", title: "Processos & Governança",
+    description: "Se os processos críticos de dados estão documentados e se existe um dono claro para cada informação.",
+    questions: [
+      {
+        id: "d5_p13", type: "single",
+        prompt: "Os processos críticos de dados da área estão documentados?",
+        levels: [
+          { level: 1, text: "Não estão documentados", kw: ["nao documentado", "sem documentacao", "nada escrito"] },
+          { level: 2, text: "Documentados parcialmente", kw: ["parcialmente documentado", "documentacao incompleta"] },
+          { level: 3, text: "Documentados e mantidos atualizados", kw: ["documentado e atualizado", "bem documentado", "documentacao completa"] },
+        ],
+      },
+      {
+        id: "d5_p14", type: "single",
+        prompt: "Existe ownership (dono) claro sobre os dados que a área produz ou consome?",
+        levels: [
+          { level: 1, text: "Não existe — ninguém é claramente responsável", kw: ["nao existe ownership", "ninguem e responsavel", "sem dono"] },
+          { level: 2, text: "Ownership informal, não comunicado", kw: ["ownership informal", "nao e formalizado", "sabe-se informalmente"] },
+          { level: 3, text: "Ownership formal em uma pessoa, sem backup", kw: ["uma pessoa e a dona", "sem backup", "dono formal unico"] },
+          { level: 4, text: "Ownership formal com data owner e steward definidos", kw: ["data owner", "steward", "dono e responsavel formalizados", "modelo hub and spoke"] },
+        ],
+      },
+    ],
+    context: [
+      { id: "d5_ctx_owner", label: "Quem é o data owner da área hoje (se houver)?", type: "text" },
+      { id: "d5_ctx_contato", label: "Em caso de problema com dados, a quem a área recorre?", type: "text" },
+    ],
+  },
+  {
+    key: "d6", code: "D6", title: "Prontidão para IA",
+    description: "O que já existe de IA aplicada, se os dados estão prontos para os casos de uso identificados e como a área vê os riscos.",
+    questions: [
+      {
+        id: "d6_p15", type: "single",
+        prompt: "O que já existe hoje de IA aplicada aos processos da área?",
+        levels: [
+          { level: 1, text: "Nada", kw: ["nada de ia", "nenhum uso de ia", "zero ia"] },
+          { level: 2, text: "Experimentos isolados", kw: ["experimento isolado", "teste pontual", "piloto pequeno"] },
+          { level: 3, text: "Um ou poucos casos em produção", kw: ["em producao", "um caso em producao", "poucos casos rodando"] },
+          { level: 4, text: "Múltiplos casos em produção, parte da rotina", kw: ["multiplos casos", "parte da rotina", "varios casos em producao"] },
+        ],
+      },
+      {
+        id: "d6_p16", type: "single",
+        prompt: "Os dados necessários para os casos de uso de IA identificados estão disponíveis e em boa qualidade?",
+        levels: [
+          { level: 1, text: "Não", kw: ["dados nao disponiveis", "nao estao prontos", "qualidade ruim"] },
+          { level: 2, text: "Parcialmente", kw: ["parcialmente disponiveis", "qualidade media"] },
+          { level: 3, text: "Sim", kw: ["disponiveis e bons", "boa qualidade", "prontos para uso"] },
+        ],
+      },
+      {
+        id: "d6_p17", type: "single",
+        prompt: "Como a área enxerga os riscos de adotar IA nos seus processos?",
+        levels: [
+          { level: 1, text: "Risco alto — a área evita o tema", kw: ["risco alto", "evitamos", "preferimos nao usar"] },
+          { level: 2, text: "Risco moderado — encara com cautela", kw: ["risco moderado", "com cautela", "precisa de cuidado"] },
+          { level: 3, text: "Risco controlável, com governança adequada", kw: ["risco controlavel", "com governanca", "risco gerenciavel"] },
+          { level: 4, text: "Confortável — riscos já mitigados", kw: ["confortavel", "riscos mitigados", "sem preocupacao"] },
+        ],
+      },
+    ],
+    context: [],
+  },
+];
+
+// PLAYBOOK — próximos passos recomendados por dimensão, em 3 faixas.
+const PLAYBOOK = {
+  d1: {
+    critico: "Comece pelo básico: defina 3 a 5 indicadores que a área vai acompanhar de forma recorrente e cole isso na rotina (reunião semanal, por exemplo) antes de investir em ferramentas.",
+    atencao: "A área já acompanha indicadores — o próximo passo é usar esses dados para embasar decisões táticas do dia a dia, não só para reportar o que já aconteceu.",
+    maduro: "A área já decide com dados no tático — o próximo passo é levar isso para decisões estratégicas e de cenário (simulações, projeções), e compartilhar essa prática com áreas menos maduras.",
+  },
+  d2: {
+    critico: "Mapeie e comunique quais são as fontes oficiais de cada informação crítica — isso já resolve boa parte da desconfiança nos números antes de qualquer automação.",
+    atencao: "Formalize um SLA de atualização/disponibilidade dos dados críticos e monitore os casos em que a informação chega atrasada ou desatualizada.",
+    maduro: "A base está sólida — vale documentar isso como referência (dicionário de fontes oficiais) para outras áreas usarem como modelo.",
+  },
+  d3: {
+    critico: "Priorize capacitação básica (Excel avançado/BI) com tempo protegido na agenda — sem isso, qualquer automação vira dependência de uma única pessoa.",
+    atencao: "Automatize os processos manuais mais repetitivos primeiro (ganho rápido) e documente o conhecimento hoje concentrado em poucas pessoas.",
+    maduro: "Time maduro — direcione o interesse em capacitação para tópicos avançados (Python/SQL, IA) e use a área como referência interna de skills.",
+  },
+  d4: {
+    critico: "Antes de automatizar, alinhe um dicionário de dados mínimo entre as fontes que a área usa — nome, definição e regra de cálculo de cada campo crítico.",
+    atencao: "Migre a consolidação manual/planilha para um fluxo automatizado (Power Query, pipeline), mesmo que ainda sem padronização completa entre fontes.",
+    maduro: "A consolidação já é automatizada — o próximo passo é documentar a linhagem completa dos indicadores críticos (de onde vêm, como se transformam) para não depender de memória.",
+  },
+  d5: {
+    critico: "Nomeie formalmente um data owner para a área — sem um dono claro, qualquer iniciativa de qualidade ou automação tende a travar.",
+    atencao: "Documente os processos críticos que ainda não estão escritos e defina um steward (backup) para o data owner já existente.",
+    maduro: "Governança madura — use essa área como referência (playbook interno) para acelerar áreas com ownership indefinido.",
+  },
+  d6: {
+    critico: "Antes de investir em IA, foque em consolidar os dados básicos (D2/D4) — sem uma base confiável, qualquer modelo herda os mesmos problemas.",
+    atencao: "Valide concretamente qual caso de uso de IA foi considerado e o que especificamente falta nos dados — muitas vezes o gargalo é mais estreito do que parece.",
+    maduro: "Área candidata a piloto de IA no próximo ciclo — os dados e o apetite a risco já sustentam um caso de uso real.",
+  },
+};
+function tierFor(pct) {
+  if (pct === null || pct === undefined) return null;
+  if (pct < 40) return "critico";
+  if (pct < 60) return "atencao";
+  return "maduro";
+}
+const TIER_LABELS = { critico: "Crítico (0-40%)", atencao: "Em desenvolvimento (40-60%)", maduro: "Maduro (60-100%)" };
+
+// SECTIONS — identificação + cada dimensão + comentário final.
+const SECTIONS = [
+  { key: "identificacao", label: "Identificação", kind: "meta", fields: [
+    { id: "setor", label: APP_CONFIG.level1Label, required: true },
+    { id: "area", label: APP_CONFIG.level2Label, required: true },
+    { id: "gestor", label: "Gestor responsável pela área", required: true },
+    { id: "preenchido_por", label: "Preenchido por (nome e cargo)", required: true },
+    { id: "analistas", label: "Analistas que ajudaram a preencher (opcional)", required: false },
+  ]},
+  ...DIMENSIONS.map(d => ({ key: d.key, label: d.code + " — " + d.title, kind: "dimension", dim: d })),
+  { key: "comentario", label: "Comentário final", kind: "comment" },
+];
+const META_PROMPTS = {
+  setor: `Qual é ${APP_CONFIG.level1Label.toLowerCase().startsWith("a") ? "a" : "o"} ${APP_CONFIG.level1Label.toLowerCase()} dessa área?`,
+  area: `E qual é o nome ${APP_CONFIG.level2Label.toLowerCase().includes("área") ? "da" : "do"} ${APP_CONFIG.level2Label.toLowerCase()}?`,
+  gestor: "Quem é o gestor responsável por essa área?",
+  preenchido_por: "E quem está preenchendo esse assessment (seu nome e cargo)?",
+  analistas: "Algum analista te ajudou a preencher? Pode citar o nome (ou digitar \"nenhum\" para pular).",
+};
+
+// =====================================================================
+// ESTADO
+// =====================================================================
+function createBlankState() {
+  return {
+    id: null,
+    meta: { setor: "", area: "", gestor: "", preenchido_por: "", analistas: "" },
+    answers: {},
+    context: {},
+    comentario_final: "",
+    comentarios_proximos_passos: "",
+    status: "rascunho",
+    created_at: null,
+    updated_at: null,
+    _remoteExists: false,
+  };
+}
+let state = createBlankState();
+let sectionApproval = {};
+let agentState = null;
+
+// =====================================================================
+// UTILITÁRIOS
+// =====================================================================
+function el(id) { return document.getElementById(id); }
+function escapeHtml(s) {
+  return (s || "").toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+function slugify(s) {
+  return (s || "").toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+function findQuestionById(qid) {
+  for (const d of DIMENSIONS) { const q = d.questions.find(x => x.id === qid); if (q) return q; }
+  return null;
+}
+
+// =====================================================================
+// SCORING
+// =====================================================================
+function normalizeScore(level, maxLevel) { return maxLevel > 1 ? (level - 1) / (maxLevel - 1) * 100 : 100; }
+function questionScore(q, val) {
+  if (val === undefined || val === null) return null;
+  if (Array.isArray(val)) { if (!val.length) return null; return normalizeScore(Math.max(...val), q.levels.length); }
+  return normalizeScore(val, q.levels.length);
+}
+function dimensionScore(dim, answers) {
+  const scores = dim.questions.map(q => questionScore(q, answers[q.id])).filter(s => s !== null);
+  if (!scores.length) return null;
+  return scores.reduce((a, b) => a + b, 0) / scores.length;
+}
+function overallScore(answers) {
+  const scores = DIMENSIONS.map(d => dimensionScore(d, answers)).filter(s => s !== null);
+  if (!scores.length) return null;
+  return scores.reduce((a, b) => a + b, 0) / scores.length;
+}
+function isQuestionAnswered(val) { return Array.isArray(val) ? val.length > 0 : (val !== undefined && val !== null); }
+function totalQuestionCount() { return DIMENSIONS.reduce((n, d) => n + d.questions.length, 0); }
+function answeredQuestionCount() {
+  let n = 0;
+  DIMENSIONS.forEach(d => d.questions.forEach(q => { if (isQuestionAnswered(state.answers[q.id])) n++; }));
+  return n;
+}
+function describeAnswerForQuestion(q, val) {
+  if (!isQuestionAnswered(val)) return "(sem resposta)";
+  const levels = Array.isArray(val) ? val : [val];
+  return levels.map(l => { const lvl = q.levels.find(x => x.level === l); return lvl ? lvl.text : ("nível " + l); }).join("; ");
+}
+
+// =====================================================================
+// APROVAÇÃO POR SEÇÃO
+// =====================================================================
+function isSectionComplete(section) {
+  if (section.kind === "meta") return section.fields.filter(f => f.required).every(f => (state.meta[f.id] || "").trim() !== "");
+  if (section.kind === "dimension") return section.dim.questions.every(q => isQuestionAnswered(state.answers[q.id]));
+  return true; // comentário final é opcional
+}
+function updateSectionBadge(key) {
+  const wrap = document.querySelector(`.section-approval[data-section="${key}"]`);
+  if (!wrap) return;
+  const badge = wrap.querySelector(".approval-badge");
+  const approved = !!sectionApproval[key];
+  badge.textContent = approved ? "Aprovado" : "Pendente";
+  badge.classList.toggle("approved", approved);
+}
+function renderAllSectionBadges() { SECTIONS.forEach(s => updateSectionBadge(s.key)); }
+function clearSectionData(section) {
+  if (section.kind === "meta") section.fields.forEach(f => { state.meta[f.id] = ""; });
+  else if (section.kind === "dimension") {
+    section.dim.questions.forEach(q => { delete state.answers[q.id]; });
+    section.dim.context.forEach(c => { state.context[c.id] = ""; });
+  } else if (section.kind === "comment") { state.comentario_final = ""; }
+}
+
+// =====================================================================
+// RENDER DO FORMULÁRIO
+// =====================================================================
+function sectionCardOpen(key, stepLabel, h2, desc) {
+  const approved = !!sectionApproval[key];
+  return `<div class="card-surface section-block">
+    <p class="step-label">${escapeHtml(stepLabel)}</p>
+    <h2>${escapeHtml(h2)}</h2>
+    <div class="section-approval" data-section="${key}">
+      <span class="approval-badge ${approved ? "approved" : ""}">${approved ? "Aprovado" : "Pendente"}</span>
+      <button type="button" class="btn ghost small btn-approve-section">Aprovar seção</button>
+      <button type="button" class="btn ghost small btn-reject-section">Rejeitar</button>
+    </div>
+    ${desc ? `<p class="desc">${escapeHtml(desc)}</p>` : ""}`;
+}
+function sectionCardClose() { return `</div>`; }
+function renderQuestionBlock(q) {
+  const val = state.answers[q.id];
+  const selected = Array.isArray(val) ? val : (isQuestionAnswered(val) ? [val] : []);
+  const typeHint = q.type === "multi" ? "Marque todas as opções que se aplicam." : "Escolha a opção que melhor descreve a situação hoje.";
+  const inputType = q.type === "multi" ? "checkbox" : "radio";
+  const opts = q.levels.map(lvl => {
+    const checked = selected.includes(lvl.level);
+    return `<label class="level-opt ${checked ? "selected" : ""}" data-qid="${q.id}" data-level="${lvl.level}">
+      <input type="${inputType}" name="${q.id}" value="${lvl.level}" ${checked ? "checked" : ""}>
+      <span class="level-badge">${lvl.level}</span>
+      <span class="level-text">${escapeHtml(lvl.text)}</span>
+    </label>`;
+  }).join("");
+  return `<div class="question-block">
+    <p class="question-prompt">${escapeHtml(q.prompt)}</p>
+    <p class="question-type-hint">${typeHint}</p>
+    <div class="level-list">${opts}</div>
+  </div>`;
+}
+function renderFormSections() {
+  let html = sectionCardOpen("identificacao", "Identificação",
+    `${APP_CONFIG.level1Label} / ${APP_CONFIG.level2Label} e responsáveis`,
+    "Esses campos identificam a área e quem preencheu — não entram no cálculo de maturidade.");
+  html += `<div class="field-grid">
+    <div class="field"><label>${escapeHtml(APP_CONFIG.level1Label)}</label><input type="text" data-bind-meta="setor" value="${escapeHtml(state.meta.setor)}" placeholder="ex.: Operações"></div>
+    <div class="field"><label>${escapeHtml(APP_CONFIG.level2Label)}</label><input type="text" data-bind-meta="area" value="${escapeHtml(state.meta.area)}" placeholder="ex.: Atendimento ao Cliente"></div>
+    <div class="field"><label>Gestor responsável</label><input type="text" data-bind-meta="gestor" value="${escapeHtml(state.meta.gestor)}"></div>
+    <div class="field"><label>Preenchido por</label><input type="text" data-bind-meta="preenchido_por" value="${escapeHtml(state.meta.preenchido_por)}" placeholder="nome e cargo"></div>
+    <div class="field full"><label>Analistas que ajudaram (opcional)</label><input type="text" data-bind-meta="analistas" value="${escapeHtml(state.meta.analistas)}"></div>
+  </div>`;
+  html += sectionCardClose();
+
+  DIMENSIONS.forEach(dim => {
+    html += sectionCardOpen(dim.key, dim.code + " — " + dim.title, dim.title, dim.description);
+    dim.questions.forEach(q => { html += renderQuestionBlock(q); });
+    if (dim.context.length) {
+      html += `<div class="field-grid" style="margin-top:6px;">` + dim.context.map(c => `<div class="field full"><label>${escapeHtml(c.label)}</label>${
+        c.type === "textarea"
+          ? `<textarea rows="2" data-bind-context="${c.id}">${escapeHtml(state.context[c.id] || "")}</textarea>`
+          : `<input type="text" data-bind-context="${c.id}" value="${escapeHtml(state.context[c.id] || "")}">`
+      }</div>`).join("") + `</div>`;
+    }
+    html += sectionCardClose();
+  });
+
+  html += sectionCardOpen("comentario", "Comentário final", "Algo mais sobre dados, automação, consolidação ou IA na área?",
+    "Campo opcional — vira contexto qualitativo no resultado.");
+  html += `<div class="field full"><textarea rows="3" id="comentario_final">${escapeHtml(state.comentario_final || "")}</textarea></div>`;
+  html += sectionCardClose();
+
+  html += `<div class="actions-row">
+    <button type="button" class="btn primary" id="btn-generate">Salvar rascunho</button>
+    <button type="button" class="btn primary" id="btn-finalize">Concluir assessment</button>
+    <button type="button" class="btn ghost" id="btn-clear">Limpar formulário</button>
+  </div>
+  <div class="status-note" id="status-note"></div>`;
+
+  el("form-col").innerHTML = html;
+  renderAllSectionBadges();
+}
+
+// =====================================================================
+// FICHA TÉCNICA (PREVIEW AO VIVO) + HEATMAP + RADAR
+// =====================================================================
+function buildHeatmapRow(dimScores) {
+  return `<div class="heatmap-row">` + dimScores.map(({ dim, score }) => {
+    if (score === null) return `<div class="heat-cell empty"><span class="hc-code">${dim.code}</span><span class="hc-pct">—</span><span class="hc-label">sem dados</span></div>`;
+    const band = bandFor(score);
+    return `<div class="heat-cell" style="background:${band.color}; color:${band.textColor}" title="${escapeHtml(dim.title)}">
+      <span class="hc-code">${dim.code}</span><span class="hc-pct">${Math.round(score)}%</span><span class="hc-label">${band.label}</span>
+    </div>`;
+  }).join("") + `</div>`;
+}
+function buildRadarSVG(scores, size) {
+  size = size || 280;
+  const n = scores.length;
+  const cx = size / 2, cy = size / 2, R = size / 2 - 36;
+  const angleFor = i => (Math.PI * 2 * i / n) - Math.PI / 2;
+  const gridLevels = [20, 40, 60, 80, 100];
+  const grid = gridLevels.map(g => {
+    const r = R * g / 100;
+    const pts = scores.map((_, i) => { const a = angleFor(i); return (cx + r * Math.cos(a)).toFixed(1) + "," + (cy + r * Math.sin(a)).toFixed(1); }).join(" ");
+    return `<polygon points="${pts}" fill="none" stroke="#e1e0d9" stroke-width="1"/>`;
+  }).join("");
+  const axes = scores.map((_, i) => {
+    const a = angleFor(i); const x = cx + R * Math.cos(a), y = cy + R * Math.sin(a);
+    return `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#e1e0d9" stroke-width="1"/>`;
+  }).join("");
+  const dataPts = scores.map((s, i) => { const val = s.score === null ? 0 : s.score; const r = R * val / 100; const a = angleFor(i); return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; });
+  const dataPoly = `<polygon points="${dataPts.map(p => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ")}" fill="rgba(11,77,162,0.18)" stroke="#0b4da2" stroke-width="2"/>`;
+  const dots = dataPts.map(p => `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="4" fill="#0b4da2"/>`).join("");
+  const labels = scores.map((s, i) => {
+    const a = angleFor(i); const x = cx + (R + 22) * Math.cos(a), y = cy + (R + 22) * Math.sin(a);
+    return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-size="11" font-weight="700" fill="#50545a" text-anchor="middle" dominant-baseline="middle">${s.code}</text>`;
+  }).join("");
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${grid}${axes}${dataPoly}${dots}${labels}</svg>`;
+}
+function updateProgress() {
+  const total = totalQuestionCount(), filled = answeredQuestionCount();
+  const pct = total ? Math.round(filled / total * 100) : 0;
+  el("progress-fill").style.width = pct + "%";
+  el("progress-fill").style.background = pct === 100 ? "var(--green)" : "";
+  el("progress-label").textContent = `${filled} de ${total} perguntas respondidas` + (pct === 100 ? " • completo" : "");
+}
+function renderPreview() {
+  updateProgress();
+  const dimScores = DIMENSIONS.map(d => ({ dim: d, score: dimensionScore(d, state.answers) }));
+  const overall = overallScore(state.answers);
+  const band = bandFor(overall);
+  let html = `<div class="score-hero">
+    <div><div class="score-num">${overall !== null ? Math.round(overall) + "%" : "—"}</div><div class="score-sub">maturidade geral</div></div>
+    ${band ? `<span class="band-pill" style="background:${band.color}">${band.label}</span>` : ""}
+  </div>`;
+  html += `<div style="margin:16px 0;">${buildHeatmapRow(dimScores)}</div>`;
+  html += `<div class="kv-grid">
+    <div class="kv-box"><span class="kv-label">${escapeHtml(APP_CONFIG.level1Label)}</span><span class="kv-value">${escapeHtml(state.meta.setor) || "—"}</span></div>
+    <div class="kv-box"><span class="kv-label">${escapeHtml(APP_CONFIG.level2Label)}</span><span class="kv-value">${escapeHtml(state.meta.area) || "—"}</span></div>
+    <div class="kv-box"><span class="kv-label">Gestor</span><span class="kv-value">${escapeHtml(state.meta.gestor) || "—"}</span></div>
+  </div>`;
+  const ctxRows = [];
+  DIMENSIONS.forEach(d => d.context.forEach(c => { const v = state.context[c.id]; if (v && v.trim()) ctxRows.push([c.label, v]); }));
+  if (ctxRows.length) html += `<dl class="ctx-list">` + ctxRows.map(([l, v]) => `<dt>${escapeHtml(l)}</dt><dd>${escapeHtml(v)}</dd>`).join("") + `</dl>`;
+  else html += `<p class="empty-note">Os campos de contexto (fontes de dados, KPIs, data owner etc.) aparecem aqui conforme você preenche.</p>`;
+  el("preview").innerHTML = html;
+}
+
+// =====================================================================
+// PERSISTÊNCIA (localStorage primeiro, backend best-effort)
+// =====================================================================
+function computeId() { return slugify(state.meta.setor || "geral") + "-" + slugify(state.meta.area || "sem-area"); }
+function buildRecord() {
+  const id = state.id || computeId();
+  return {
+    id,
+    meta: Object.assign({}, state.meta),
+    answers: JSON.parse(JSON.stringify(state.answers)),
+    context: Object.assign({}, state.context),
+    comentario_final: state.comentario_final || "",
+    comentarios_proximos_passos: state.comentarios_proximos_passos || "",
+    status: state.status || "rascunho",
+    created_at: state.created_at || new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+}
+function loadQueue() { try { return JSON.parse(localStorage.getItem("maturity_queue") || "[]"); } catch (e) { return []; } }
+function saveQueue(q) { try { localStorage.setItem("maturity_queue", JSON.stringify(q)); } catch (e) {} }
+function setStatus(msg, kind) { const n = el("status-note"); if (!n) return; n.textContent = msg; n.className = "status-note" + (kind ? " " + kind : ""); }
+function setResultadoStatus(msg, kind) { const n = el("resultado-status-note"); if (!n) return; n.textContent = msg; n.className = "status-note" + (kind ? " " + kind : ""); }
+function setBackendPill(msg) { const p = el("backend-pill"); if (p) p.textContent = msg; }
+function backendReachable() {
+  // Evita chamadas de fetch garantidamente inúteis (e erros de CORS no console) quando o
+  // arquivo é aberto direto como file:// — nesse caso não há como existir um backend HTTP.
+  return typeof location !== "undefined" && /^https?:$/.test(location.protocol);
+}
+async function saveDraftRemote() {
+  if (!backendReachable()) { setBackendPill("Modo local (sem backend configurado)"); return; }
+  try {
+    const record = buildRecord();
+    const method = state._remoteExists ? "PUT" : "POST";
+    const url = state._remoteExists ? `/api/maturity-assessments/${record.id}` : "/api/maturity-assessments";
+    const resp = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(record) });
+    if (resp.ok) { state._remoteExists = true; setBackendPill("Backend: conectado"); }
+    else setBackendPill(`Modo local (backend responde ${resp.status})`);
+  } catch (e) { setBackendPill("Modo local (sem backend configurado)"); }
+}
+let autosaveTimer = null;
+function scheduleAutosave() {
+  try {
+    localStorage.setItem("maturity_current_draft", JSON.stringify(state));
+    localStorage.setItem("maturity_current_approval", JSON.stringify(sectionApproval));
+  } catch (e) {}
+  clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(saveDraftRemote, 900);
+}
+async function persistCurrentRecord(finalize) {
+  if (!state.meta.setor.trim() || !state.meta.area.trim()) {
+    setStatus(`Preencha ao menos ${APP_CONFIG.level1Label} e ${APP_CONFIG.level2Label} antes de salvar.`, "err");
+    return null;
+  }
+  state.id = state.id || computeId();
+  state.status = finalize ? "concluido" : (state.status === "concluido" ? "concluido" : "rascunho");
+  const record = buildRecord();
+  const q = loadQueue();
+  const idx = q.findIndex(r => r.id === record.id);
+  if (idx >= 0) q[idx] = record; else q.unshift(record);
+  saveQueue(q);
+  renderQueue();
+  await saveDraftRemote();
+  return record;
+}
+function renderQueue() {
+  const q = loadQueue();
+  const wrap = el("queue-wrap");
+  if (!wrap) return;
+  if (!q.length) { wrap.innerHTML = `<p class="empty-note">Nenhum assessment gerado ainda.</p>`; return; }
+  const STATUS_LABELS = { rascunho: "Rascunho", concluido: "Concluído" };
+  const rows = q.map((item, idx) => {
+    const overall = overallScore(item.answers);
+    const band = bandFor(overall);
+    return `<tr>
+      <td>${escapeHtml(item.meta.area || "(sem área)")}</td>
+      <td>${escapeHtml(item.meta.setor || "—")}</td>
+      <td>${escapeHtml(item.meta.gestor || "—")}</td>
+      <td><span class="badge">${STATUS_LABELS[item.status] || escapeHtml(item.status)}</span></td>
+      <td>${band ? `<span class="band-pill" style="background:${band.color}">${Math.round(overall)}%</span>` : "—"}</td>
+      <td>${(item.updated_at || "").slice(0, 10)}</td>
+      <td>
+        <button class="link-btn" data-act="ver" data-idx="${idx}">ver resultado</button>
+        <button class="link-btn" data-act="editar" data-idx="${idx}">continuar preenchendo</button>
+        <button class="link-btn" data-act="remover" data-idx="${idx}">remover</button>
+      </td>
+    </tr>`;
+  }).join("");
+  wrap.innerHTML = `<table class="queue"><tr><th>${escapeHtml(APP_CONFIG.level2Label)}</th><th>${escapeHtml(APP_CONFIG.level1Label)}</th><th>Gestor</th><th>Status</th><th>Score</th><th>Atualizado</th><th>Ações</th></tr>${rows}</table>`;
+}
+
+// =====================================================================
+// NOVO ASSESSMENT / EDITAR EXISTENTE
+// =====================================================================
+function startNewAssessment() {
+  state = createBlankState();
+  sectionApproval = {};
+  agentState = null;
+  el("agent-messages").innerHTML = "";
+  el("agent-review").classList.add("hidden");
+  el("agent-submit-wrap").classList.add("hidden");
+  renderFormSections();
+  renderPreview();
+  setStatus("Novo assessment iniciado — o anterior, se salvo, continua no Painel.", "ok");
+}
+function openRecordForEditing(record) {
+  state = JSON.parse(JSON.stringify(record));
+  state._remoteExists = false;
+  sectionApproval = {};
+  SECTIONS.forEach(s => { sectionApproval[s.key] = isSectionComplete(s); });
+  renderFormSections();
+  renderPreview();
+  activateTab("form");
+  setStatus(`Editando "${record.meta.area || record.id}" — continue de onde parou.`, "ok");
+}
+
+// =====================================================================
+// ABAS
+// =====================================================================
+function activateTab(tabKey) {
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === tabKey));
+  document.querySelectorAll(".tab-panel").forEach(p => p.classList.toggle("active", p.id === "tab-" + tabKey));
+  if (tabKey === "painel") loadPainel();
+  if (tabKey === "manual") renderManual();
+}
+
+// =====================================================================
+// MANUAL
+// =====================================================================
+function renderManual() {
+  let html = `<div class="kv-grid" style="margin-bottom:18px;">` + BANDS.map(b =>
+    `<div class="kv-box" style="border-left:3px solid ${b.color};"><span class="kv-label">${escapeHtml(b.label)}</span><span class="kv-value">${b.min}-${b.max > 100 ? 100 : b.max}%</span></div>`
+  ).join("") + `</div>`;
+  html += DIMENSIONS.map(d => `<div class="manual-dim">
+    <h3>${d.code} — ${escapeHtml(d.title)}</h3>
+    <p class="desc">${escapeHtml(d.description)}</p>
+    <div class="tier-grid">
+      <div class="tier-box tier-critico"><span class="tier-title">${TIER_LABELS.critico}</span>${escapeHtml(PLAYBOOK[d.key].critico)}</div>
+      <div class="tier-box tier-atencao"><span class="tier-title">${TIER_LABELS.atencao}</span>${escapeHtml(PLAYBOOK[d.key].atencao)}</div>
+      <div class="tier-box tier-maduro"><span class="tier-title">${TIER_LABELS.maduro}</span>${escapeHtml(PLAYBOOK[d.key].maduro)}</div>
+    </div>
+  </div>`).join("");
+  el("manual-wrap").innerHTML = html;
+}
+
+// =====================================================================
+// PAINEL DE ACOMPANHAMENTO
+// =====================================================================
+function aggDimScores(records) {
+  return DIMENSIONS.map(d => {
+    const vals = records.map(r => dimensionScore(d, r.answers)).filter(v => v !== null);
+    return { dim: d, score: vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null };
+  });
+}
+function aggOverall(records) {
+  const vals = records.map(r => overallScore(r.answers)).filter(v => v !== null);
+  return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+}
+function renderPainelCard(opts) {
+  const band = bandFor(opts.overall);
+  const card = document.createElement("div");
+  card.className = "painel-card" + (opts.isAggregate ? " aggregate" : "");
+  if (!opts.onClickRecords) card.style.cursor = "default";
+  const title = document.createElement("p"); title.className = "pc-title"; title.textContent = opts.label;
+  const meta = document.createElement("p"); meta.className = "pc-meta"; meta.textContent = opts.sub;
+  const heatWrap = document.createElement("div"); heatWrap.className = "pc-heat";
+  opts.dimScores.forEach(({ score }) => { const b = bandFor(score); const span = document.createElement("span"); span.style.background = b ? b.color : "#e6e7ea"; heatWrap.appendChild(span); });
+  const footer = document.createElement("div"); footer.className = "pc-footer";
+  footer.innerHTML = band ? `<span class="band-pill" style="background:${band.color}">${opts.overall !== null ? Math.round(opts.overall) + "% " : ""}${escapeHtml(band.label)}</span>` : `<span class="empty-note">sem dados</span>`;
+  card.appendChild(title); card.appendChild(meta); card.appendChild(heatWrap); card.appendChild(footer);
+  if (opts.onClickRecords) {
+    card.addEventListener("click", () => {
+      if (opts.onClickRecords.length === 1) renderResultado(opts.onClickRecords[0], null);
+      else renderResultado(null, { aggregate: true, records: opts.onClickRecords, label: opts.label });
+    });
+  }
+  return card;
+}
+function renderPainelWrap(records) {
+  const groupBy = el("painel-groupby").value;
+  const wrap = el("painel-wrap");
+  wrap.innerHTML = "";
+  const grid = document.createElement("div"); grid.className = "painel-grid";
+  grid.appendChild(renderPainelCard({ label: "Média do grupo", sub: `${records.length} área(s) no total`, dimScores: aggDimScores(records), overall: aggOverall(records), isAggregate: true, onClickRecords: null }));
+  let groups;
+  if (groupBy === "area") {
+    groups = records.map(r => ({ label: r.meta.area || "(sem área)", sub: `${r.meta.setor || "—"} • ${r.meta.gestor || "sem gestor"}`, records: [r] }));
+  } else {
+    const key = groupBy === "gestor" ? "gestor" : "setor";
+    const map = {};
+    records.forEach(r => { const k = r.meta[key] || "(não informado)"; (map[k] = map[k] || []).push(r); });
+    groups = Object.entries(map).map(([k, recs]) => ({ label: k, sub: `${recs.length} área(s)`, records: recs }));
+  }
+  groups.forEach(g => {
+    grid.appendChild(renderPainelCard({
+      label: g.label, sub: g.sub, dimScores: aggDimScores(g.records), overall: aggOverall(g.records), isAggregate: g.records.length > 1, onClickRecords: g.records,
+    }));
+  });
+  wrap.appendChild(grid);
+}
+async function loadPainel() {
+  const wrap = el("painel-wrap");
+  wrap.innerHTML = `<p class="empty-note">Carregando...</p>`;
+  let records = [];
+  if (backendReachable()) {
+    try {
+      const resp = await fetch("/api/maturity-assessments");
+      if (!resp.ok) throw new Error("status " + resp.status);
+      records = await resp.json();
+      setBackendPill("Backend: conectado");
+    } catch (e) { records = loadQueue(); }
+  } else {
+    records = loadQueue();
+  }
+  if (!records.length) { wrap.innerHTML = `<p class="empty-note">Nenhum assessment cadastrado ainda. Preencha um na aba Formulário.</p>`; return; }
+  renderPainelWrap(records);
+}
+
+// =====================================================================
+// RESULTADO INTERATIVO
+// =====================================================================
+function buildResumo(headerLabel, overall, band, dimScores) {
+  const sorted = dimScores.filter(d => d.score !== null).sort((a, b) => b.score - a.score);
+  if (!sorted.length) return "Ainda não há respostas suficientes para gerar um resumo.";
+  const melhor = sorted[0], pior = sorted[sorted.length - 1];
+  let txt = `${headerLabel || "A área"} está no estágio "${band ? band.label : "—"}" (${overall !== null ? Math.round(overall) : "—"}% de maturidade geral). `;
+  txt += `A dimensão mais forte é ${melhor.dim.code} — ${melhor.dim.title} (${Math.round(melhor.score)}%).`;
+  if (sorted.length > 1) txt += ` A que mais precisa de atenção é ${pior.dim.code} — ${pior.dim.title} (${Math.round(pior.score)}%).`;
+  return txt;
+}
+function buildAcaoPrioritariaHtml(dimScores) {
+  const valid = dimScores.filter(d => d.score !== null);
+  if (!valid.length) return "";
+  const weakest = valid.slice().sort((a, b) => a.score - b.score)[0];
+  const tier = tierFor(weakest.score);
+  const action = PLAYBOOK[weakest.dim.key][tier];
+  return `<div class="callout warn" style="margin-top:14px;"><span class="label">Ação prioritária — ${weakest.dim.code} (${Math.round(weakest.score)}%)</span>${escapeHtml(action)}</div>`;
+}
+function renderResultado(record, aggOpts) {
+  activateTab("resultado");
+  const isAgg = !!(aggOpts && aggOpts.aggregate);
+  let dimScores, overall, headerLabel, subLabel, composing = [];
+  if (isAgg) {
+    dimScores = aggDimScores(aggOpts.records);
+    overall = aggOverall(aggOpts.records);
+    headerLabel = aggOpts.label;
+    subLabel = `Visão consolidada de ${aggOpts.records.length} área(s)`;
+    composing = aggOpts.records;
+  } else {
+    dimScores = DIMENSIONS.map(d => ({ dim: d, score: dimensionScore(d, record.answers) }));
+    overall = overallScore(record.answers);
+    headerLabel = record.meta.area || "(sem área)";
+    subLabel = `${record.meta.setor || "—"} • Gestor: ${record.meta.gestor || "—"}`;
+  }
+  const band = bandFor(overall);
+  let html = `<div class="actions-row" style="margin-bottom:14px;"><button type="button" class="btn ghost small" id="btn-back-painel">← Voltar ao painel</button></div>`;
+  html += `<div class="card-surface section-block">
+    <p class="step-label">Resultado</p>
+    <h2>${escapeHtml(headerLabel)}</h2>
+    <p class="desc">${escapeHtml(subLabel)}</p>`;
+  if (!isAgg) {
+    html += `<div class="kv-grid">
+      <div class="kv-box"><span class="kv-label">${escapeHtml(APP_CONFIG.level1Label)}</span><span class="kv-value">${escapeHtml(record.meta.setor) || "—"}</span></div>
+      <div class="kv-box"><span class="kv-label">${escapeHtml(APP_CONFIG.level2Label)}</span><span class="kv-value">${escapeHtml(record.meta.area) || "—"}</span></div>
+      <div class="kv-box"><span class="kv-label">Gestor</span><span class="kv-value">${escapeHtml(record.meta.gestor) || "—"}</span></div>
+      <div class="kv-box"><span class="kv-label">Preenchido por</span><span class="kv-value">${escapeHtml(record.meta.preenchido_por) || "—"}</span></div>
+      <div class="kv-box"><span class="kv-label">Atualizado em</span><span class="kv-value">${(record.updated_at || "").slice(0, 10) || "—"}</span></div>
+    </div>`;
+  } else {
+    html += `<div class="kv-grid">` + composing.map(r => `<div class="kv-box"><span class="kv-label">Área</span><span class="kv-value">${escapeHtml(r.meta.area || "—")}</span></div>`).join("") + `</div>`;
+  }
+  html += `<div class="score-hero" style="margin:10px 0 18px;">
+    <div><div class="score-num">${overall !== null ? Math.round(overall) + "%" : "—"}</div><div class="score-sub">maturidade geral</div></div>
+    ${band ? `<span class="band-pill" style="background:${band.color}">${band.label}</span>` : ""}
+  </div>`;
+  html += `<div class="result-grid">
+    <div class="radar-wrap">${buildRadarSVG(dimScores.map(ds => ({ code: ds.dim.code, score: ds.score })))}</div>
+    <div>
+      ${buildHeatmapRow(dimScores)}
+      <div class="callout" style="margin-top:14px;"><span class="label">Resumo executivo</span>${escapeHtml(buildResumo(headerLabel, overall, band, dimScores))}</div>
+      ${buildAcaoPrioritariaHtml(dimScores)}
+      ${(!isAgg && record.comentario_final) ? `<div class="callout" style="margin-top:14px;"><span class="label">Comentário de quem respondeu</span>${escapeHtml(record.comentario_final)}</div>` : ""}
+    </div>
+  </div></div>`;
+
+  html += `<div class="card-surface section-block"><p class="step-label">Detalhamento</p><h2>Respostas por dimensão</h2>`;
+  if (isAgg) {
+    html += `<p class="desc">Visão agregada não detalha pergunta a pergunta — abra uma área específica para ver o detalhe.</p>`;
+    html += composing.map(r => `<div class="breakdown-item"><div class="bi-head"><h4>${escapeHtml(r.meta.area || "(sem área)")}</h4><button type="button" class="btn ghost small btn-open-area" data-id="${escapeHtml(r.id)}">Ver detalhe →</button></div></div>`).join("");
+  } else {
+    html += dimScores.map(({ dim, score }) => {
+      const b = bandFor(score);
+      return `<div class="breakdown-item">
+        <div class="bi-head"><h4>${dim.code} — ${escapeHtml(dim.title)}</h4>${b ? `<span class="band-pill" style="background:${b.color}">${Math.round(score)}% • ${b.label}</span>` : `<span class="empty-note">sem dados</span>`}</div>
+        ${dim.questions.map(q => `<p class="bi-q"><b>${escapeHtml(q.prompt)}</b><br>${escapeHtml(describeAnswerForQuestion(q, record.answers[q.id]))}</p>`).join("")}
+        ${dim.context.map(c => record.context[c.id] ? `<p class="bi-q"><b>${escapeHtml(c.label)}</b><br>${escapeHtml(record.context[c.id])}</p>` : "").join("")}
+      </div>`;
+    }).join("");
+  }
+  html += `</div>`;
+
+  if (!isAgg) {
+    html += `<div class="card-surface section-block">
+      <p class="step-label">Próximos passos</p>
+      <h2>Comentários e combinados</h2>
+      <p class="desc">Espaço colaborativo — qualquer pessoa que acessar pode registrar o que foi combinado.</p>
+      <div class="field full"><textarea rows="4" id="comentarios-proximos-passos">${escapeHtml(record.comentarios_proximos_passos || "")}</textarea></div>
+      <div class="status-note" id="resultado-status-note"></div>
+    </div>`;
+  }
+
+  el("resultado-wrap").innerHTML = html;
+  el("btn-back-painel").addEventListener("click", () => activateTab("painel"));
+  if (!isAgg) {
+    const ta = el("comentarios-proximos-passos");
+    ta.addEventListener("input", () => {
+      const q = loadQueue();
+      const idx = q.findIndex(r => r.id === record.id);
+      if (idx >= 0) { q[idx].comentarios_proximos_passos = ta.value; q[idx].updated_at = new Date().toISOString(); saveQueue(q); }
+      setResultadoStatus("Comentário salvo.", "ok");
+    });
+  } else {
+    el("resultado-wrap").querySelectorAll(".btn-open-area").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const rec = loadQueue().find(r => r.id === btn.dataset.id);
+        if (rec) renderResultado(rec, null);
+      });
+    });
+  }
+}
+
+// =====================================================================
+// ASSISTENTE (CHATBOT) — tenta backend real; sem backend, usa classificador
+// local de palavras-chave (funciona 100% offline, sem depender de API externa).
+// =====================================================================
+function classifyFreeText(text, q) {
+  const norm = normalizeTxt(text);
+  const scored = q.levels.map(lvl => {
+    let score = 0;
+    (lvl.kw || []).forEach(k => { if (norm.includes(normalizeTxt(k))) score++; });
+    return { level: lvl.level, score };
+  }).filter(s => s.score > 0);
+  if (!scored.length) return [];
+  if (q.type === "single") { scored.sort((a, b) => b.score - a.score || b.level - a.level); return [scored[0].level]; }
+  return scored.map(s => s.level);
+}
+function buildStepsForSection(section) {
+  const steps = [];
+  if (section.kind === "meta") section.fields.forEach(f => { if (!(state.meta[f.id] || "").trim()) steps.push({ type: "meta", id: f.id, label: f.label }); });
+  else if (section.kind === "dimension") {
+    section.dim.questions.forEach(q => { if (!isQuestionAnswered(state.answers[q.id])) steps.push({ type: "question", id: q.id, q }); });
+    section.dim.context.forEach(c => { if (!(state.context[c.id] || "").trim()) steps.push({ type: "context", id: c.id, label: c.label }); });
+  } else if (section.kind === "comment") {
+    if (!(state.comentario_final || "").trim()) steps.push({ type: "comment", id: "comentario_final", label: "Algo mais sobre dados, automação, consolidação ou IA na área que valha destacar?" });
+  }
+  return steps;
+}
+function buildSectionSummaryRows(section) {
+  if (section.kind === "meta") return section.fields.map(f => ({ label: f.label, value: state.meta[f.id] || "" }));
+  if (section.kind === "dimension") {
+    const rows = section.dim.questions.map(q => ({ label: q.prompt, value: describeAnswerForQuestion(q, state.answers[q.id]) }));
+    section.dim.context.forEach(c => rows.push({ label: c.label, value: state.context[c.id] || "" }));
+    return rows;
+  }
+  return [{ label: "Comentário", value: state.comentario_final || "" }];
+}
+function agentAppendMessage(role, text) {
+  const wrap = el("agent-messages");
+  const bubble = document.createElement("div");
+  bubble.className = "agent-msg " + (role === "user" ? "agent-msg-user" : "agent-msg-bot");
+  bubble.textContent = text;
+  wrap.appendChild(bubble);
+  wrap.scrollTop = wrap.scrollHeight;
+  return bubble;
+}
+function agentBotReply(text) { agentAppendMessage("bot", text); }
+function agentRenderChips(q) {
+  const wrap = document.createElement("div");
+  wrap.className = "agent-chips";
+  q.levels.forEach(lvl => {
+    const chip = document.createElement("button");
+    chip.type = "button"; chip.className = "agent-chip"; chip.dataset.qid = q.id; chip.dataset.level = String(lvl.level);
+    chip.textContent = lvl.text;
+    wrap.appendChild(chip);
+  });
+  if (q.type === "multi") {
+    const confirm = document.createElement("button");
+    confirm.type = "button"; confirm.className = "agent-chip"; confirm.dataset.qid = q.id; confirm.dataset.confirm = "1";
+    confirm.textContent = "✓ Confirmar seleção e continuar";
+    wrap.appendChild(confirm);
+  }
+  el("agent-messages").appendChild(wrap);
+  el("agent-messages").scrollTop = el("agent-messages").scrollHeight;
+}
+function applyQuestionAnswer(q, levels) {
+  state.answers[q.id] = q.type === "single" ? levels[0] : levels.slice();
+}
+function agentCurrentStep() { return agentState && agentState.steps ? (agentState.steps[agentState.stepPointer] || null) : null; }
+function agentAskStep(step) {
+  let msg;
+  if (step.type === "meta") msg = META_PROMPTS[step.id] || step.label;
+  else if (step.type === "question") msg = step.q.prompt;
+  else msg = step.label;
+  agentBotReply(msg);
+  if (step.type === "question") agentRenderChips(step.q);
+}
+function agentShowSectionReview(section) {
+  const rows = buildSectionSummaryRows(section);
+  const reviewEl = el("agent-review");
+  reviewEl.innerHTML = `<p class="agent-review-title">Confere se ficou certo — <strong>${escapeHtml(section.label)}</strong>:</p>
+    <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:10px;">${rows.map(r => `<div style="background:#fafafb;border:1px dashed var(--gray-300);border-radius:6px;padding:8px 10px;">
+      <span style="display:block; font-size:10px; font-weight:700; text-transform:uppercase; color:var(--gray-500);">${escapeHtml(r.label)}</span>
+      <span style="font-size:12px;">${escapeHtml(r.value || "(sem resposta)")}</span>
+    </div>`).join("")}</div>
+    <div class="actions-row">
+      <button type="button" class="btn primary small" id="agent-approve-btn">Aprovar</button>
+      <button type="button" class="btn ghost small" id="agent-reject-btn">Recusar</button>
+    </div>`;
+  reviewEl.classList.remove("hidden");
+  el("agent-approve-btn").addEventListener("click", () => {
+    sectionApproval[section.key] = true; updateSectionBadge(section.key);
+    reviewEl.classList.add("hidden");
+    agentState.sectionPointer++; agentState.steps = null; agentState.stepPointer = 0;
+    agentBotReply("Perfeito, seguindo.");
+    scheduleAutosave();
+    agentAdvance();
+  });
+  el("agent-reject-btn").addEventListener("click", () => {
+    clearSectionData(section);
+    sectionApproval[section.key] = false; updateSectionBadge(section.key);
+    reviewEl.classList.add("hidden");
+    agentState.steps = null; agentState.stepPointer = 0;
+    agentBotReply("Sem problemas, vamos de novo com calma.");
+    renderFormSections(); renderPreview(); scheduleAutosave();
+    agentAdvance();
+  });
+}
+function agentFinish() {
+  el("agent-submit-wrap").classList.remove("hidden");
+  agentBotReply('Terminamos todos os blocos! Revise as respostas na aba Formulário se quiser, ou clique em "Enviar assessment" para concluir.');
+}
+function agentAdvance() {
+  if (!agentState) return;
+  if (agentState.sectionPointer >= SECTIONS.length) { agentFinish(); return; }
+  const section = SECTIONS[agentState.sectionPointer];
+  if (agentState.steps === null) {
+    if (isSectionComplete(section)) {
+      sectionApproval[section.key] = true; updateSectionBadge(section.key);
+      agentBotReply(`Vi que "${section.label}" já está preenchido — vou aproveitar e seguir.`);
+      agentState.sectionPointer++; agentState.steps = null;
+      agentAdvance();
+      return;
+    }
+    agentState.steps = buildStepsForSection(section);
+    agentState.stepPointer = 0;
+  }
+  if (agentState.stepPointer < agentState.steps.length) agentAskStep(agentState.steps[agentState.stepPointer]);
+  else agentShowSectionReview(section);
+}
+function agentStepDone() { agentState.stepPointer++; agentAdvance(); }
+function agentSendUser(text) {
+  agentAppendMessage("user", text);
+  const step = agentCurrentStep();
+  if (!step) { agentBotReply("Já terminamos as perguntas — use os botões acima para aprovar ou enviar."); return; }
+  if (step.type === "meta") { state.meta[step.id] = text; agentBotReply(`Anotado: "${text}".`); renderFormSections(); renderPreview(); scheduleAutosave(); agentStepDone(); return; }
+  if (step.type === "context") { state.context[step.id] = text; agentBotReply("Anotado, obrigado."); renderFormSections(); renderPreview(); scheduleAutosave(); agentStepDone(); return; }
+  if (step.type === "comment") { state.comentario_final = text; agentBotReply("Anotado!"); renderFormSections(); renderPreview(); scheduleAutosave(); agentStepDone(); return; }
+  if (step.type === "question") {
+    const levels = classifyFreeText(text, step.q);
+    if (!levels.length) {
+      agentBotReply("Não consegui identificar isso com clareza — pode escolher uma das opções abaixo, ou tentar descrever de outro jeito?");
+      agentRenderChips(step.q);
+      return;
+    }
+    applyQuestionAnswer(step.q, levels);
+    agentBotReply(`Entendi: "${describeAnswerForQuestion(step.q, state.answers[step.q.id])}". Se não for isso, é só escolher outra opção abaixo.`);
+    agentRenderChips(step.q);
+    renderFormSections(); renderPreview(); scheduleAutosave();
+    agentStepDone();
+  }
+}
+function agentOpen() {
+  el("agent-panel").classList.remove("hidden");
+  el("agent-fab").classList.add("hidden");
+  document.body.classList.add("agent-open");
+  if (!agentState) {
+    agentState = { sectionPointer: 0, steps: null, stepPointer: 0 };
+    agentBotReply("Oi! Vou te ajudar a preencher o assessment de maturidade de dados. Responda com suas palavras — se eu não entender bem, mostro as opções para você escolher.");
+    agentAdvance();
+  }
+}
+function agentCloseFn() {
+  el("agent-panel").classList.add("hidden");
+  el("agent-fab").classList.remove("hidden");
+  document.body.classList.remove("agent-open");
+}
+
+// =====================================================================
+// STARTUP
+// =====================================================================
+document.addEventListener("DOMContentLoaded", () => {
+  el("topbar-org").textContent = APP_CONFIG.orgName;
+  el("logo-badge").textContent = APP_CONFIG.logoText;
+  el("hero-title").textContent = APP_CONFIG.programName;
+  el("hero-lead").textContent = APP_CONFIG.subtitle;
+
+  try {
+    const savedState = JSON.parse(localStorage.getItem("maturity_current_draft") || "null");
+    const savedApproval = JSON.parse(localStorage.getItem("maturity_current_approval") || "null");
+    if (savedState) state = savedState;
+    if (savedApproval) sectionApproval = savedApproval;
+  } catch (e) {}
+
+  renderFormSections();
+  renderPreview();
+  renderQueue();
+  renderManual();
+
+  const formCol = el("form-col");
+  formCol.addEventListener("click", (e) => {
+    if (e.target.id === "btn-generate") { persistCurrentRecord(false).then(() => setStatus("Rascunho salvo.", "ok")); return; }
+    if (e.target.id === "btn-finalize") {
+      const missing = totalQuestionCount() - answeredQuestionCount();
+      if (missing > 0) { setStatus(`Ainda faltam ${missing} pergunta(s) para concluir. Você pode salvar como rascunho.`, "err"); return; }
+      persistCurrentRecord(true).then(() => setStatus("Assessment concluído! Veja o resultado no Painel de acompanhamento.", "ok"));
+      return;
+    }
+    if (e.target.id === "btn-clear") { startNewAssessment(); return; }
+    const approveBtn = e.target.closest(".btn-approve-section");
+    if (approveBtn) {
+      const key = approveBtn.closest(".section-approval").dataset.section;
+      const section = SECTIONS.find(s => s.key === key);
+      if (!isSectionComplete(section)) { setStatus(`Preencha todas as perguntas de "${section.label}" antes de aprovar.`, "err"); return; }
+      sectionApproval[key] = true; updateSectionBadge(key); scheduleAutosave();
+      return;
+    }
+    const rejectBtn = e.target.closest(".btn-reject-section");
+    if (rejectBtn) {
+      const key = rejectBtn.closest(".section-approval").dataset.section;
+      sectionApproval[key] = false; updateSectionBadge(key); scheduleAutosave();
+      return;
+    }
+  });
+
+  formCol.addEventListener("change", (e) => {
+    const opt = e.target.closest(".level-opt");
+    if (!opt) return;
+    const qid = opt.dataset.qid, level = Number(opt.dataset.level);
+    const q = findQuestionById(qid);
+    if (q.type === "single") state.answers[qid] = level;
+    else {
+      let arr = Array.isArray(state.answers[qid]) ? state.answers[qid].slice() : [];
+      if (e.target.checked) { if (!arr.includes(level)) arr.push(level); } else { arr = arr.filter(l => l !== level); }
+      state.answers[qid] = arr;
+    }
+    document.querySelectorAll(`.level-opt[data-qid="${qid}"]`).forEach(o => o.classList.toggle("selected", o.querySelector("input").checked));
+    renderPreview(); renderAllSectionBadges(); scheduleAutosave();
+  });
+
+  formCol.addEventListener("input", (e) => {
+    const t = e.target;
+    if (t.dataset && t.dataset.bindMeta) { state.meta[t.dataset.bindMeta] = t.value; renderPreview(); scheduleAutosave(); }
+    else if (t.dataset && t.dataset.bindContext) { state.context[t.dataset.bindContext] = t.value; renderPreview(); scheduleAutosave(); }
+    else if (t.id === "comentario_final") { state.comentario_final = t.value; scheduleAutosave(); }
+  });
+
+  el("queue-wrap").addEventListener("click", (e) => {
+    const btn = e.target.closest(".link-btn");
+    if (!btn) return;
+    const q = loadQueue();
+    const item = q[Number(btn.dataset.idx)];
+    if (!item) return;
+    if (btn.dataset.act === "ver") renderResultado(item, null);
+    else if (btn.dataset.act === "editar") openRecordForEditing(item);
+    else if (btn.dataset.act === "remover") { q.splice(Number(btn.dataset.idx), 1); saveQueue(q); renderQueue(); }
+  });
+
+  document.querySelectorAll(".tab-btn").forEach(btn => btn.addEventListener("click", () => activateTab(btn.dataset.tab)));
+
+  el("btn-toggle-preview").addEventListener("click", () => {
+    const layout = document.querySelector(".layout");
+    const hidden = layout.classList.toggle("hide-preview");
+    document.body.classList.toggle("preview-hidden", hidden);
+    el("btn-toggle-preview").textContent = hidden ? "Mostrar ficha técnica" : "Ocultar ficha técnica";
+  });
+
+  el("btn-new-registration").addEventListener("click", startNewAssessment);
+  el("btn-painel-refresh").addEventListener("click", loadPainel);
+  el("painel-groupby").addEventListener("change", loadPainel);
+
+  el("agent-fab").addEventListener("click", agentOpen);
+  el("agent-close").addEventListener("click", agentCloseFn);
+  el("agent-minimize").addEventListener("click", agentCloseFn);
+
+  el("btn-agent-start").addEventListener("click", () => {
+    agentState = null;
+    el("agent-messages").innerHTML = "";
+    el("agent-review").classList.add("hidden");
+    el("agent-submit-wrap").classList.add("hidden");
+    agentOpen();
+  });
+
+  el("agent-input-row").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const input = el("agent-input");
+    const text = input.value.trim();
+    if (!text || !agentState) return;
+    input.value = "";
+    agentSendUser(text);
+  });
+
+  el("agent-messages").addEventListener("click", (e) => {
+    const chip = e.target.closest(".agent-chip");
+    if (!chip) return;
+    const step = agentCurrentStep();
+    if (!step || step.type !== "question" || step.id !== chip.dataset.qid) return;
+    const q = step.q;
+    if (chip.dataset.confirm === "1") {
+      const chosen = Array.isArray(state.answers[q.id]) ? state.answers[q.id] : [];
+      agentAppendMessage("user", chosen.length ? describeAnswerForQuestion(q, chosen) : "(nenhuma opção)");
+      renderFormSections(); renderPreview(); scheduleAutosave();
+      agentStepDone();
+      return;
+    }
+    const level = Number(chip.dataset.level);
+    if (q.type === "single") {
+      applyQuestionAnswer(q, [level]);
+      chip.parentElement.querySelectorAll(".agent-chip").forEach(c => c.classList.remove("selected"));
+      chip.classList.add("selected");
+      agentAppendMessage("user", q.levels.find(l => l.level === level).text);
+      renderFormSections(); renderPreview(); scheduleAutosave();
+      agentStepDone();
+    } else {
+      chip.classList.toggle("selected");
+      let arr = Array.isArray(state.answers[q.id]) ? state.answers[q.id].slice() : [];
+      if (chip.classList.contains("selected")) { if (!arr.includes(level)) arr.push(level); } else { arr = arr.filter(l => l !== level); }
+      state.answers[q.id] = arr;
+      renderFormSections(); renderPreview(); scheduleAutosave();
+    }
+  });
+
+  el("agent-submit").addEventListener("click", async () => {
+    await persistCurrentRecord(true);
+    agentAppendMessage("bot", "Prontinho! Assessment concluído — já aparece no Painel de acompanhamento. 🎉");
+    el("agent-submit-wrap").classList.add("hidden");
+    setStatus("Assessment concluído via assistente.", "ok");
+  });
+});
+</script>
+</body>
+</html>
