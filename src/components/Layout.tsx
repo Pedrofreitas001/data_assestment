@@ -1,0 +1,117 @@
+import { useState, type ReactNode } from "react";
+import { NavLink, useLocation } from "react-router-dom";
+import { BookOpen, ClipboardCheck, Database, Gauge, LayoutGrid, LogOut, Menu, Sigma, Users } from "lucide-react";
+import { useAuth } from "../context/auth";
+import { useOrg } from "../context/org";
+import { IS_DEMO } from "../lib/supabase";
+import { initials } from "../lib/format";
+import { MoulisMark } from "./ui";
+import Copilot from "./Copilot";
+
+const ROLE_LABEL = { admin: "Gestora · admin", consultor: "Consultor", cliente: "Cliente" } as const;
+
+export default function Layout({ children }: { children: ReactNode }) {
+  const { profile, isStaff, signOut } = useAuth();
+  const { orgs, org, orgId, setOrgId } = useOrg();
+  const [open, setOpen] = useState(false);
+  const loc = useLocation();
+
+  const nav = (
+    <nav className="nav" onClick={() => setOpen(false)}>
+      <NavLink to="/" end>
+        <Gauge size={17} /> Visão geral
+      </NavLink>
+      <NavLink to="/assessments">
+        <ClipboardCheck size={17} /> Assessment
+      </NavLink>
+      <NavLink to="/catalogo">
+        <Database size={17} /> Catálogo de dados
+      </NavLink>
+      <NavLink to="/glossario">
+        <Sigma size={17} /> Glossário de KPIs
+      </NavLink>
+      <NavLink to="/framework">
+        <BookOpen size={17} /> Framework
+      </NavLink>
+      {isStaff && (
+        <>
+          <div className="nav-label">Consultoria</div>
+          <NavLink to="/admin">
+            <LayoutGrid size={17} /> Painel da gestora
+          </NavLink>
+          <NavLink to="/admin/usuarios">
+            <Users size={17} /> Usuários
+          </NavLink>
+        </>
+      )}
+    </nav>
+  );
+
+  return (
+    <div className={`shell ${open ? "nav-open" : ""}`}>
+      {open && <div className="scrim" onClick={() => setOpen(false)} />}
+      <aside className="sidebar">
+        <NavLink to="/" className="brand">
+          <span className="brand-mark">
+            <MoulisMark size={18} />
+          </span>
+          <span>
+            <div className="brand-name">moulis</div>
+            <div className="brand-sub">Data Maturity</div>
+          </span>
+        </NavLink>
+
+        <div className="org-switch">
+          <label htmlFor="org-select">Empresa</label>
+          {isStaff ? (
+            <select id="org-select" value={orgId ?? ""} onChange={(e) => setOrgId(e.target.value)}>
+              {!orgs.length && <option value="">Nenhuma empresa</option>}
+              {orgs.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <div className="org-fixed">{org?.name ?? "Sem empresa vinculada"}</div>
+          )}
+        </div>
+
+        {nav}
+
+        {IS_DEMO && (
+          <div className="demo-tag">
+            <b>Modo demonstração.</b> Dados ficam só neste navegador. Configure o Supabase para login real e dados compartilhados.
+          </div>
+        )}
+
+        <div className="side-foot">
+          <div className="avatar">{initials(profile?.full_name || profile?.email)}</div>
+          <div className="side-user">
+            <div className="n">{profile?.full_name || profile?.email}</div>
+            <div className="r">{profile ? ROLE_LABEL[profile.role] : ""}</div>
+          </div>
+          <button className="side-btn" title="Sair" onClick={() => signOut()}>
+            <LogOut size={16} />
+          </button>
+        </div>
+      </aside>
+
+      <div className="main">
+        <div className="mobile-bar">
+          <button className="side-btn" onClick={() => setOpen(true)} aria-label="Abrir menu" style={{ color: "#fff" }}>
+            <Menu size={20} />
+          </button>
+          <span className="brand-name">moulis</span>
+          <span className="xs" style={{ color: "#9b9b95", marginLeft: "auto", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {org?.name}
+          </span>
+        </div>
+        <main className="content" key={loc.pathname.split("/")[1]}>
+          {children}
+        </main>
+      </div>
+      <Copilot />
+    </div>
+  );
+}
