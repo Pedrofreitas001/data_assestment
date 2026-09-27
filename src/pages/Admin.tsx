@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowUpRight, Building2, Pencil, Plus, Trash2 } from "lucide-react";
 import { useOrg } from "../context/org";
@@ -28,6 +28,14 @@ export default function Admin() {
   const tab = (params.get("tab") as Tab) || "carteira";
   const setTab = (t: Tab) => setParams(t === "carteira" ? {} : { tab: t });
   const [edit, setEdit] = useState<Organization | null>(null);
+  const blankOrg = (): Organization => ({ id: "", name: "", segment: null, size: null, city: null, contact_name: null, contact_email: null, status: "ativo", notes: null });
+  useEffect(() => {
+    if (params.get("novo") === "1") {
+      setEdit(blankOrg());
+      setParams({}, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params]);
 
   const rows = useMemo(() => {
     return orgs.rows
@@ -68,7 +76,7 @@ export default function Admin() {
         title="Clientes"
         desc="Carteira, andamento dos diagnósticos e acessos."
         actions={
-          <button className="btn btn-primary" onClick={() => setEdit({ id: "", name: "", segment: null, size: null, city: null, contact_name: null, contact_email: null, status: "ativo", notes: null })}>
+          <button className="btn btn-primary" onClick={() => setEdit(blankOrg())}>
             <Plus size={16} /> Novo cliente
           </button>
         }

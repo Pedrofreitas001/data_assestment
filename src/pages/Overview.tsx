@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, Building2, ClipboardCheck, Lock, Plus } from "lucide-react";
 import { useOrg } from "../context/org";
@@ -9,7 +9,8 @@ import { createAssessment } from "../lib/assessments";
 import { relTime } from "../lib/format";
 import { scoreAssessment } from "../model/scoring";
 import { buildActionPlan } from "../model/playbook";
-import { BandScale, Bar, Empty, LoadingPage, PageHead, StatusBadge } from "../components/ui";
+import { BandScale, Bar, Empty, LoadingPage, PageHead, Spinner, StatusBadge } from "../components/ui";
+import { supabase } from "../lib/supabase";
 import { ScoreRing } from "../components/charts";
 import AskBar from "../components/AskBar";
 import { useCopilot } from "../context/copilot";
@@ -61,10 +62,12 @@ export default function Overview() {
 
   if (orgLoading || assessments.loading) return <LoadingPage />;
   if (!org)
-    return (
-      <Empty icon={<Building2 size={20} />} title="Nenhuma empresa selecionada" action={isStaff ? <Link className="btn btn-primary" to="/admin">Cadastrar cliente</Link> : undefined}>
-        {isStaff ? "Cadastre o primeiro cliente para começar." : "Sua conta ainda não foi vinculada a uma empresa. Fale com a consultoria."}
+    return isStaff ? (
+      <Empty icon={<Building2 size={20} />} title="Nenhuma empresa cadastrada" action={<Link className="btn btn-primary" to="/admin?novo=1"><Plus size={16} /> Cadastrar empresa</Link>}>
+        Cadastre o primeiro cliente para começar o diagnóstico.
       </Empty>
+    ) : (
+      <FirstAccess />
     );
 
   async function start() {
@@ -192,5 +195,36 @@ export default function Overview() {
         </section>
       </div>
     </>
+  );
+}
+
+/** Conta sem empresa: orienta o cliente e permite à gestora o primeiro acesso. */
+function FirstAccess() {
+  const { refreshProfile, profile } = useAuth();
+  const { reloadOrgs } = useOrg();
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  async function claim() {
+    if (!supabase) return;
+    setBusy(true);
+    const { data, error } = await supabase.rpc("claim_first_admin");
+    setBusy(false);
+    if (error) return toast(error.message.includes("claim_first_admin") ? "Rode a migração 0003 no Supabase (SQL Editor) e tente de novo." : error.message, "err");
+    if (!data) return toast("Já existe uma gestora cadastrada. Peça a ela para vincular sua conta.", "err");
+    await refreshProfile();
+    await reloadOrgs();
+    toast("Pronto! Você agora é a gestora (admin).");
+  }
+  return (
+    <Empty icon={<Building2 size={20} />} title="Sua conta ainda não está vinculada a uma empresa">
+      <span style={{ display: "block", marginBottom: 16 }}>
+        Se você é cliente, peça à consultoria para vincular sua conta ({profile?.email}).
+        <br />
+        Se você é da consultoria e este é o primeiro acesso ao sistema, ative sua conta como gestora:
+      </span>
+      <button className="btn btn-primary" onClick={claim} disabled={busy || !supabase}>
+        {busy ? <Spinner /> : "Sou a gestora — ativar acesso de admin"}
+      </button>
+    </Empty>
   );
 }

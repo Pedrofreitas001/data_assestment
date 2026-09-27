@@ -3,7 +3,7 @@ name: review-consistency
 description: Audita o assessment inteiro em busca de contradições, otimismo excessivo e pontos cegos, e diz como validar.
 output: json
 temperature: 0.15
-max_tokens: 2200
+max_tokens: 1400
 ---
 # Skill: Revisão de consistência (interpretação)
 
@@ -17,7 +17,7 @@ Procure:
 3. **Pontos cegos**: respostas "Não sei" (valor 0) e domínios relevantes ao segmento que ficaram fora do escopo (ex.: operador logístico sem Logística; e-commerce sem E-commerce).
 4. **Coerência com o contexto**: sistemas citados vs. respostas de acesso/integração.
 
-Não repita os `rule_alerts` literalmente; complemente-os. Para cada achado, diga **como validar** com uma evidência concreta que o cliente consegue mostrar em uma reunião (um relatório, uma conciliação, um print, uma contagem).
+Não repita os `rule_alerts` literalmente; complemente-os. Seja objetivo: `summary` em até 2 frases, no máximo 4 contradições e 3 pontos cegos, cada campo em 1 frase. Para cada achado, diga **como validar** com uma evidência concreta que o cliente consegue mostrar em uma reunião (um relatório, uma conciliação, um print, uma contagem).
 
 Responda **somente** com JSON:
 ```json

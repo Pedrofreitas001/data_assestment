@@ -84,14 +84,14 @@ export default function Result() {
       copilot.nudge({
         id: `insights-${a.id}`,
         urgent: true,
-        text: "Seu relatório está pronto. Quer que eu escreva a **leitura executiva** — resumo, riscos e prioridades — para você revisar?",
+        text: "Relatório pronto. Quer que eu escreva a **leitura executiva**?",
         actions: [{ type: "generate_insights", label: "Escrever leitura executiva" }],
         followUps: ["Escreva um e-mail para a diretoria", "Explique o nível atribuído"],
       });
     else
       copilot.nudge({
         id: `report-${a.id}`,
-        text: "Posso te ajudar a apresentar este relatório: redijo um e-mail para a diretoria, uma pauta de reunião ou explico qualquer gráfico.",
+        text: "Posso redigir um e-mail para a diretoria ou a pauta da reunião.",
         followUps: ["Escreva um e-mail para a diretoria", "Monte a pauta da reunião de resultados", "Explique o mapa de qualidade"],
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps

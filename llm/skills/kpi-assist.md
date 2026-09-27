@@ -35,4 +35,4 @@ Responda **somente** com JSON:
   "clarifying_questions": ["pergunta para o owner validar"]
 }
 ```
-No modo `review`, `kpi` deve conter apenas os campos que você sugere alterar.
+No modo `review`, `kpi` deve conter apenas os campos que você sugere alterar. Seja objetivo: no máximo 5 issues, cada mensagem em 1 frase; textos da ficha enxutos.
