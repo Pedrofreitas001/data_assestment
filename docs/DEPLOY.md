@@ -7,7 +7,7 @@
 ## 1. Supabase (≈10 min)
 
 1. Crie um projeto em supabase.com (região São Paulo).
-2. **SQL Editor** → cole e rode `supabase/migrations/0001_init.sql`.
+2. **SQL Editor** → cole e rode `supabase/setup_completo.sql` (cria ou atualiza tudo; pode rodar de novo sempre que o app for atualizado).
 3. **Authentication → URL Configuration**: *Site URL* = URL da Vercel (ex.: `https://moulis-maturidade.vercel.app`); em *Redirect URLs* adicione `https://SEU-DOMINIO/**` e `http://localhost:5173/**`.
 4. **Authentication → Providers → Email**: deixe habilitado. Se não quiser cadastro aberto, desligue *Allow new users to sign up* depois de criar sua conta (convites continuam funcionando).
 5. Crie sua conta (pelo `/login` do app → "Criar conta", ou *Authentication → Users → Add user*).
@@ -74,3 +74,8 @@ update public.profiles set role = 'admin' where email = 'seu@email.com';
 **Para criar acessos sem e-mail:** em Clientes → Usuários, preencha "Senha provisória" e clique em "Criar acesso". O usuário já entra confirmado e troca a senha em "Conta".
 
 **Solução definitiva:** configure um SMTP próprio em Authentication → Emails → SMTP Settings (ex.: Resend, Brevo ou Amazon SES) e ajuste Authentication → Rate Limits. Enquanto testa, dá para desligar "Confirm email" em Authentication → Sign In / Providers → Email.
+
+## Erros como "Banco de dados desatualizado", "Sem permissão" ou botões que não salvam
+
+- **Banco desatualizado / coluna ou tabela faltando:** rode `supabase/setup_completo.sql` inteiro no SQL Editor. É seguro rodar mais de uma vez.
+- **Sem permissão:** sua conta precisa ser admin. No SQL Editor: `update public.profiles set role = 'admin' where email = 'seu@email.com';`

@@ -1,3 +1,4 @@
+import { friendlyError } from "../lib/errors";
 // =====================================================================
 // Assistente Moulis — estado global do copiloto.
 // Páginas informam o que o usuário está vendo (setFocus), registram as
@@ -234,7 +235,8 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
   // --------------------------------------------------------------- chat
   const chat = useCallback(
     async (turns: ChatTurn[]) => {
-      const snapshot = await orgSnapshot(org);
+      // O contexto da empresa é opcional: se o banco falhar, o chat segue funcionando.
+      const snapshot = await orgSnapshot(org).catch((e) => ({ empresa: org ? { nome: org.name } : null, aviso: friendlyError(e) }));
       const f = focus.current || {};
       const report = (f.assessment as Assessment | undefined) ? assessmentForLlm(f.assessment as Assessment) : undefined;
       const { assessment: _a, ...pageFocus } = f;
@@ -299,7 +301,7 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
           await chat(turns);
         }
       } catch (e) {
-        push({ role: "assistant", content: e instanceof Error ? e.message : "Não consegui responder agora.", kind: "error" });
+        push({ role: "assistant", content: friendlyError(e, "Não consegui responder agora."), kind: "error" });
       } finally {
         setBusy(false);
       }

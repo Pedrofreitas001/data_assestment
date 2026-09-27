@@ -1,6 +1,7 @@
 import { supabase } from "./supabase";
 import type { TableName, TableRow } from "../model/types";
 import { demoSeed } from "./demoSeed";
+import { toError } from "./errors";
 
 type Row<T extends TableName> = TableRow[T];
 type Filter = { organization_id?: string | null };
@@ -24,12 +25,12 @@ const remoteStore: Store = {
     let q = supabase!.from(table).select("*");
     if (filter?.organization_id) q = q.eq("organization_id", filter.organization_id);
     const { data, error } = await q.order("updated_at", { ascending: false });
-    if (error) throw error;
+    if (error) throw toError(error);
     return data as never;
   },
   async get(table, id) {
     const { data, error } = await supabase!.from(table).select("*").eq("id", id).maybeSingle();
-    if (error) throw error;
+    if (error) throw toError(error);
     return data as never;
   },
   async upsert(table, row) {
@@ -37,12 +38,12 @@ const remoteStore: Store = {
     delete payload.created_at;
     delete payload.updated_at;
     const { data, error } = await supabase!.from(table).upsert(payload).select("*").single();
-    if (error) throw error;
+    if (error) throw toError(error);
     return data as never;
   },
   async remove(table, id) {
     const { error } = await supabase!.from(table).delete().eq("id", id);
-    if (error) throw error;
+    if (error) throw toError(error);
   },
 };
 

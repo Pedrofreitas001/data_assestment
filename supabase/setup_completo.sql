@@ -1,4 +1,9 @@
 -- =====================================================================
+-- SETUP COMPLETO — cria ou ATUALIZA o banco para a versão atual do app.
+-- Seguro para rodar quantas vezes quiser (idempotente).
+-- Supabase → SQL Editor → cole tudo → Run.
+-- =====================================================================
+-- =====================================================================
 -- Moulis · Assessment de Maturidade de Dados — schema inicial
 -- Papéis:
 --   admin     → gestora da consultoria: tudo + gestão de usuários
@@ -219,3 +224,51 @@ end $$;
 
 revoke all on function public.claim_first_admin() from public;
 grant execute on function public.claim_first_admin() to authenticated;
+
+-- ---------- Atualização de bancos criados com versões anteriores ----------
+alter table public.organizations add column if not exists segment text;
+alter table public.organizations add column if not exists size text;
+alter table public.organizations add column if not exists city text;
+alter table public.organizations add column if not exists contact_name text;
+alter table public.organizations add column if not exists contact_email text;
+alter table public.organizations add column if not exists notes text;
+alter table public.organizations add column if not exists updated_at timestamptz not null default now();
+
+alter table public.profiles add column if not exists full_name text;
+alter table public.profiles add column if not exists organization_id uuid references public.organizations(id) on delete set null;
+alter table public.profiles add column if not exists updated_at timestamptz not null default now();
+
+alter table public.assessments add column if not exists scope text;
+alter table public.assessments add column if not exists respondent text;
+alter table public.assessments add column if not exists context jsonb not null default '{}'::jsonb;
+alter table public.assessments add column if not exists answers jsonb not null default '{}'::jsonb;
+alter table public.assessments add column if not exists evidence jsonb not null default '{}'::jsonb;
+alter table public.assessments add column if not exists ai_insights jsonb;
+alter table public.assessments add column if not exists report_notes jsonb not null default '[]'::jsonb;
+alter table public.assessments add column if not exists score numeric(5,2);
+alter table public.assessments add column if not exists level smallint;
+alter table public.assessments add column if not exists updated_at timestamptz not null default now();
+
+alter table public.kpis add column if not exists business_question text;
+alter table public.kpis add column if not exists numerator text;
+alter table public.kpis add column if not exists denominator text;
+alter table public.kpis add column if not exists direction text;
+alter table public.kpis add column if not exists target text;
+alter table public.kpis add column if not exists exclusions text;
+alter table public.kpis add column if not exists lineage text;
+alter table public.kpis add column if not exists quality_checks text;
+alter table public.kpis add column if not exists consumers text;
+alter table public.kpis add column if not exists version text default '1.0';
+alter table public.kpis add column if not exists notes text;
+alter table public.kpis add column if not exists updated_at timestamptz not null default now();
+
+-- Perfis para usuários criados antes do trigger existir.
+insert into public.profiles (id, email, full_name)
+select u.id, u.email, split_part(u.email, '@', 1) from auth.users u
+on conflict (id) do nothing;
+
+-- Recarrega o cache de esquema da API (evita "column not found in schema cache").
+notify pgrst, 'reload schema';
+
+-- ---------- Depois de rodar: torne-se admin (troque o e-mail) ----------
+-- update public.profiles set role = 'admin' where email = 'seu@email.com';

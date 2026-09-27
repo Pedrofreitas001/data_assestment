@@ -1,3 +1,4 @@
+import { friendlyError } from "../lib/errors";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { ArrowLeft, Lock, Pencil, Printer, Sparkles, Trash2 } from "lucide-react";
@@ -122,7 +123,7 @@ export default function Result() {
       copilot.dismissBubble();
       toast("Leitura executiva gerada");
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Erro na IA", "err");
+      toast(friendlyError(e, "Erro na IA"), "err");
     } finally {
       setBusy(false);
     }

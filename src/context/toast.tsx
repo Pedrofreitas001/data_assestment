@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { friendlyError } from "../lib/errors";
 import { Check, AlertTriangle } from "lucide-react";
 
 type Toast = { id: number; msg: string; kind: "ok" | "err" };
@@ -11,6 +12,16 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setItems((xs) => [...xs, { id, msg, kind }]);
     setTimeout(() => setItems((xs) => xs.filter((x) => x.id !== id)), kind === "err" ? 6000 : 3200);
   }, []);
+  useEffect(() => {
+    const onReject = (ev: PromiseRejectionEvent) => {
+      ev.preventDefault();
+      console.error("Erro não tratado:", ev.reason);
+      push(friendlyError(ev.reason), "err");
+    };
+    window.addEventListener("unhandledrejection", onReject);
+    return () => window.removeEventListener("unhandledrejection", onReject);
+  }, [push]);
+
   return (
     <Ctx.Provider value={push}>
       {children}

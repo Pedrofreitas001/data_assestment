@@ -1,3 +1,4 @@
+import { friendlyError } from "../lib/errors";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Check, CircleHelp, FileBarChart, Lock, MessageSquareText, Sparkles, TriangleAlert } from "lucide-react";
@@ -110,7 +111,7 @@ export default function Wizard() {
       setSaveState("saved");
     } catch (e) {
       setSaveState("error");
-      toast(e instanceof Error ? e.message : "Erro ao salvar", "err");
+      toast(friendlyError(e, "Erro ao salvar"), "err");
     }
   }, [toast]);
 
@@ -800,7 +801,7 @@ function ReviewStep({
       const { output } = await callSkill<unknown>("review-consistency", assessmentForLlm(a));
       setReview(normReview(output));
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Erro na IA", "err");
+      toast(friendlyError(e, "Erro na IA"), "err");
     } finally {
       setBusy(false);
     }
