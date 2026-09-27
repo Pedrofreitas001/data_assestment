@@ -17,6 +17,22 @@ export default class ErrorBoundary extends Component<Props, { error: Error | nul
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("Falha de renderização isolada:", error, info.componentStack);
+    try {
+      fetch("/api/log", {
+        method: "POST",
+        keepalive: true,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          where: this.props.compact ? "assistente" : "tela",
+          path: location.pathname,
+          message: error?.message,
+          stack: error?.stack,
+          componentStack: info.componentStack,
+        }),
+      }).catch(() => {});
+    } catch {
+      /* ignore */
+    }
   }
 
   reset = () => {
@@ -31,6 +47,7 @@ export default class ErrorBoundary extends Component<Props, { error: Error | nul
         <div className="error-box compact">
           <b>O assistente encontrou um problema.</b>
           <span className="small muted">A conversa foi reiniciada para continuar.</span>
+          <code className="xs muted" style={{ wordBreak: "break-word" }}>{this.state.error.message}</code>
           <button className="btn btn-sm" onClick={this.reset}>
             Reabrir assistente
           </button>
