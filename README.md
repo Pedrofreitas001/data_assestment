@@ -43,3 +43,5 @@ docs/             DEPLOY.md, ARQUITETURA.md
 Para mudar perguntas, pesos ou gates, edite só `src/model/framework.ts` — formulário, score, relatório e IA se ajustam.
 
 Deploy passo a passo: **[docs/DEPLOY.md](docs/DEPLOY.md)**.
+
+Guia de uso e metodologia em PDF (para compartilhar): **[docs/guia/](docs/guia/)**.

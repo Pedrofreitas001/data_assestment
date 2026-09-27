@@ -24,7 +24,7 @@ import {
 import { isAnswered, scopedDomains, scoreAssessment } from "../model/scoring";
 import { consistencyAlerts } from "../model/consistency";
 import type { Assessment } from "../model/types";
-import { AiMark, BandScale, Bar, Empty, Field, LoadingPage, Spinner } from "../components/ui";
+import { AiMark, BandScale, Bar, Empty, Field, LoadingPage, Metrics, Spinner } from "../components/ui";
 import { ScoreRing } from "../components/charts";
 
 // ---------------------------------------------------------------------
@@ -60,7 +60,7 @@ function buildSections(a: Assessment): Section[] {
     desc: d.description,
     refs: d.refs,
     kind: "questions",
-    items: d.questions.map((q) => ({ id: q.id, prompt: q.prompt, help: q.help, levels: q.levels, tags: q.gate ? ["Fundacional"] : [] })),
+    items: d.questions.map((q) => ({ id: q.id, prompt: q.prompt, help: q.help, levels: q.levels, tags: q.gate ? ["Fundamental"] : [] })),
   }));
   const doms: Section[] = scopedDomains(a).map((d) => ({
     key: d.key,
@@ -371,7 +371,7 @@ export default function Wizard() {
                   <span className={`step-dot ${p >= 1 ? "done" : p > 0 ? "partial" : ""}`} style={{ ["--p" as string]: `${p * 360}deg` }}>
                     {p >= 1 ? <Check size={11} /> : null}
                   </span>
-                  <span className="t">{s.kind === "questions" && s.code ? `${s.code} · ${s.title}` : s.title}</span>
+                  <span className="t">{s.title}</span>
                   {s.kind === "questions" && (
                     <span className="s">
                       {answered}/{s.items.length}
@@ -514,7 +514,7 @@ function ContextStep({ a, setCtx, update }: { a: Assessment; setCtx: (p: Partial
   return (
     <>
       <div className="section-hero">
-        <span className="code">Etapa 0</span>
+        <span className="code">Etapa inicial</span>
         <h2>Contexto da empresa</h2>
         <p>Algumas informações rápidas para calibrar o diagnóstico.</p>
       </div>
@@ -638,8 +638,7 @@ function QuestionsStep({
   return (
     <>
       <div className="section-hero">
-        {section.code && <span className="code">{section.code} · {section.refs}</span>}
-        {!section.code && <span className="code">Qualidade dos dados</span>}
+        <span className="code">{section.code ? `Capacidade ${section.code.slice(1)} de ${DIMENSIONS.length}` : "Qualidade dos dados · área avaliada"}</span>
         <h2>{section.title}</h2>
         <p>{section.desc}</p>
       </div>
@@ -666,20 +665,21 @@ function QuestionsStep({
         const ev = a.evidence?.[q.id] || "";
         const showEv = openEvidence[q.id] || !!ev;
         return (
-          <div key={q.id} className={`q-card ${isAnswered(v) ? "answered" : ""}`}>
+          <div key={q.id} id={`q-${q.id}`} className={`q-card ${isAnswered(v) ? "answered" : ""}`}>
             <div className="q-head">
               <span className="q-num">{String(i + 1).padStart(2, "0")}</span>
               <div className="grow">
                 <p className="q-prompt">{q.prompt}</p>
                 {q.help && <p className="q-help">{q.help}</p>}
-                <button className="explain-btn" onClick={() => onExplain(q)}>
-                  <AiMark size={9} /> Explicar esta pergunta
-                </button>
                 {q.tags.length > 0 && (
                   <div className="q-tags">
                     {q.tags.map((t) => (
-                      <span key={t} className={`badge ${t === "Crítico" ? "badge-risk" : t === "Fundacional" ? "badge-solid" : "badge-brand"}`}>
-                        {t === "Fundacional" && <Lock size={10} />}
+                      <span
+                        key={t}
+                        className={`badge ${t === "Crítico" ? "badge-risk" : t === "Fundamental" ? "badge-solid" : "badge-brand"}`}
+                        title={t === "Fundamental" ? "Requisito fundamental: uma resposta baixa aqui limita o nível geral a 3." : t === "Crítico" ? "Ponto crítico de consistência dos dados desta área." : `Dimensão de qualidade: ${t}`}
+                      >
+                        {t === "Fundamental" && <Lock size={10} />}
                         {t}
                       </span>
                     ))}
@@ -694,7 +694,14 @@ function QuestionsStep({
                   role="radio"
                   aria-checked={v === l.v}
                   className={`opt ${v === l.v ? "on" : ""} ${sug?.value === l.v ? "suggested" : ""}`}
-                  onClick={() => setAnswer(q.id, v === l.v ? undefined : l.v)}
+                  onClick={() => {
+                    const wasEmpty = !isAnswered(v);
+                    setAnswer(q.id, v === l.v ? undefined : l.v);
+                    if (wasEmpty) {
+                      const next = section.items.slice(i + 1).find((x) => !isAnswered(a.answers[x.id]));
+                      if (next) setTimeout(() => document.getElementById(`q-${next.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 180);
+                    }
+                  }}
                 >
                   <span className="lv">{l.v}</span>
                   <span>{l.label}</span>
@@ -720,6 +727,9 @@ function QuestionsStep({
                 }}>
                 <CircleHelp size={12} style={{ verticalAlign: -2, marginRight: 4 }} />
                 Não sei
+              </button>
+              <button className="link-btn" onClick={() => onExplain(q)}>
+                <AiMark size={9} /> Explicar
               </button>
               {!showEv && (
                 <button className="link-btn" onClick={() => setOpenEvidence((o) => ({ ...o, [q.id]: true }))}>
@@ -796,19 +806,14 @@ function ReviewStep({
         <p>Antes de fechar o nível, valide contradições e pontos cegos. Um diagnóstico assertivo vale mais que um diagnóstico otimista.</p>
       </div>
 
-      <div className="grid g-3" style={{ marginBottom: 16 }}>
-        <div className="card stat">
-          <div className="stat-label">Sem resposta</div>
-          <div className="stat-value num">{unanswered.length}</div>
-        </div>
-        <div className="card stat">
-          <div className="stat-label">"Não sei" (pontos cegos)</div>
-          <div className="stat-value num">{blind.length}</div>
-        </div>
-        <div className="card stat">
-          <div className="stat-label">Alertas de consistência</div>
-          <div className="stat-value num">{alerts.length}</div>
-        </div>
+      <div style={{ marginBottom: 16 }}>
+        <Metrics
+          items={[
+            { label: "Perguntas sem resposta", value: unanswered.length },
+            { label: "Respondidas com “Não sei”", value: blind.length },
+            { label: "Alertas de consistência", value: alerts.length },
+          ]}
+        />
       </div>
 
       {alerts.length > 0 && (
@@ -843,14 +848,14 @@ function ReviewStep({
       <div className="ai-box">
         <div className="row-between wrap">
           <div className="ai-box-head">
-            <AiMark /> Revisão de consistência com IA
+            <AiMark /> Revisão com o assistente
           </div>
           <button className="btn btn-sm btn-primary" onClick={runReview} disabled={busy || s.answered < 5}>
             {busy ? <Spinner /> : <Sparkles size={14} />} {review ? "Revisar novamente" : "Revisar diagnóstico"}
           </button>
         </div>
         <p className="small muted" style={{ margin: "8px 0 0" }}>
-          Um "consultor sênior" lê todas as respostas, evidências e o contexto e aponta contradições, otimismo de autoavaliação e o que perguntar para validar.
+          O assistente lê todas as respostas como um consultor sênior e aponta contradições, excesso de otimismo e o que confirmar com o time.
         </p>
         {review && (
           <div style={{ marginTop: 14 }} className="stack">

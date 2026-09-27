@@ -720,3 +720,62 @@ table.table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .error-box { max-width: 480px; margin: 64px auto; text-align: center; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 32px; }
 .error-box h3 { margin: 0 0 8px; font-size: 18px; }
 .error-box.compact { position: fixed; right: 24px; bottom: 24px; z-index: 96; margin: 0; max-width: 320px; padding: 18px; display: flex; flex-direction: column; gap: 8px; text-align: left; box-shadow: var(--shadow-lg); }
+
+/* ---------- Lapidação ---------- */
+.step { align-items: flex-start; }
+.step .t { white-space: normal; line-height: 1.3; overflow: visible; }
+.step .s { padding-top: 1px; }
+.step-dot { margin-top: -1px; }
+.stepper-group { padding-top: 16px; }
+.wizard-nav { position: sticky; bottom: 0; z-index: 5; margin: 22px -12px 0; padding: 12px; background: linear-gradient(to top, var(--bg) 70%, rgba(246, 246, 244, 0)); }
+.q-card { transition: border-color 0.15s ease, box-shadow 0.15s ease; scroll-margin: 120px; }
+.q-card.answered .q-num { color: var(--ink); }
+.opt { transition: border-color 0.1s, background 0.1s, color 0.1s, transform 0.08s; }
+.opt:active { transform: scale(0.995); }
+.q-foot .link-btn .ai-mark { width: 16px; height: 16px; border-radius: 4px; }
+.section-hero .code { font-family: var(--font); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; }
+.content > * { animation: fadeIn 0.22s ease both; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } }
+@media (prefers-reduced-motion: reduce) { .content > *, .copilot, .bubble, .toast { animation: none !important; } html { scroll-behavior: auto; } }
+.btn:focus-visible, .opt:focus-visible, .chip:focus-visible, .step:focus-visible, .nav a:focus-visible { outline: 2px solid #111; outline-offset: 2px; box-shadow: none; }
+.table-wrap { max-width: 100%; }
+.card, .card-body { min-width: 0; }
+@media (max-width: 640px) {
+  .heat { font-size: 11px; }
+  .heat-head { font-size: 9.5px; letter-spacing: 0.02em; }
+  .page-title { font-size: 26px; }
+  .hero-level-name { font-size: 26px; }
+  .card-head, .card-body, .card-pad, .hero-main, .hero-side { padding-left: 18px; padding-right: 18px; }
+  .wizard-nav { margin-left: -16px; margin-right: -16px; padding: 12px 16px; }
+}
+
+/* ---------- Metodologia ---------- */
+html { scroll-behavior: smooth; }
+.m-sec { margin-bottom: 20px; scroll-margin-top: 24px; }
+.toc { display: flex; flex-wrap: wrap; gap: 6px; margin: -12px 0 24px; }
+.toc a { text-decoration: none; }
+.prose p { margin: 0 0 12px; max-width: 760px; color: var(--ink-2); font-size: 14.5px; line-height: 1.65; }
+.prose p:last-child { margin-bottom: 0; }
+.steps-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; margin-bottom: 24px; }
+.step-card { padding: 4px 20px; border-left: 1px solid var(--line); }
+.step-card:first-child { border-left: 0; padding-left: 0; }
+.step-n { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #111; color: #fff; font-size: 12px; font-weight: 600; }
+.step-t { font-weight: 600; margin: 10px 0 4px; }
+.step-card p, .principles p { font-size: 13px; color: var(--ink-3); margin: 0; }
+.principles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; padding-top: 20px; border-top: 1px solid var(--line); }
+.pr-t { font-weight: 600; font-size: 13.5px; margin-bottom: 4px; }
+.q-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.q-item { border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.acc-n { width: 24px; height: 24px; border-radius: 50%; background: var(--surface-2); display: grid; place-items: center; font-size: 11.5px; font-weight: 600; flex-shrink: 0; }
+.concept-group + .concept-group { margin-top: 20px; }
+.concept-g { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 8px; }
+.concepts { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 28px; }
+.concepts > div { padding: 12px 0; border-top: 1px solid var(--line); }
+.concepts dt { font-weight: 600; font-size: 13.5px; }
+.concepts dd { margin: 4px 0 0; font-size: 13px; color: var(--ink-2); line-height: 1.55; }
+@media (max-width: 900px) {
+  .steps-row, .principles { grid-template-columns: 1fr 1fr; gap: 18px; }
+  .step-card { border-left: 0; padding: 0; }
+  .q-grid, .concepts { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) { .steps-row, .principles { grid-template-columns: 1fr; } }
