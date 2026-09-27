@@ -47,6 +47,7 @@ create table if not exists public.assessments (
   answers jsonb not null default '{}'::jsonb,
   evidence jsonb not null default '{}'::jsonb,
   ai_insights jsonb,
+  report_notes jsonb not null default '[]'::jsonb,
   score numeric(5,2),
   level smallint check (level between 1 and 5),
   created_by uuid references auth.users(id) on delete set null default auth.uid(),

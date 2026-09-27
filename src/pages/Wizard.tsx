@@ -7,6 +7,7 @@ import { callSkill } from "../lib/llm";
 import { assessmentForLlm } from "../lib/snapshot";
 import { useToast } from "../context/toast";
 import { useOrg } from "../context/org";
+import { useCopilot, type AnswerSuggestion, type InterviewSection } from "../context/copilot";
 import {
   CHECK_OPTIONS,
   DIMENSIONS,
@@ -38,11 +39,6 @@ interface Suggestion {
   confidence: "alta" | "media" | "baixa";
   rationale: string;
   evidence_quote?: string;
-}
-interface FillOutput {
-  suggestions: Suggestion[];
-  follow_up_questions: { id: string; question: string }[];
-  notes?: string;
 }
 interface ReviewOutput {
   verdict: "confiavel" | "revisar" | "inconsistente";
@@ -143,6 +139,149 @@ export default function Wizard() {
     setStep(Math.max(0, Math.min(sections.length - 1, i)));
     topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+
+  // ---------------------------------------------------------- assistente
+  const copilot = useCopilot();
+  const stepRef = useRef(step);
+  stepRef.current = step;
+  const sectionsRef = useRef(sections);
+  sectionsRef.current = sections;
+
+  const toInterview = (s: Section): InterviewSection | null =>
+    s.kind === "questions" ? { key: s.key, title: s.title, desc: s.desc, questions: s.items.map((q) => ({ id: q.id, prompt: q.prompt, options: q.levels })) } : null;
+
+  const startInterviewFor = useCallback(
+    (s: Section) => {
+      const iv = toInterview(s);
+      if (!iv) return;
+      copilot.startInterview(
+        iv,
+        () => Object.fromEntries(iv.questions.filter((q) => isAnswered(aRef.current?.answers[q.id])).map((q) => [q.id, aRef.current!.answers[q.id]])),
+        aRef.current?.context,
+      );
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [copilot.startInterview],
+  );
+
+  useEffect(() => {
+    const applyOne = (x: Assessment, sg: AnswerSuggestion): Assessment => {
+      const evidence = { ...x.evidence };
+      if (sg.evidence_quote && !(evidence[sg.id] || "").trim()) evidence[sg.id] = `Relato: "${sg.evidence_quote}"`;
+      return { ...x, answers: { ...x.answers, [sg.id]: sg.value }, evidence };
+    };
+    return copilot.registerHandlers({
+      apply_answers: (items) => {
+        const list = items as AnswerSuggestion[];
+        update((x) => list.reduce(applyOne, x));
+        setSuggestions((prev) => {
+          const n = { ...prev };
+          list.forEach((i) => delete n[i.id]);
+          return n;
+        });
+      },
+      preview_answers: (items) => {
+        const list = (items as AnswerSuggestion[]).filter((i) => i.value > 0);
+        setSuggestions((prev) => ({ ...prev, ...Object.fromEntries(list.map((i) => [i.id, { id: i.id, value: i.value, confidence: i.confidence || "media", rationale: i.rationale || "", evidence_quote: i.evidence_quote }])) }));
+      },
+      start_interview: () => startInterviewFor(sectionsRef.current[stepRef.current]),
+      next_section: () => {
+        const nextIdx = Math.min(sectionsRef.current.length - 1, stepRef.current + 1);
+        go(nextIdx);
+        const next = sectionsRef.current[nextIdx];
+        if (next.kind === "questions") startInterviewFor(next);
+        else copilot.stopInterview();
+      },
+      review_consistency: () => go(sectionsRef.current.length - 1),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [copilot.registerHandlers, update, startInterviewFor]);
+
+  // Foco: o que o usuário está vendo agora.
+  useEffect(() => {
+    if (!a) return;
+    const cur = sections[step];
+    copilot.setFocus({
+      tela: "Diagnóstico — preenchimento",
+      assessment_id: a.id,
+      secao_atual: cur ? cur.title : null,
+      descricao_secao: cur && cur.kind === "questions" ? cur.desc : null,
+      perguntas_da_secao:
+        cur && cur.kind === "questions"
+          ? cur.items.map((q) => ({ pergunta: q.prompt, opcoes: q.levels.map((l) => `${l.v}: ${l.label}`), resposta_atual: a.answers[q.id] === undefined ? null : a.answers[q.id] === 0 ? "Não sei" : a.answers[q.id] }))
+          : null,
+      progresso: `${Math.round((scoreAssessment(a).progress || 0) * 100)}%`,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [a, step, sections]);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => () => copilot.setFocus(null), []);
+
+  // Chamadas proativas: ao entrar numa seção vazia e quando o usuário para.
+  const lastActivity = useRef(Date.now());
+  useEffect(() => {
+    lastActivity.current = Date.now();
+  }, [a?.answers]);
+  useEffect(() => {
+    const cur = sections[step];
+    if (!cur || !a) return;
+    if (cur.kind === "questions") {
+      const answered = cur.items.filter((q) => isAnswered(a.answers[q.id])).length;
+      if (answered === 0 && !copilot.interview)
+        copilot.nudge({
+          id: `enter-${cur.key}`,
+          text: `Nesta seção — **${cur.title}** — posso fazer as perguntas em linguagem simples e marcar as respostas para você. Quer tentar?`,
+          actions: [{ type: "start_interview", label: "Responder conversando" }],
+          followUps: ["Me explique esta seção"],
+        });
+      const t = setInterval(() => {
+        const idle = Date.now() - lastActivity.current > 75_000;
+        const left = cur.items.filter((q) => !isAnswered(aRef.current?.answers[q.id])).length;
+        if (idle && left > 0 && !copilot.interview)
+          copilot.nudge({
+            id: `idle-${cur.key}`,
+            text: "Ficou em dúvida em alguma pergunta? Posso explicar as opções ou você me conta como funciona e eu preencho.",
+            actions: [{ type: "start_interview", label: "Responder conversando" }],
+            followUps: ["Qual a diferença entre as opções?"],
+          });
+      }, 15_000);
+      return () => clearInterval(t);
+    }
+    if (cur.kind === "review")
+      copilot.nudge({
+        id: `review-${a.id}`,
+        text: "Antes de concluir, vale uma revisão: eu leio todas as respostas como um consultor sênior e aponto contradições e pontos cegos.",
+        actions: [{ type: "run_review", label: "Revisar agora" }],
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, sections.length]);
+
+  // Seção concluída → oferece leitura da nota.
+  const doneSeen = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!a || !score) return;
+    const cur = sections[step];
+    if (!cur || cur.kind !== "questions") return;
+    const complete = cur.items.every((q) => isAnswered(a.answers[q.id]));
+    if (!complete) {
+      doneSeen.current.add(`open-${cur.key}`);
+      return;
+    }
+    if (!doneSeen.current.has(`open-${cur.key}`) || doneSeen.current.has(cur.key)) return;
+    doneSeen.current.add(cur.key);
+    const dimScore = score.dims.find((d) => d.dim.key === cur.key)?.score ?? score.domains.find((d) => d.domain.key === cur.key)?.score ?? null;
+    copilot.nudge({
+      id: `done-${a.id}-${cur.key}`,
+      urgent: true,
+      text: `Seção **${cur.title}** concluída${dimScore !== null ? ` — nota **${Math.round(dimScore)}**` : ""}. Quer que eu explique o que isso significa e o que faria subir?`,
+      actions: [
+        { type: "ask", label: "O que significa?", payload: `Concluí a seção ${cur.title}${dimScore !== null ? ` com nota ${Math.round(dimScore)}` : ""}. O que isso significa para a empresa e qual o primeiro passo para melhorar?` },
+        { type: "next_section", label: "Próxima seção" },
+      ],
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [a?.answers, step]);
 
   if (loading) return <LoadingPage />;
   if (!a || !score) return <Empty title="Diagnóstico não encontrado" action={<Link className="btn" to="/assessments">Voltar</Link>} />;
@@ -262,6 +401,21 @@ export default function Wizard() {
               setEvidence={setEvidence}
               suggestions={suggestions}
               setSuggestions={setSuggestions}
+              onInterview={() => startInterviewFor(sec)}
+              onExplain={(q) =>
+                copilot.ask(
+                  `Explique esta pergunta em linguagem simples: "${q.prompt}". O que ela quer saber, o que diferencia cada opção (${q.levels.map((l) => `${l.v}: ${l.label}`).join("; ")}) e como descubro a resposta certa na minha empresa?`,
+                  `Explique: “${q.prompt}”`,
+                )
+              }
+              onUnknown={(q) =>
+                copilot.nudge({
+                  id: `unknown-${q.id}`,
+                  urgent: true,
+                  text: "Tudo bem não saber — isso vira um **ponto a investigar** no relatório. Quer que eu diga a quem perguntar e que evidência pedir?",
+                  actions: [{ type: "ask", label: "Como descubro isso?", payload: `Como descubro a resposta para: "${q.prompt}"? A quem devo perguntar na empresa e que evidência pedir?` }],
+                })
+              }
             />
           )}
           {sec.kind === "review" && (
@@ -457,7 +611,13 @@ function QuestionsStep({
   setEvidence,
   suggestions,
   setSuggestions,
+  onInterview,
+  onExplain,
+  onUnknown,
 }: {
+  onInterview: () => void;
+  onExplain: (q: Item) => void;
+  onUnknown: (q: Item) => void;
   section: Extract<Section, { kind: "questions" }>;
   a: Assessment;
   setAnswer: (id: string, v: number | undefined) => void;
@@ -465,41 +625,9 @@ function QuestionsStep({
   suggestions: Record<string, Suggestion>;
   setSuggestions: (fn: (s: Record<string, Suggestion>) => Record<string, Suggestion>) => void;
 }) {
-  const toast = useToast();
-  const [aiOpen, setAiOpen] = useState(false);
-  const [narrative, setNarrative] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [followUps, setFollowUps] = useState<{ id: string; question: string }[]>([]);
-  const [notes, setNotes] = useState("");
   const [openEvidence, setOpenEvidence] = useState<Record<string, boolean>>({});
-
   const pendingSugs = section.items.filter((q) => suggestions[q.id] && a.answers[q.id] !== suggestions[q.id].value);
-
-  async function runAssist() {
-    if (narrative.trim().length < 20) return toast("Descreva com um pouco mais de detalhe (2–3 frases).", "err");
-    setBusy(true);
-    try {
-      const { output } = await callSkill<FillOutput>("assist-fill", {
-        section: {
-          title: section.title,
-          kind: section.code ? "capacidade" : "dominio_operacional",
-          questions: section.items.map((q) => ({ id: q.id, prompt: q.prompt, options: q.levels })),
-        },
-        narrative,
-        context: a.context,
-        current_answers: Object.fromEntries(section.items.filter((q) => isAnswered(a.answers[q.id])).map((q) => [q.id, a.answers[q.id]])),
-      });
-      const valid = (output.suggestions || []).filter((s) => section.items.some((q) => q.id === s.id && q.levels.some((l) => l.v === s.value)));
-      setSuggestions((prev) => ({ ...prev, ...Object.fromEntries(valid.map((s) => [s.id, s])) }));
-      setFollowUps(output.follow_up_questions || []);
-      setNotes(output.notes || "");
-      toast(valid.length ? `${valid.length} sugestão(ões) — revise e aplique` : "O relato não trouxe elementos suficientes");
-    } catch (e) {
-      toast(e instanceof Error ? e.message : "Erro na IA", "err");
-    } finally {
-      setBusy(false);
-    }
-  }
+  void setSuggestions;
 
   function apply(s: Suggestion) {
     setAnswer(s.id, s.value);
@@ -515,55 +643,20 @@ function QuestionsStep({
         <p>{section.desc}</p>
       </div>
 
-      <div className="ai-box">
-        <div className="row-between wrap">
-          <div className="ai-box-head">
-            <AiMark />
-            <span>
-              Preencher com IA
-              <span className="xs muted" style={{ fontWeight: 400, display: "block" }}>
-                Descreva como funciona hoje — a IA sugere, você decide.
-              </span>
-            </span>
-          </div>
-          <button className="btn btn-sm btn-ghost" onClick={() => setAiOpen((v) => !v)}>
-            {aiOpen ? "Fechar" : "Abrir"}
-          </button>
+      <div className="interview-cta">
+        <AiMark />
+        <div className="grow">
+          <div style={{ fontWeight: 600 }}>Prefere conversar?</div>
+          <div className="small muted">O assistente faz estas perguntas em linguagem simples e marca as respostas para você revisar.</div>
         </div>
-        {aiOpen && (
-          <div style={{ marginTop: 12 }}>
-            <textarea
-              className="textarea"
-              value={narrative}
-              onChange={(e) => setNarrative(e.target.value)}
-              placeholder={`Ex.: "${section.code ? "O Tiago monta o relatório de vendas toda segunda juntando o export do ERP com a planilha da VTEX. Ninguém é dono formal dos números…" : "O saldo do ERP e do WMS a gente só confere quando dá problema. Inventário geral é anual…"}"`}
-            />
-            <div className="row wrap" style={{ marginTop: 10 }}>
-              <button className="btn btn-primary btn-sm" onClick={runAssist} disabled={busy}>
-                {busy ? <Spinner /> : <Sparkles size={14} />} Sugerir respostas
-              </button>
-              {pendingSugs.length > 0 && (
-                <button className="btn btn-sm" onClick={() => pendingSugs.forEach((q) => apply(suggestions[q.id]))}>
-                  Aplicar todas ({pendingSugs.length})
-                </button>
-              )}
-              <span className="xs muted">Senhas e tokens são removidos antes do envio.</span>
-            </div>
-            {notes && <div className="callout soft" style={{ marginTop: 12 }}>{notes}</div>}
-            {followUps.length > 0 && (
-              <div className="callout soft" style={{ marginTop: 12 }}>
-                <div className="callout-title">
-                  <MessageSquareText size={14} /> Perguntas para confirmar com o cliente
-                </div>
-                <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
-                  {followUps.map((f) => (
-                    <li key={f.id + f.question}>{f.question}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
+        {pendingSugs.length > 0 && (
+          <button className="btn btn-sm" onClick={() => pendingSugs.forEach((q) => apply(suggestions[q.id]))}>
+            Aplicar sugestões ({pendingSugs.length})
+          </button>
         )}
+        <button className="btn btn-sm btn-primary" onClick={onInterview}>
+          Responder conversando
+        </button>
       </div>
 
       {section.items.map((q, i) => {
@@ -578,6 +671,9 @@ function QuestionsStep({
               <div className="grow">
                 <p className="q-prompt">{q.prompt}</p>
                 {q.help && <p className="q-help">{q.help}</p>}
+                <button className="explain-btn" onClick={() => onExplain(q)}>
+                  <AiMark size={9} /> Explicar esta pergunta
+                </button>
                 {q.tags.length > 0 && (
                   <div className="q-tags">
                     {q.tags.map((t) => (
@@ -617,7 +713,10 @@ function QuestionsStep({
               </div>
             )}
             <div className="q-foot">
-              <button className={`unknown-btn ${v === UNKNOWN ? "on" : ""}`} onClick={() => setAnswer(q.id, v === UNKNOWN ? undefined : UNKNOWN)}>
+              <button className={`unknown-btn ${v === UNKNOWN ? "on" : ""}`} onClick={() => {
+                  setAnswer(q.id, v === UNKNOWN ? undefined : UNKNOWN);
+                  if (v !== UNKNOWN) onUnknown(q);
+                }}>
                 <CircleHelp size={12} style={{ verticalAlign: -2, marginRight: 4 }} />
                 Não sei
               </button>
@@ -668,6 +767,11 @@ function ReviewStep({
   const unanswered = qSections.flatMap((sec) => sec.items.filter((q) => !isAnswered(a.answers[q.id])).map((q) => ({ sec, q })));
   const blind = qSections.flatMap((sec) => sec.items.filter((q) => a.answers[q.id] === UNKNOWN).map((q) => ({ sec, q })));
   const findPrompt = (qid: string) => qSections.flatMap((x) => x.items).find((q) => q.id === qid)?.prompt ?? qid;
+
+  const copilot = useCopilot();
+  const runRef = useRef<() => Promise<void>>(async () => {});
+  useEffect(() => copilot.registerHandlers({ run_review: () => runRef.current() }), [copilot.registerHandlers]);
+  runRef.current = runReview;
 
   async function runReview() {
     setBusy(true);

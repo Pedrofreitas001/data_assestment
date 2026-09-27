@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, Building2, ClipboardCheck, Lock, Plus } from "lucide-react";
 import { useOrg } from "../context/org";
@@ -11,6 +11,8 @@ import { scoreAssessment } from "../model/scoring";
 import { buildActionPlan } from "../model/playbook";
 import { BandScale, Bar, Empty, LoadingPage, PageHead, StatusBadge } from "../components/ui";
 import { ScoreRing } from "../components/charts";
+import AskBar from "../components/AskBar";
+import { useCopilot } from "../context/copilot";
 
 export default function Overview() {
   const { org, orgId, loading: orgLoading } = useOrg();
@@ -22,6 +24,40 @@ export default function Overview() {
   const latest = assessments.rows[0];
   const s = useMemo(() => (latest ? scoreAssessment(latest) : null), [latest]);
   const next = useMemo(() => (latest && s ? buildActionPlan(latest, s).slice(0, 4) : []), [latest, s]);
+
+  const copilot = useCopilot();
+  useEffect(() => {
+    if (assessments.loading || !org) return;
+    copilot.setFocus({ tela: "Início", latest_assessment_id: latest?.id ?? null });
+    if (!latest)
+      copilot.nudge({
+        id: `home-start-${org.id}`,
+        text: `Vamos começar o diagnóstico de **${org.name}**? São perguntas objetivas — e se preferir, eu faço as perguntas em forma de conversa.`,
+        actions: [{ type: "start_first", label: "Começar agora" }],
+        followUps: ["Como funciona o diagnóstico?", "Quanto tempo leva?"],
+      });
+    else if (s && s.progress < 1)
+      copilot.nudge({
+        id: `home-continue-${latest.id}`,
+        text: `O diagnóstico está **${Math.round(s.progress * 100)}%** respondido. Quer continuar de onde parou?`,
+        actions: [{ type: "continue_assessment", label: "Continuar" }],
+      });
+    else if (s)
+      copilot.nudge({
+        id: `home-explain-${latest.id}`,
+        text: `${org.name} está no nível **${s.band?.level} · ${s.band?.label}**. Quer que eu explique o que mais pesa nesse resultado?`,
+        followUps: ["O que mais pesa no resultado?", "O que fazer nos próximos 30 dias?"],
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assessments.loading, org?.id, latest?.id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => () => copilot.setFocus(null), []);
+  useEffect(
+    () => copilot.registerHandlers({ start_first: () => startRef.current() }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [copilot.registerHandlers],
+  );
+  const startRef = useRef<() => Promise<void>>(async () => {});
 
   if (orgLoading || assessments.loading) return <LoadingPage />;
   if (!org)
@@ -40,6 +76,8 @@ export default function Overview() {
     }
   }
 
+  startRef.current = start;
+
   if (!latest || !s)
     return (
       <>
@@ -48,6 +86,9 @@ export default function Overview() {
           <Empty icon={<ClipboardCheck size={20} />} title="Vamos começar pelo diagnóstico" action={<button className="btn btn-primary" onClick={start}><Plus size={16} /> Iniciar diagnóstico</button>}>
             Cerca de 40 minutos de perguntas objetivas. Ao final você recebe o nível de maturidade e um plano de ação priorizado.
           </Empty>
+        </div>
+        <div style={{ marginTop: 20 }}>
+          <AskBar title="Tire dúvidas antes de começar" placeholder="Ex.: o que é maturidade de dados?" chips={["Como funciona o diagnóstico?", "O que é um Data Owner?", "Quem deve responder?"]} />
         </div>
       </>
     );
@@ -105,6 +146,14 @@ export default function Overview() {
           </div>
         </div>
       </section>
+
+      <div style={{ marginTop: 20 }}>
+        <AskBar
+          title="Pergunte ao assistente sobre este diagnóstico"
+          placeholder="Ex.: por que estamos no nível 2?"
+          chips={["O que mais pesa no resultado?", "O que fazer nos próximos 30 dias?", "Explique a nota de Governança"]}
+        />
+      </div>
 
       <div className="grid g-2" style={{ marginTop: 20 }}>
         <section className="card">

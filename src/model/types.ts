@@ -39,6 +39,13 @@ export interface AiInsights {
   questions_for_next_meeting: string[];
 }
 
+export interface ReportNote {
+  id: string;
+  title: string;
+  body: string;
+  created_at: string;
+}
+
 export interface Assessment {
   id: string;
   organization_id: string;
@@ -50,6 +57,8 @@ export interface Assessment {
   answers: Record<string, number>;
   evidence: Record<string, string>;
   ai_insights: AiInsights | null;
+  /** Textos redigidos com o assistente e salvos no relatório. */
+  report_notes?: ReportNote[];
   score: number | null;
   level: number | null;
   created_by?: string | null;

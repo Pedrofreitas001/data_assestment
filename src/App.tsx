@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./context/auth";
 import { OrgProvider } from "./context/org";
+import { CopilotProvider } from "./context/copilot";
 import Layout from "./components/Layout";
 import { LoadingPage } from "./components/ui";
 import Login from "./pages/Login";
@@ -27,6 +28,7 @@ export default function App() {
 
   return (
     <OrgProvider>
+      <CopilotProvider>
       <Layout>
         <Suspense fallback={<LoadingPage />}>
           <Routes>
@@ -44,6 +46,7 @@ export default function App() {
           </Routes>
         </Suspense>
       </Layout>
+      </CopilotProvider>
     </OrgProvider>
   );
 }

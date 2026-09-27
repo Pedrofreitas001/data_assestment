@@ -41,9 +41,10 @@ export function miniMarkdown(src: string): string {
   return blocks
     .map((b) => {
       const lines = b.split("\n");
+      if (lines.length === 1 && /^#{1,4}\s+/.test(lines[0])) return `<p><strong>${inline(lines[0].replace(/^#{1,4}\s+/, ""))}</strong></p>`;
       if (lines.every((l) => /^\s*([-*•]|\d+\.)\s+/.test(l)))
         return "<ul>" + lines.map((l) => `<li>${inline(l.replace(/^\s*([-*•]|\d+\.)\s+/, ""))}</li>`).join("") + "</ul>";
-      return `<p>${lines.map(inline).join("<br/>")}</p>`;
+      return `<p>${lines.map((l) => inline(l.replace(/^#{1,4}\s+(.*)$/, "**$1**").replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>"))).join("<br/>")}</p>`;
     })
     .join("");
 }

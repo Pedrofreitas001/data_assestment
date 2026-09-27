@@ -143,7 +143,7 @@ export async function runSkill({ skill, input, messages }: RunInput): Promise<Ru
   const payload = redactSecrets(JSON.stringify(input ?? {}, null, 1)).text;
 
   const chat: { role: string; content: string }[] = [{ role: "system", content: system }];
-  if (s.output === "text" && messages?.length) {
+  if (messages?.length) {
     chat.push({ role: "user", content: `Contexto da tela (JSON):\n${payload}` });
     chat.push({ role: "assistant", content: "Entendido. Estou com o contexto da empresa e da tela." });
     for (const m of messages.slice(-12)) chat.push({ role: m.role, content: redactSecrets(m.content).text.slice(0, 4000) });

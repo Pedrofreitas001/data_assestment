@@ -1,18 +1,19 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
-import { ArrowLeft, Lock, Pencil, Printer, Sparkles } from "lucide-react";
+import { ArrowLeft, Lock, Pencil, Printer, Sparkles, Trash2 } from "lucide-react";
 import { store } from "../lib/store";
 import { saveAssessment } from "../lib/assessments";
 import { callSkill } from "../lib/llm";
 import { assessmentForLlm, kpiDigest } from "../lib/snapshot";
-import { fmtDate } from "../lib/format";
+import { fmtDate, miniMarkdown } from "../lib/format";
+import { useCopilot } from "../context/copilot";
 import { useOrg } from "../context/org";
 import { useToast } from "../context/toast";
 import { CHECK_OPTIONS, UNKNOWN } from "../model/framework";
 import { scoreAssessment, tierFor, TIER_LABEL } from "../model/scoring";
 import { consistencyAlerts } from "../model/consistency";
 import { DIM_PLAYBOOK, WAVES, buildActionPlan } from "../model/playbook";
-import type { AiInsights, Assessment } from "../model/types";
+import type { AiInsights, Assessment, ReportNote } from "../model/types";
 import { AiMark, BandScale, Empty, LoadingPage, Spinner } from "../components/ui";
 import { QualityHeatmap, Radar } from "../components/charts";
 
@@ -41,6 +42,60 @@ export default function Result() {
   const alerts = useMemo(() => (a ? consistencyAlerts(a) : []), [a]);
   const plan = useMemo(() => (a && s ? buildActionPlan(a, s) : []), [a, s]);
 
+  // ---------------------------------------------------------- assistente
+  const copilot = useCopilot();
+  const aRef = useRef<Assessment | null>(null);
+  aRef.current = a;
+  const genRef = useRef<() => Promise<void>>(async () => {});
+
+  useEffect(() => {
+    if (!a) return;
+    copilot.setFocus({ tela: "Relatório de maturidade", assessment_id: a.id, assessment: a, anotacoes_no_relatorio: (a.report_notes || []).map((n) => n.title) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [a]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => () => copilot.setFocus(null), []);
+
+  useEffect(
+    () =>
+      copilot.registerHandlers({
+        generate_insights: () => genRef.current(),
+        add_to_report: async (payload) => {
+          const cur = aRef.current;
+          if (!cur) return;
+          const body = String((payload as { body?: string })?.body || "").trim();
+          if (!body) return;
+          const heading = body.match(/^\s*(?:#+\s*|\*\*)([^*\n]{4,80})/);
+          const note: ReportNote = { id: Math.random().toString(36).slice(2), title: heading ? heading[1].trim() : `Anotação de ${new Date().toLocaleDateString("pt-BR")}`, body, created_at: new Date().toISOString() };
+          const saved = await saveAssessment({ ...cur, report_notes: [...(cur.report_notes || []), note] });
+          setA(saved);
+          toast("Texto salvo no relatório");
+          setTimeout(() => document.getElementById("anotacoes")?.scrollIntoView({ behavior: "smooth" }), 100);
+        },
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [copilot.registerHandlers],
+  );
+
+  useEffect(() => {
+    if (!a || loading) return;
+    if (!a.ai_insights)
+      copilot.nudge({
+        id: `insights-${a.id}`,
+        urgent: true,
+        text: "Seu relatório está pronto. Quer que eu escreva a **leitura executiva** — resumo, riscos e prioridades — para você revisar?",
+        actions: [{ type: "generate_insights", label: "Escrever leitura executiva" }],
+        followUps: ["Escreva um e-mail para a diretoria", "Explique o nível atribuído"],
+      });
+    else
+      copilot.nudge({
+        id: `report-${a.id}`,
+        text: "Posso te ajudar a apresentar este relatório: redijo um e-mail para a diretoria, uma pauta de reunião ou explico qualquer gráfico.",
+        followUps: ["Escreva um e-mail para a diretoria", "Monte a pauta da reunião de resultados", "Explique o mapa de qualidade"],
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, a?.id]);
+
   if (loading) return <LoadingPage />;
   if (!a || !s) return <Empty title="Diagnóstico não encontrado" action={<Link className="btn" to="/assessments">Voltar</Link>} />;
 
@@ -67,6 +122,13 @@ export default function Result() {
     } finally {
       setBusy(false);
     }
+  }
+
+  genRef.current = generate;
+
+  async function removeNote(id: string) {
+    if (!a || !confirm("Remover esta anotação do relatório?")) return;
+    setA(await saveAssessment({ ...a, report_notes: (a.report_notes || []).filter((n) => n.id !== id) }));
   }
 
   const waves = ([1, 2, 3] as const).map((w) => ({ w, items: plan.filter((p) => p.wave === w).slice(0, 5) }));
@@ -206,6 +268,43 @@ export default function Result() {
             )}
           </div>
         )}
+      </section>
+
+      {/* Anotações redigidas com o assistente */}
+      <section className="card" id="anotacoes" style={{ marginBottom: 20, scrollMarginTop: 20 }}>
+        <div className="card-head">
+          <div>
+            <h3 className="card-title">Anotações do relatório</h3>
+            <p className="card-sub">Textos que você montou com o assistente — e-mails, pautas, justificativas</p>
+          </div>
+          <button className="btn btn-sm no-print" onClick={() => copilot.ask("Escreva um resumo executivo deste diagnóstico para a diretoria, pronto para colar no relatório.")}>
+            <Sparkles size={14} /> Redigir com o assistente
+          </button>
+        </div>
+        <div className="card-body">
+          {!(a.report_notes || []).length ? (
+            <p className="small muted" style={{ margin: 0 }}>
+              Peça ao assistente um texto (ex.: “escreva um e-mail para a diretoria com os resultados”) e clique em <b>Salvar no relatório</b>.
+            </p>
+          ) : (
+            <div className="stack" style={{ gap: 18 }}>
+              {(a.report_notes || []).map((n) => (
+                <article key={n.id} className="note">
+                  <div className="row-between">
+                    <div>
+                      <div style={{ fontWeight: 600 }}>{n.title}</div>
+                      <div className="xs muted">{fmtDate(n.created_at, true)}</div>
+                    </div>
+                    <button className="btn btn-ghost btn-sm btn-icon no-print" onClick={() => removeNote(n.id)} aria-label="Remover anotação">
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                  <div className="note-body" dangerouslySetInnerHTML={{ __html: miniMarkdown(n.body) }} />
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
       </section>
 
       {/* Capacidades */}

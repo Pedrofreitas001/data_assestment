@@ -7,6 +7,7 @@ import { IS_DEMO } from "../lib/supabase";
 import { initials } from "../lib/format";
 import { MoulisMark } from "./ui";
 import Copilot from "./Copilot";
+import { useCopilot } from "../context/copilot";
 
 const ROLE_LABEL = { admin: "Gestora · admin", consultor: "Consultor", cliente: "Cliente" } as const;
 
@@ -14,6 +15,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   const { profile, isStaff, signOut } = useAuth();
   const { orgs, org, orgId, setOrgId } = useOrg();
   const [open, setOpen] = useState(false);
+  const copilot = useCopilot();
   const loc = useLocation();
 
   const nav = (
@@ -36,7 +38,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   );
 
   return (
-    <div className={`shell ${open ? "nav-open" : ""}`}>
+    <div className={`shell ${open ? "nav-open" : ""} ${copilot.isOpen ? "copilot-open" : ""}`}>
       {open && <div className="scrim" onClick={() => setOpen(false)} />}
       <aside className="sidebar">
         <NavLink to="/" className="brand">

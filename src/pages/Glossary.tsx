@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BookMarked, Plus, Sigma, Sparkles, Trash2 } from "lucide-react";
 import { useOrg } from "../context/org";
+import { useCopilot } from "../context/copilot";
 import { useToast } from "../context/toast";
 import { useRows } from "../lib/useRows";
 import { store, uid } from "../lib/store";
@@ -45,6 +46,20 @@ export default function Glossary() {
       (k) => (!fDomain || k.domain === fDomain) && (!fStatus || k.status === fStatus) && (!t || [k.name, k.code, k.definition, k.owner, k.formula].some((x) => (x || "").toLowerCase().includes(t))),
     );
   }, [kpis.rows, q, fDomain, fStatus]);
+
+  const copilot = useCopilot();
+  useEffect(() => {
+    if (kpis.loading || !orgId) return;
+    copilot.setFocus({ tela: "Glossário de KPIs", kpis: kpis.rows.map((k) => ({ nome: k.name, owner: k.owner, status: k.status, formula: k.formula })) });
+    const noOwner = kpis.rows.filter((k) => !k.owner).length;
+    if (!kpis.rows.length)
+      copilot.nudge({ id: `kpi-empty-${orgId}`, text: "O glossário está vazio. Posso sugerir os primeiros KPIs para a empresa e explicar como documentar cada um.", followUps: ["Quais KPIs devemos documentar primeiro?", "O que uma ficha de KPI precisa ter?"] });
+    else if (noOwner)
+      copilot.nudge({ id: `kpi-owner-${orgId}`, text: `**${noOwner} KPI(s) sem owner.** Sem dono, a definição não tem quem aprove as premissas. Quer ajuda para decidir quem deve ser o owner de cada um?`, followUps: ["Como escolher o owner de um KPI?", "Qual a diferença entre owner e steward?"] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kpis.loading, kpis.rows.length, orgId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => () => copilot.setFocus(null), []);
 
   if (kpis.loading) return <LoadingPage />;
   if (!orgId) return <Empty title="Selecione uma empresa" />;
