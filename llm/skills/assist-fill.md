@@ -27,7 +27,7 @@ Responda **somente** com JSON válido neste formato:
 ```json
 {
   "suggestions": [
-    { "id": "id_da_pergunta", "value": 2, "confidence": "alta|media|baixa", "rationale": "por que este nível (1-2 frases)", "evidence_quote": "trecho do relato" }
+    { "id": "id_da_pergunta", "value": 2, "confidence": "alta|media|baixa", "rationale": "motivo em até 12 palavras", "evidence_quote": "trecho do relato" }
   ],
   "follow_up_questions": [ { "id": "id_da_pergunta", "question": "pergunta objetiva para confirmar" } ],
   "notes": "observação curta para o consultor (opcional, pode ser string vazia)"

@@ -8,6 +8,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useLocation, useNavigate } from "react-router-dom";
 import { callSkill, type ChatTurn } from "../lib/llm";
 import { orgSnapshot, assessmentForLlm } from "../lib/snapshot";
+import { store } from "../lib/store";
 import { looksLikeSecret } from "../model/kpiOptions";
 import { normCopilot, normInterview } from "../lib/sanitize";
 import type { Assessment } from "../model/types";
@@ -198,7 +199,7 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
         nudge({
           id: "welcome",
           urgent: true,
-          text: `${hello} Estou aqui para te guiar no diagnóstico de **${org.name}**: explico qualquer conceito, faço as perguntas em linguagem simples e te ajudo a montar o relatório.`,
+          text: `${hello} Explico conceitos, conduzo o diagnóstico e redijo o relatório de **${org.name}**.`,
           followUps: ["Como funciona o diagnóstico?", "O que é maturidade de dados?", "Onde estamos hoje?"],
         });
       try {
@@ -321,7 +322,7 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
       const answered = getAnswers();
       const pending = section.questions.filter((q) => answered[q.id] === undefined);
       const first = (pending[0] || section.questions[0]).prompt;
-      const opener = `Vamos conversar sobre **${section.title}**. ${section.desc}\n\nMe conte com suas palavras, sem se preocupar com termos técnicos. Para começar: ${first.charAt(0).toLowerCase()}${first.slice(1)}`;
+      const opener = `**${section.title}** — responda com suas palavras.\n\n${first}`;
       interviewRef.current = { section, getAnswers, context, transcript: [{ role: "assistant", content: opener }] };
       setInterview(section);
       push({ role: "assistant", content: opener, kind: "interview" });
@@ -339,9 +340,13 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
   const runAction = useCallback(
     async (a: CopilotAction, msg?: CopilotMessage) => {
       const f = focus.current || {};
-      const assessmentId = (f.assessment_id as string) || (f.latest_assessment_id as string);
-      if (a.type === "open_report") return nav(assessmentId ? `/assessments/${assessmentId}/resultado` : "/assessments");
-      if (a.type === "continue_assessment") return nav(assessmentId ? `/assessments/${assessmentId}` : "/assessments");
+      if (a.type === "open_report" || a.type === "continue_assessment") {
+        // Fora do diagnóstico, usa o diagnóstico mais recente da empresa.
+        let assessmentId = (f.assessment_id as string) || (f.latest_assessment_id as string) || "";
+        if (!assessmentId && org) assessmentId = (await store.list("assessments", { organization_id: org.id }).catch(() => []))[0]?.id || "";
+        if (!assessmentId) return nav("/assessments");
+        return nav(a.type === "open_report" ? `/assessments/${assessmentId}/resultado` : `/assessments/${assessmentId}`);
+      }
       if (a.type === "add_to_report") {
         const h = handlers.current.add_to_report;
         if (h && msg) await h({ body: msg.content });
@@ -350,8 +355,9 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
       if (a.type === "ask") return ask(String(a.payload), a.label);
       const h = handlers.current[a.type];
       if (h) await h(a.payload);
+      else push({ role: "assistant", content: "Essa ação não está disponível nesta tela. Abra o diagnóstico ou o relatório e tente de novo.", kind: "nudge" });
     },
-    [nav, ask],
+    [nav, ask, org, push],
   );
 
   const applySuggestions = useCallback(async (msgId: string, items: AnswerSuggestion[]) => {

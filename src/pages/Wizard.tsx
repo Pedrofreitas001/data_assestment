@@ -136,17 +136,17 @@ export default function Wizard() {
   const sections = useMemo(() => (a ? buildSections(a) : []), [a]);
   const score = useMemo(() => (a ? scoreAssessment(a) : null), [a]);
 
-  const go = (i: number) => {
-    setStep(Math.max(0, Math.min(sections.length - 1, i)));
+  const sectionsRef = useRef(sections);
+  sectionsRef.current = sections;
+  const go = useCallback((i: number) => {
+    setStep(Math.max(0, Math.min(sectionsRef.current.length - 1, i)));
     topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
+  }, []);
 
   // ---------------------------------------------------------- assistente
   const copilot = useCopilot();
   const stepRef = useRef(step);
   stepRef.current = step;
-  const sectionsRef = useRef(sections);
-  sectionsRef.current = sections;
 
   const toInterview = (s: Section): InterviewSection | null =>
     s.kind === "questions" ? { key: s.key, title: s.title, desc: s.desc, questions: s.items.map((q) => ({ id: q.id, prompt: q.prompt, options: q.levels })) } : null;
@@ -185,7 +185,17 @@ export default function Wizard() {
         const list = (items as AnswerSuggestion[]).filter((i) => i.value > 0);
         setSuggestions((prev) => ({ ...prev, ...Object.fromEntries(list.map((i) => [i.id, { id: i.id, value: i.value, confidence: i.confidence || "media", rationale: i.rationale || "", evidence_quote: i.evidence_quote }])) }));
       },
-      start_interview: () => startInterviewFor(sectionsRef.current[stepRef.current]),
+      start_interview: () => {
+        const all = sectionsRef.current;
+        const cur = all[stepRef.current];
+        if (cur?.kind === "questions") return startInterviewFor(cur);
+        const answers = aRef.current?.answers || {};
+        let idx = all.findIndex((x) => x.kind === "questions" && x.items.some((q) => !isAnswered(answers[q.id])));
+        if (idx < 0) idx = all.findIndex((x) => x.kind === "questions");
+        if (idx < 0) return;
+        go(idx);
+        startInterviewFor(all[idx]);
+      },
       next_section: () => {
         const nextIdx = Math.min(sectionsRef.current.length - 1, stepRef.current + 1);
         go(nextIdx);
@@ -232,7 +242,7 @@ export default function Wizard() {
       if (answered === 0 && !copilot.interview)
         copilot.nudge({
           id: `enter-${cur.key}`,
-          text: `Nesta seção — **${cur.title}** — posso fazer as perguntas em linguagem simples e marcar as respostas para você. Quer tentar?`,
+          text: `Quer responder **${cur.title}** conversando? Eu marco as opções para você.`,
           actions: [{ type: "start_interview", label: "Responder conversando" }],
           followUps: ["Me explique esta seção"],
         });
@@ -242,7 +252,7 @@ export default function Wizard() {
         if (idle && left > 0 && !copilot.interview)
           copilot.nudge({
             id: `idle-${cur.key}`,
-            text: "Ficou em dúvida em alguma pergunta? Posso explicar as opções ou você me conta como funciona e eu preencho.",
+            text: "Dúvida em alguma pergunta? Posso explicar ou preencher conversando.",
             actions: [{ type: "start_interview", label: "Responder conversando" }],
             followUps: ["Qual a diferença entre as opções?"],
           });
@@ -252,7 +262,7 @@ export default function Wizard() {
     if (cur.kind === "review")
       copilot.nudge({
         id: `review-${a.id}`,
-        text: "Antes de concluir, vale uma revisão: eu leio todas as respostas como um consultor sênior e aponto contradições e pontos cegos.",
+        text: "Antes de concluir, posso revisar contradições e pontos cegos.",
         actions: [{ type: "run_review", label: "Revisar agora" }],
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -275,7 +285,7 @@ export default function Wizard() {
     copilot.nudge({
       id: `done-${a.id}-${cur.key}`,
       urgent: true,
-      text: `Seção **${cur.title}** concluída${dimScore !== null ? ` — nota **${Math.round(dimScore)}**` : ""}. Quer que eu explique o que isso significa e o que faria subir?`,
+      text: `Seção **${cur.title}** concluída${dimScore !== null ? ` — nota **${Math.round(dimScore)}**` : ""}. Quer entender o que significa?`,
       actions: [
         { type: "ask", label: "O que significa?", payload: `Concluí a seção ${cur.title}${dimScore !== null ? ` com nota ${Math.round(dimScore)}` : ""}. O que isso significa para a empresa e qual o primeiro passo para melhorar?` },
         { type: "next_section", label: "Próxima seção" },
@@ -413,7 +423,7 @@ export default function Wizard() {
                 copilot.nudge({
                   id: `unknown-${q.id}`,
                   urgent: true,
-                  text: "Tudo bem não saber — isso vira um **ponto a investigar** no relatório. Quer que eu diga a quem perguntar e que evidência pedir?",
+                  text: "Tudo bem — vira **ponto a investigar**. Quer saber a quem perguntar?",
                   actions: [{ type: "ask", label: "Como descubro isso?", payload: `Como descubro a resposta para: "${q.prompt}"? A quem devo perguntar na empresa e que evidência pedir?` }],
                 })
               }

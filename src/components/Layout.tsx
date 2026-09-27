@@ -66,6 +66,11 @@ export default function Layout({ children }: { children: ReactNode }) {
           ) : (
             <div className="org-fixed">{org?.name ?? "Sem empresa vinculada"}</div>
           )}
+          {isStaff && (
+            <NavLink to="/admin?novo=1" className="org-new" onClick={() => setOpen(false)}>
+              + Nova empresa
+            </NavLink>
+          )}
         </div>
 
         {nav}
