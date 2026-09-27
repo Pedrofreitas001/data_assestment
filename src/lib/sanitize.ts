@@ -42,10 +42,32 @@ const conf = (x: unknown): "alta" | "media" | "baixa" => sev(x);
 
 // ---------------------------------------------------------------- skills
 
+/** Resposta às vezes vem com outro nome de campo ou com JSON dentro do texto. */
+function pickReply(r: Record<string, unknown>): string {
+  let reply = str(r.reply ?? r.resposta ?? r.answer ?? r.response ?? r.text ?? r.message ?? r.content);
+  if (!reply) {
+    const { follow_ups: _f, actions: _a, ...rest } = r;
+    void _f;
+    void _a;
+    reply = str(rest);
+  }
+  const t = reply.trim();
+  if (t.startsWith("{") && t.endsWith("}")) {
+    try {
+      const inner = JSON.parse(t) as Record<string, unknown>;
+      const again = str(inner.reply ?? inner.resposta ?? inner.answer ?? inner.response);
+      if (again) return again;
+    } catch {
+      /* texto normal */
+    }
+  }
+  return reply;
+}
+
 export function normCopilot(o: unknown) {
   const r = (o && typeof o === "object" ? o : { reply: o }) as Record<string, unknown>;
   return {
-    reply: str(r.reply ?? r.resposta ?? r.text) || "Não consegui formular uma resposta agora. Pode reformular?",
+    reply: pickReply(r) || "Não consegui formular uma resposta agora. Pode reformular?",
     follow_ups: strList(r.follow_ups, 3).map((f) => f.slice(0, 90)),
     actions: arr<Record<string, unknown>>(r.actions)
       .filter((a) => a && typeof a === "object")
@@ -72,8 +94,8 @@ export function normSuggestions(x: unknown): NormSuggestion[] {
 export function normInterview(o: unknown) {
   const r = (o && typeof o === "object" ? o : {}) as Record<string, unknown>;
   return {
-    reply: str(r.reply),
-    suggestions: normSuggestions(r.suggestions),
+    reply: str(r.reply ?? r.resposta ?? r.response),
+    suggestions: normSuggestions(r.suggestions ?? r.sugestoes),
     next_question: str(r.next_question) || null,
     section_complete: r.section_complete === true || r.section_complete === "true",
   };
