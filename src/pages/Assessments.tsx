@@ -29,17 +29,17 @@ export default function Assessments() {
     <>
       <PageHead
         eyebrow={org?.name}
-        title="Assessments"
-        desc="Cada assessment é uma fotografia da maturidade. Repita a cada ciclo (ex.: semestral) para medir evolução — duplique o anterior para partir das respostas já dadas."
+        title="Diagnósticos"
+        desc="Cada diagnóstico é uma fotografia da maturidade. Repita a cada semestre para acompanhar a evolução."
         actions={
           <button className="btn btn-primary" onClick={start} disabled={!org}>
-            <Plus size={16} /> Novo assessment
+            <Plus size={16} /> Novo diagnóstico
           </button>
         }
       />
       <div className="card">
         {!rows.length ? (
-          <Empty icon={<ClipboardCheck size={20} />} title="Nenhum assessment ainda" action={<button className="btn btn-primary" onClick={start} disabled={!org}><Plus size={16} /> Iniciar</button>}>
+          <Empty icon={<ClipboardCheck size={20} />} title="Nenhum diagnóstico ainda" action={<button className="btn btn-primary" onClick={start} disabled={!org}><Plus size={16} /> Iniciar</button>}>
             O primeiro diagnóstico define a linha de base da empresa.
           </Empty>
         ) : (
@@ -47,7 +47,7 @@ export default function Assessments() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Assessment</th>
+                  <th>Diagnóstico</th>
                   <th>Status</th>
                   <th style={{ width: 160 }}>Progresso</th>
                   <th>Score</th>
@@ -93,7 +93,7 @@ export default function Assessments() {
                             title="Duplicar para novo ciclo"
                             onClick={async () => {
                               const copy = await save({ ...a, id: uid(), title: `${a.title} (novo ciclo)`, status: "rascunho", ai_insights: null, created_at: undefined, updated_at: undefined });
-                              toast("Assessment duplicado");
+                              toast("Diagnóstico duplicado");
                               nav(`/assessments/${copy.id}`);
                             }}
                           >
@@ -105,7 +105,7 @@ export default function Assessments() {
                             onClick={async () => {
                               if (!confirm(`Excluir "${a.title}"? Essa ação não pode ser desfeita.`)) return;
                               await remove(a.id);
-                              toast("Assessment excluído");
+                              toast("Diagnóstico excluído");
                             }}
                           >
                             <Trash2 size={16} />

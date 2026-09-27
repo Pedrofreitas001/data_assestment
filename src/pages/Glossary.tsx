@@ -1,6 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BookMarked, Plus, Sigma, Sparkles, Trash2 } from "lucide-react";
 import { useOrg } from "../context/org";
+import { useCopilot } from "../context/copilot";
+import { normKpiAi } from "../lib/sanitize";
 import { useToast } from "../context/toast";
 import { useRows } from "../lib/useRows";
 import { store, uid } from "../lib/store";
@@ -8,9 +10,9 @@ import { callSkill } from "../lib/llm";
 import { relTime } from "../lib/format";
 import { DOMAINS } from "../model/framework";
 import { KPI_LIBRARY } from "../model/kpiLibrary";
-import { KPI_DIRECTIONS, KPI_REQUIRED_FIELDS, KPI_STATUS, completeness, looksLikeSecret } from "../model/catalogOptions";
-import type { DataAsset, Kpi } from "../model/types";
-import { AiMark, Bar, Drawer, Empty, Field, LoadingPage, Modal, PageHead, Spinner, Stat, StatusBadge } from "../components/ui";
+import { KPI_DIRECTIONS, KPI_REQUIRED_FIELDS, KPI_STATUS, completeness, looksLikeSecret } from "../model/kpiOptions";
+import type { Kpi } from "../model/types";
+import { AiMark, Bar, Drawer, Empty, Field, LoadingPage, Metrics, Modal, PageHead, Spinner, StatusBadge } from "../components/ui";
 
 const domLabel = Object.fromEntries(DOMAINS.map((d) => [d.key, d.title]));
 
@@ -18,7 +20,7 @@ function blankKpi(orgId: string): Kpi {
   return {
     id: "", organization_id: orgId, name: "", code: null, domain: null, definition: null, business_question: null, formula: null, numerator: null, denominator: null,
     unit: null, granularity: null, frequency: null, direction: null, target: null, owner: null, steward: null, assumptions: null, exclusions: null,
-    source_tables: null, lineage: null, asset_ids: [], quality_checks: null, consumers: null, status: "rascunho", version: "1.0", notes: null,
+    source_tables: null, lineage: null, quality_checks: null, consumers: null, status: "rascunho", version: "1.0", notes: null,
   };
 }
 
@@ -32,7 +34,6 @@ export default function Glossary() {
   const { org, orgId } = useOrg();
   const toast = useToast();
   const kpis = useRows("kpis", orgId);
-  const assets = useRows("data_assets", orgId);
   const [edit, setEdit] = useState<Kpi | null>(null);
   const [libOpen, setLibOpen] = useState(false);
   const [draftOpen, setDraftOpen] = useState(false);
@@ -46,6 +47,20 @@ export default function Glossary() {
       (k) => (!fDomain || k.domain === fDomain) && (!fStatus || k.status === fStatus) && (!t || [k.name, k.code, k.definition, k.owner, k.formula].some((x) => (x || "").toLowerCase().includes(t))),
     );
   }, [kpis.rows, q, fDomain, fStatus]);
+
+  const copilot = useCopilot();
+  useEffect(() => {
+    if (kpis.loading || !orgId) return;
+    copilot.setFocus({ tela: "Glossário de KPIs", kpis: kpis.rows.map((k) => ({ nome: k.name, owner: k.owner, status: k.status, formula: k.formula })) });
+    const noOwner = kpis.rows.filter((k) => !k.owner).length;
+    if (!kpis.rows.length)
+      copilot.nudge({ id: `kpi-empty-${orgId}`, text: "O glossário está vazio. Posso sugerir os primeiros KPIs para a empresa e explicar como documentar cada um.", followUps: ["Quais KPIs devemos documentar primeiro?", "O que uma ficha de KPI precisa ter?"] });
+    else if (noOwner)
+      copilot.nudge({ id: `kpi-owner-${orgId}`, text: `**${noOwner} KPI(s) sem owner.** Sem dono, a definição não tem quem aprove as premissas. Quer ajuda para decidir quem deve ser o owner de cada um?`, followUps: ["Como escolher o owner de um KPI?", "Qual a diferença entre owner e steward?"] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kpis.loading, kpis.rows.length, orgId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => () => copilot.setFocus(null), []);
 
   if (kpis.loading) return <LoadingPage />;
   if (!orgId) return <Empty title="Selecione uma empresa" />;
@@ -75,11 +90,15 @@ export default function Glossary() {
         }
       />
 
-      <div className="grid g-4" style={{ marginBottom: 22 }}>
-        <Stat label="KPIs documentados" value={kpis.rows.length} foot={`${new Set(kpis.rows.map((k) => k.domain).filter(Boolean)).size} domínios`} />
-        <Stat label="Validados pelo owner" value={validated} foot={kpis.rows.length ? `${Math.round((validated / kpis.rows.length) * 100)}% do glossário` : "—"} />
-        <Stat label="Sem owner" value={noOwner} foot={noOwner ? <span style={{ color: "var(--risk)" }}>Sem owner, a definição não tem legitimidade</span> : "Todos com dono"} />
-        <Stat label="Completude das fichas" value={Math.round(avg * 100)} unit="%" foot="Definição, fórmula, owner, premissas, fontes…" />
+      <div style={{ marginBottom: 20 }}>
+        <Metrics
+          items={[
+            { label: "KPIs documentados", value: kpis.rows.length },
+            { label: "Validados pelo owner", value: validated },
+            { label: "Sem owner", value: noOwner },
+            { label: "Fichas completas", value: `${Math.round(avg * 100)}%` },
+          ]}
+        />
       </div>
 
       <div className="toolbar">
@@ -125,7 +144,7 @@ export default function Glossary() {
                   <span>{k.owner ? `Owner: ${k.owner}` : <span style={{ color: "var(--risk)" }}>Sem owner</span>}</span>
                   <span className="row" style={{ gap: 6, width: 90 }}>
                     <span className="grow">
-                      <Bar value={c * 100} thin />
+                      <Bar value={c * 100} thin brand />
                     </span>
                     <span className="num">{Math.round(c * 100)}%</span>
                   </span>
@@ -139,7 +158,6 @@ export default function Glossary() {
       {edit && (
         <KpiDrawer
           kpi={edit}
-          assets={assets.rows}
           context={{ empresa: org?.name, segmento: org?.segment }}
           onClose={() => setEdit(null)}
           onSave={async (row) => {
@@ -172,11 +190,11 @@ export default function Glossary() {
       )}
       {draftOpen && (
         <DraftModal
-          context={{ empresa: org?.name, segmento: org?.segment, ativos: assets.rows.map((a) => `${a.name} (${a.system || a.asset_type})`) }}
+          context={{ empresa: org?.name, segmento: org?.segment }}
           onClose={() => setDraftOpen(false)}
           onDraft={(k) => {
             setDraftOpen(false);
-            setEdit({ ...blankKpi(orgId), ...k, id: "", asset_ids: [], status: "rascunho" } as Kpi);
+            setEdit({ ...blankKpi(orgId), ...k, id: "", status: "rascunho" } as Kpi);
           }}
         />
       )}
@@ -185,7 +203,7 @@ export default function Glossary() {
 }
 
 // ---------------------------------------------------------------------
-function KpiDrawer({ kpi, assets, context, onClose, onSave, onDelete }: { kpi: Kpi; assets: DataAsset[]; context: unknown; onClose: () => void; onSave: (k: Kpi) => Promise<void>; onDelete: (id: string) => Promise<void> }) {
+function KpiDrawer({ kpi, context, onClose, onSave, onDelete }: { kpi: Kpi; context: unknown; onClose: () => void; onSave: (k: Kpi) => Promise<void>; onDelete: (id: string) => Promise<void> }) {
   const toast = useToast();
   const [f, setF] = useState<Kpi>(kpi);
   const [busy, setBusy] = useState(false);
@@ -202,8 +220,8 @@ function KpiDrawer({ kpi, assets, context, onClose, onSave, onDelete }: { kpi: K
   async function review() {
     setAiBusy(true);
     try {
-      const { output } = await callSkill<KpiAiOut>("kpi-assist", { mode: "review", kpi: f, context, catalog: assets.map((a) => ({ id: a.id, name: a.name, system: a.system, layer: a.layer })) });
-      setAi(output);
+      const { output } = await callSkill<unknown>("kpi-assist", { mode: "review", kpi: f, context });
+      setAi(normKpiAi(output) as KpiAiOut);
     } catch (e) {
       toast(e instanceof Error ? e.message : "Erro na IA", "err");
     } finally {
@@ -406,26 +424,13 @@ function KpiDrawer({ kpi, assets, context, onClose, onSave, onDelete }: { kpi: K
         </div>
       </div>
       <div className="form-section">
-        <h4>Fontes, linhagem & qualidade</h4>
+        <h4>Fontes & qualidade</h4>
         <div className="form-grid">
           <Field label="Tabelas / caminhos" full hint="Ex.: ERP › NF_SAIDA_ITENS; Drive › Fretes.xlsx › aba 2026">
             <textarea className="textarea mono" {...txt("source_tables")} style={{ minHeight: 56 }} />
           </Field>
           <Field label="Linhagem" full>
             <input className="input" {...txt("lineage")} placeholder="ERP → bronze.nf → prata.vendas → ouro.fato_vendas → Painel" />
-          </Field>
-          <Field label="Ativos do catálogo" full>
-            <div className="chips">
-              {!assets.length && <span className="xs muted">Nenhum ativo no catálogo ainda.</span>}
-              {assets.map((a) => {
-                const on = f.asset_ids?.includes(a.id);
-                return (
-                  <button key={a.id} type="button" className={`chip ${on ? "on" : ""}`} onClick={() => set("asset_ids", on ? f.asset_ids.filter((x) => x !== a.id) : [...(f.asset_ids || []), a.id])}>
-                    {a.name}
-                  </button>
-                );
-              })}
-            </div>
           </Field>
           <Field label="Checagens de qualidade" full>
             <textarea className="textarea" {...txt("quality_checks")} style={{ minHeight: 56 }} />
@@ -524,7 +529,7 @@ function DraftModal({ context, onClose, onDraft }: { context: unknown; onClose: 
           onClick={async () => {
             setBusy(true);
             try {
-              const { output } = await callSkill<KpiAiOut>("kpi-assist", { mode: "draft", name, notes, context });
+              const output = normKpiAi((await callSkill<unknown>("kpi-assist", { mode: "draft", name, notes, context })).output) as KpiAiOut;
               onDraft({ ...output.kpi, name: output.kpi?.name || name, notes: output.clarifying_questions?.length ? `A validar com o owner:\n- ${output.clarifying_questions.join("\n- ")}` : null });
             } catch (e) {
               toast(e instanceof Error ? e.message : "Erro na IA", "err");

@@ -49,7 +49,7 @@ const remoteStore: Store = {
 // ---------------------------------------------------------------------
 // Demonstração (localStorage) — mesmo contrato, para rodar sem backend.
 // ---------------------------------------------------------------------
-const KEY = (t: TableName) => `moulis:v1:${t}`;
+const KEY = (t: TableName) => `moulis:v2:${t}`;
 
 function read<T>(t: TableName): T[] {
   try {
@@ -70,10 +70,10 @@ function write(t: TableName, rows: unknown[]) {
 
 function ensureSeed() {
   try {
-    if (localStorage.getItem("moulis:v1:seeded")) return;
+    if (localStorage.getItem("moulis:v2:seeded")) return;
     const seed = demoSeed();
     (Object.keys(seed) as TableName[]).forEach((t) => write(t, seed[t] as unknown[]));
-    localStorage.setItem("moulis:v1:seeded", "1");
+    localStorage.setItem("moulis:v2:seeded", "1");
   } catch {
     /* ignore */
   }
@@ -82,7 +82,7 @@ function ensureSeed() {
 export function resetDemo() {
   try {
     Object.keys(localStorage)
-      .filter((k) => k.startsWith("moulis:v1:"))
+      .filter((k) => k.startsWith("moulis:v2:"))
       .forEach((k) => localStorage.removeItem(k));
   } catch {
     /* ignore */

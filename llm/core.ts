@@ -100,6 +100,15 @@ export function redactSecrets(text: string): { text: string; redacted: boolean }
   return { text: out, redacted: out !== text };
 }
 
+function tryJson(text: string): unknown {
+  try {
+    const v = extractJson(text);
+    return v && typeof v === "object" ? v : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function extractJson(text: string): unknown {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const candidate = fenced ? fenced[1] : text;
@@ -123,14 +132,16 @@ async function callOpenRouter(model: string, body: Record<string, unknown>) {
     body: JSON.stringify({ model, ...body }),
   });
   const data = (await resp.json().catch(() => ({}))) as {
-    choices?: { message?: { content?: string } }[];
+    choices?: { message?: { content?: string | null; reasoning?: string | null } }[];
     error?: { message?: string };
     usage?: unknown;
     model?: string;
   };
   if (!resp.ok) throw new LlmError(data.error?.message || `OpenRouter respondeu ${resp.status}`, resp.status === 429 ? 429 : 502);
-  const content = data.choices?.[0]?.message?.content;
-  if (!content) throw new LlmError("Resposta vazia do modelo.", 502);
+  if (data.error?.message) throw new LlmError(`OpenRouter: ${data.error.message}`, 502);
+  const msg = data.choices?.[0]?.message;
+  const content = (msg?.content || "").trim() || (msg?.reasoning || "").trim();
+  if (!content) throw new LlmError(`O modelo ${model} retornou uma resposta vazia. Aumente o limite ou troque OPENROUTER_MODEL.`, 502);
   return { content, usage: data.usage, model: data.model || model };
 }
 
@@ -143,7 +154,7 @@ export async function runSkill({ skill, input, messages }: RunInput): Promise<Ru
   const payload = redactSecrets(JSON.stringify(input ?? {}, null, 1)).text;
 
   const chat: { role: string; content: string }[] = [{ role: "system", content: system }];
-  if (s.output === "text" && messages?.length) {
+  if (messages?.length) {
     chat.push({ role: "user", content: `Contexto da tela (JSON):\n${payload}` });
     chat.push({ role: "assistant", content: "Entendido. Estou com o contexto da empresa e da tela." });
     for (const m of messages.slice(-12)) chat.push({ role: m.role, content: redactSecrets(m.content).text.slice(0, 4000) });
@@ -166,12 +177,26 @@ export async function runSkill({ skill, input, messages }: RunInput): Promise<Ru
 
   let output: unknown = res.content;
   if (s.output === "json") {
-    try {
-      output = extractJson(res.content);
-    } catch {
-      throw new LlmError("Não foi possível interpretar a resposta do modelo. Tente novamente.", 502);
+    let parsed = tryJson(res.content);
+    if (parsed === undefined) {
+      // Alguns modelos ignoram o pedido de JSON: tenta uma vez de novo, mais explícito.
+      console.warn(`[llm] ${skill}: resposta não-JSON de ${res.model}: ${res.content.slice(0, 160).replace(/\s+/g, " ")}`);
+      const retry = await callOpenRouter(res.model, {
+        ...body,
+        messages: [...chat, { role: "assistant", content: res.content }, { role: "user", content: "Reescreva a resposta anterior SOMENTE como um objeto JSON válido, no formato pedido nas instruções, sem texto fora do JSON." }],
+      }).catch(() => null);
+      if (retry) parsed = tryJson(retry.content);
     }
+    if (parsed === undefined) {
+      // Último recurso: skills conversacionais usam o texto como resposta.
+      if (skill === "copilot") parsed = { reply: res.content, follow_ups: [], actions: [] };
+      else if (skill === "interview") parsed = { reply: res.content, suggestions: [], next_question: null, section_complete: false };
+      else throw new LlmError("O modelo não retornou uma resposta no formato esperado. Tente novamente ou troque OPENROUTER_MODEL.", 502);
+    }
+    output = parsed;
   }
+  const keys = output && typeof output === "object" ? Object.keys(output as object).join(",") : typeof output;
+  console.log(`[llm] ${skill} ok · modelo=${res.model} · chaves=${keys} · ${res.content.length} chars`);
   return { skill, model: res.model, output, usage: res.usage };
 }
 
@@ -208,7 +233,14 @@ export async function handleLlmRequest(request: Request): Promise<Response> {
   const json = (status: number, body: unknown) =>
     new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json; charset=utf-8" } });
   try {
-    if (request.method === "GET") return json(200, { skills: listSkills(), configured: !!process.env.OPENROUTER_API_KEY });
+    if (request.method === "GET")
+      return json(200, {
+        skills: listSkills(),
+        configured: !!process.env.OPENROUTER_API_KEY,
+        model: process.env.OPENROUTER_MODEL || "anthropic/claude-sonnet-4.5 (padrão)",
+        fallback_model: process.env.OPENROUTER_FALLBACK_MODEL || null,
+        supabase_auth: !!(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL),
+      });
     if (request.method !== "POST") return json(405, { error: "Método não permitido" });
     const raw = await request.text();
     if (raw.length > 120_000) return json(413, { error: "Entrada muito grande." });
@@ -220,6 +252,7 @@ export async function handleLlmRequest(request: Request): Promise<Response> {
   } catch (e) {
     const status = e instanceof LlmError ? e.status : 500;
     const message = e instanceof Error ? e.message : "Erro inesperado";
+    console.error(`[llm] erro ${status}: ${message}`);
     return json(status, { error: message });
   }
 }

@@ -1,12 +1,14 @@
 import { useState, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { BookOpen, ClipboardCheck, Database, Gauge, LayoutGrid, LogOut, Menu, Sigma, Users } from "lucide-react";
+import { BookOpen, Briefcase, ClipboardCheck, Home, LogOut, Menu, Sigma } from "lucide-react";
 import { useAuth } from "../context/auth";
 import { useOrg } from "../context/org";
 import { IS_DEMO } from "../lib/supabase";
 import { initials } from "../lib/format";
 import { MoulisMark } from "./ui";
 import Copilot from "./Copilot";
+import ErrorBoundary from "./ErrorBoundary";
+import { useCopilot } from "../context/copilot";
 
 const ROLE_LABEL = { admin: "Gestora · admin", consultor: "Consultor", cliente: "Cliente" } as const;
 
@@ -14,41 +16,30 @@ export default function Layout({ children }: { children: ReactNode }) {
   const { profile, isStaff, signOut } = useAuth();
   const { orgs, org, orgId, setOrgId } = useOrg();
   const [open, setOpen] = useState(false);
+  const copilot = useCopilot();
   const loc = useLocation();
 
   const nav = (
     <nav className="nav" onClick={() => setOpen(false)}>
       <NavLink to="/" end>
-        <Gauge size={17} /> Visão geral
+        <Home size={17} /> Início
       </NavLink>
       <NavLink to="/assessments">
-        <ClipboardCheck size={17} /> Assessment
-      </NavLink>
-      <NavLink to="/catalogo">
-        <Database size={17} /> Catálogo de dados
+        <ClipboardCheck size={17} /> Diagnósticos
       </NavLink>
       <NavLink to="/glossario">
         <Sigma size={17} /> Glossário de KPIs
       </NavLink>
-      <NavLink to="/framework">
-        <BookOpen size={17} /> Framework
-      </NavLink>
       {isStaff && (
-        <>
-          <div className="nav-label">Consultoria</div>
-          <NavLink to="/admin">
-            <LayoutGrid size={17} /> Painel da gestora
-          </NavLink>
-          <NavLink to="/admin/usuarios">
-            <Users size={17} /> Usuários
-          </NavLink>
-        </>
+        <NavLink to="/admin">
+          <Briefcase size={17} /> Clientes
+        </NavLink>
       )}
     </nav>
   );
 
   return (
-    <div className={`shell ${open ? "nav-open" : ""}`}>
+    <div className={`shell ${open ? "nav-open" : ""} ${copilot.isOpen ? "copilot-open" : ""}`}>
       {open && <div className="scrim" onClick={() => setOpen(false)} />}
       <aside className="sidebar">
         <NavLink to="/" className="brand">
@@ -79,11 +70,12 @@ export default function Layout({ children }: { children: ReactNode }) {
 
         {nav}
 
-        {IS_DEMO && (
-          <div className="demo-tag">
-            <b>Modo demonstração.</b> Dados ficam só neste navegador. Configure o Supabase para login real e dados compartilhados.
-          </div>
-        )}
+        <div className="side-bottom">
+          <NavLink to="/framework" className="side-link" onClick={() => setOpen(false)}>
+            <BookOpen size={15} /> Metodologia
+          </NavLink>
+          {IS_DEMO && <div className="demo-tag">Modo demonstração · dados salvos só neste navegador</div>}
+        </div>
 
         <div className="side-foot">
           <div className="avatar">{initials(profile?.full_name || profile?.email)}</div>
@@ -108,10 +100,12 @@ export default function Layout({ children }: { children: ReactNode }) {
           </span>
         </div>
         <main className="content" key={loc.pathname.split("/")[1]}>
-          {children}
+          <ErrorBoundary key={loc.pathname}>{children}</ErrorBoundary>
         </main>
       </div>
-      <Copilot />
+      <ErrorBoundary compact onReset={copilot.reset}>
+        <Copilot />
+      </ErrorBoundary>
     </div>
   );
 }

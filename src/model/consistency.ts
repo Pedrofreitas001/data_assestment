@@ -96,7 +96,7 @@ const RULES: Rule[] = [
     id: "credencial_api",
     severity: "media",
     title: "APIs em uso com credenciais sem controle",
-    detail: "Há extração por API, mas as credenciais estão com pessoas/e-mails. Registre-as no Catálogo (aba Credenciais) com responsável e local seguro — sem salvar o segredo.",
+    detail: "Há extração por API, mas as credenciais estão com pessoas/e-mails. Faça um inventário de credenciais com responsável e local seguro (cofre de senhas).",
     refs: ["fnt_acesso", "seg_cred"],
     when: (a) => ge(a, "fnt_acesso", 3) && le(a, "seg_cred", 2),
   },

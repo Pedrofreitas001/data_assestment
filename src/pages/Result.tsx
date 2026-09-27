@@ -1,19 +1,21 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
-import { ArrowLeft, Lock, Pencil, Printer, Sparkles, TriangleAlert } from "lucide-react";
+import { ArrowLeft, Lock, Pencil, Printer, Sparkles, Trash2 } from "lucide-react";
 import { store } from "../lib/store";
 import { saveAssessment } from "../lib/assessments";
 import { callSkill } from "../lib/llm";
-import { assessmentForLlm, catalogDigest } from "../lib/snapshot";
-import { fmtDate } from "../lib/format";
+import { assessmentForLlm, kpiDigest } from "../lib/snapshot";
+import { fmtDate, miniMarkdown } from "../lib/format";
+import { useCopilot } from "../context/copilot";
+import { normInsights, safeInsights } from "../lib/sanitize";
 import { useOrg } from "../context/org";
 import { useToast } from "../context/toast";
 import { CHECK_OPTIONS, UNKNOWN } from "../model/framework";
 import { scoreAssessment, tierFor, TIER_LABEL } from "../model/scoring";
 import { consistencyAlerts } from "../model/consistency";
 import { DIM_PLAYBOOK, WAVES, buildActionPlan } from "../model/playbook";
-import type { AiInsights, Assessment } from "../model/types";
-import { AiMark, BandScale, Bar, Empty, LoadingPage, Spinner, StatusBadge } from "../components/ui";
+import type { AiInsights, Assessment, ReportNote } from "../model/types";
+import { AiMark, BandScale, Empty, LoadingPage, Spinner } from "../components/ui";
 import { QualityHeatmap, Radar } from "../components/charts";
 
 export default function Result() {
@@ -41,31 +43,84 @@ export default function Result() {
   const alerts = useMemo(() => (a ? consistencyAlerts(a) : []), [a]);
   const plan = useMemo(() => (a && s ? buildActionPlan(a, s) : []), [a, s]);
 
+  // ---------------------------------------------------------- assistente
+  const copilot = useCopilot();
+  const aRef = useRef<Assessment | null>(null);
+  aRef.current = a;
+  const genRef = useRef<() => Promise<void>>(async () => {});
+
+  useEffect(() => {
+    if (!a) return;
+    copilot.setFocus({ tela: "Relatório de maturidade", assessment_id: a.id, assessment: a, anotacoes_no_relatorio: (a.report_notes || []).map((n) => n.title) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [a]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => () => copilot.setFocus(null), []);
+
+  useEffect(
+    () =>
+      copilot.registerHandlers({
+        generate_insights: () => genRef.current(),
+        add_to_report: async (payload) => {
+          const cur = aRef.current;
+          if (!cur) return;
+          const body = String((payload as { body?: string })?.body || "").trim();
+          if (!body) return;
+          const heading = body.match(/^\s*(?:#+\s*|\*\*)([^*\n]{4,80})/);
+          const note: ReportNote = { id: Math.random().toString(36).slice(2), title: heading ? heading[1].trim() : `Anotação de ${new Date().toLocaleDateString("pt-BR")}`, body, created_at: new Date().toISOString() };
+          const saved = await saveAssessment({ ...cur, report_notes: [...(cur.report_notes || []), note] });
+          setA(saved);
+          toast("Texto salvo no relatório");
+          setTimeout(() => document.getElementById("anotacoes")?.scrollIntoView({ behavior: "smooth" }), 100);
+        },
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [copilot.registerHandlers],
+  );
+
+  useEffect(() => {
+    if (!a || loading) return;
+    if (!a.ai_insights)
+      copilot.nudge({
+        id: `insights-${a.id}`,
+        urgent: true,
+        text: "Seu relatório está pronto. Quer que eu escreva a **leitura executiva** — resumo, riscos e prioridades — para você revisar?",
+        actions: [{ type: "generate_insights", label: "Escrever leitura executiva" }],
+        followUps: ["Escreva um e-mail para a diretoria", "Explique o nível atribuído"],
+      });
+    else
+      copilot.nudge({
+        id: `report-${a.id}`,
+        text: "Posso te ajudar a apresentar este relatório: redijo um e-mail para a diretoria, uma pauta de reunião ou explico qualquer gráfico.",
+        followUps: ["Escreva um e-mail para a diretoria", "Monte a pauta da reunião de resultados", "Explique o mapa de qualidade"],
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, a?.id]);
+
   if (loading) return <LoadingPage />;
-  if (!a || !s) return <Empty title="Assessment não encontrado" action={<Link className="btn" to="/assessments">Voltar</Link>} />;
+  if (!a || !s) return <Empty title="Diagnóstico não encontrado" action={<Link className="btn" to="/assessments">Voltar</Link>} />;
 
   const capped = s.computedBand && s.band && s.computedBand.level > s.band.level;
-  const ai = a.ai_insights;
+  const ai = safeInsights(a.ai_insights);
 
   async function generate() {
     if (!a || !s) return;
     setBusy(true);
     try {
-      const [assets, creds, kpis] = await Promise.all([
-        store.list("data_assets", { organization_id: a.organization_id }),
-        store.list("credentials", { organization_id: a.organization_id }),
-        store.list("kpis", { organization_id: a.organization_id }),
-      ]);
-      const { output, model } = await callSkill<Omit<AiInsights, "generated_at" | "model">>("generate-insights", {
+      const kpis = await store.list("kpis", { organization_id: a.organization_id });
+      const { output: raw, model } = await callSkill<unknown>("generate-insights", {
         empresa: { nome: org?.name, segmento: org?.segment, porte: org?.size },
         assessment: assessmentForLlm(a),
         plano_deterministico: plan.slice(0, 20).map((p) => ({ onda: p.wave, acao: p.title, origem: p.origin, motivo: p.reason })),
-        catalogo_e_glossario: catalogDigest(assets, creds, kpis),
+        glossario: kpiDigest(kpis),
       });
+      const output = normInsights(raw);
+      if (!output.headline && !output.executive_summary) throw new Error("A IA não retornou uma leitura válida. Tente novamente.");
       const insights: AiInsights = { ...output, generated_at: new Date().toISOString(), model };
       const saved = await saveAssessment({ ...a, ai_insights: insights });
       setA(saved);
-      toast("Insights gerados");
+      copilot.dismissBubble();
+      toast("Leitura executiva gerada");
     } catch (e) {
       toast(e instanceof Error ? e.message : "Erro na IA", "err");
     } finally {
@@ -73,228 +128,198 @@ export default function Result() {
     }
   }
 
-  const waves = ([1, 2, 3] as const).map((w) => ({ w, items: plan.filter((p) => p.wave === w).slice(0, 8) }));
+  genRef.current = generate;
+
+  async function removeNote(id: string) {
+    if (!a || !confirm("Remover esta anotação do relatório?")) return;
+    setA(await saveAssessment({ ...a, report_notes: (a.report_notes || []).filter((n) => n.id !== id) }));
+  }
+
+  const waves = ([1, 2, 3] as const).map((w) => ({ w, items: plan.filter((p) => p.wave === w).slice(0, 5) }));
+  const attention = [
+    ...s.gates.map((g) => ({ key: g.questionId, title: `Limita o nível a ${g.capLevel}`, detail: g.reason, high: true })),
+    ...alerts.map((al) => ({ key: al.id, title: al.title, detail: al.detail, high: al.severity === "alta" })),
+  ];
 
   return (
     <>
-      <div className="row-between wrap no-print" style={{ marginBottom: 20 }}>
+      <div className="row-between wrap no-print" style={{ marginBottom: 24 }}>
         <Link to="/assessments" className="btn btn-ghost btn-sm">
-          <ArrowLeft size={16} /> Assessments
+          <ArrowLeft size={16} /> Diagnósticos
         </Link>
         <div className="row">
           <Link to={`/assessments/${a.id}`} className="btn btn-sm">
             <Pencil size={14} /> Editar respostas
           </Link>
           <button className="btn btn-sm" onClick={() => window.print()}>
-            <Printer size={14} /> Imprimir / PDF
+            <Printer size={14} /> Exportar PDF
           </button>
         </div>
       </div>
 
       <p className="eyebrow">
-        {org?.name} · {a.title} · {fmtDate(a.updated_at)}
+        {org?.name} · {fmtDate(a.updated_at)}
       </p>
-      <h1 className="page-title" style={{ marginBottom: 24 }}>
+      <h1 className="page-title" style={{ marginBottom: 28 }}>
         Relatório de maturidade de dados
       </h1>
 
-      {/* HERO */}
-      <div className="card hero-result" style={{ marginBottom: 20 }}>
-        <div className="left">
-          <p className="eyebrow">Nível atribuído</p>
-          <div className="hero-level">
-            {s.band ? `${s.band.level}` : "—"} <span style={{ fontSize: 40 }}>{s.band?.label}</span>
+      {/* Nível */}
+      <section className="card hero-home" style={{ marginBottom: 20 }}>
+        <div className="hero-main">
+          <p className="section-title">Nível atribuído</p>
+          <div className="hero-level-line">
+            <span className="hero-level-num" style={{ color: s.band?.color }}>
+              {s.band?.level ?? "—"}
+            </span>
+            <span className="hero-level-name">{s.band?.label}</span>
           </div>
-          <p>{s.band?.summary}</p>
-          <div style={{ marginTop: 24 }}>
+          <p className="hero-summary">{s.band?.summary}</p>
+          <div style={{ maxWidth: 520 }}>
             <BandScale band={s.band} computed={s.computedBand} />
           </div>
           {capped && (
-            <p className="small" style={{ marginTop: 16, display: "flex", gap: 8 }}>
-              <Lock size={14} style={{ flexShrink: 0, marginTop: 3 }} />
-              <span>
-                A média indicaria nível {s.computedBand!.level} ({s.computedBand!.label}), mas {s.gates.length === 1 ? "um requisito fundacional está pendente" : `${s.gates.length} requisitos fundacionais estão pendentes`}. Não se pula etapa.
-              </span>
+            <p className="small muted" style={{ margin: "16px 0 0", display: "flex", gap: 8 }}>
+              <Lock size={14} style={{ flexShrink: 0, marginTop: 2 }} />
+              Pela média estaria no nível {s.computedBand!.level} ({s.computedBand!.label}), mas fundamentos pendentes limitam o resultado — veja “Pontos de atenção”.
             </p>
           )}
         </div>
-        <div className="right">
-          <div className="kv">
-            <div>
-              <div className="k">Score geral</div>
-              <div className="v num">
-                {s.overall === null ? "—" : Math.round(s.overall)}
-                <small>/100</small>
-              </div>
-            </div>
-            <div>
-              <div className="k">Confiabilidade do diagnóstico</div>
-              <div className="v">
-                {s.confidence.label}
-                <small>{s.confidence.pct}%</small>
-              </div>
-            </div>
-            <div>
-              <div className="k">Índice de capacidades (60%)</div>
-              <div className="v num">{s.capability === null ? "—" : Math.round(s.capability)}</div>
-            </div>
-            <div>
-              <div className="k">Índice de consistência da operação (40%)</div>
-              <div className="v num">{s.operation === null ? "—" : Math.round(s.operation)}</div>
+        <div className="hero-side kv-side">
+          <div className="kv-item">
+            <div className="k">Score geral</div>
+            <div className="v num">
+              {s.overall === null ? "—" : Math.round(s.overall)}
+              <small>/100</small>
             </div>
           </div>
-          <hr className="divider" />
-          <div className="small stack" style={{ gap: 6 }}>
-            <div className="row-between">
-              <span className="muted">Status</span>
-              <StatusBadge status={a.status} />
-            </div>
-            <div className="row-between">
-              <span className="muted">Respondentes</span>
-              <span style={{ textAlign: "right" }}>{a.respondent || "—"}</span>
-            </div>
-            <div className="row-between">
-              <span className="muted">Escopo</span>
-              <span style={{ textAlign: "right" }}>{a.scope || "—"}</span>
-            </div>
-            <div className="row-between">
-              <span className="muted">Cobertura</span>
-              <span className="num">
-                {s.answered}/{s.total} · {s.blindSpots.length} "não sei"
-              </span>
-            </div>
+          <div className="kv-item">
+            <div className="k">Capacidades</div>
+            <div className="v num">{s.capability === null ? "—" : Math.round(s.capability)}</div>
+          </div>
+          <div className="kv-item">
+            <div className="k">Qualidade por área</div>
+            <div className="v num">{s.operation === null ? "—" : Math.round(s.operation)}</div>
+          </div>
+          <div className="kv-item">
+            <div className="k">Confiabilidade</div>
+            <div className="v">{s.confidence.label}</div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {s.gates.length > 0 && (
-        <div className="card card-pad" style={{ marginBottom: 20 }}>
-          <p className="section-title">Requisitos fundacionais pendentes</p>
-          {s.gates.map((g) => (
-            <div key={g.questionId} className="callout">
-              <div className="callout-title">
-                <Lock size={13} /> Limita ao nível {g.capLevel}
-              </div>
-              <div className="small">{g.reason}</div>
-              <div className="xs muted" style={{ marginTop: 3 }}>
-                {g.prompt}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* AI INSIGHTS */}
-      <div className="card" style={{ marginBottom: 20 }}>
+      {/* Leitura executiva */}
+      <section className="card" style={{ marginBottom: 20 }}>
         <div className="card-head">
           <div className="row" style={{ gap: 12 }}>
             <AiMark />
             <div>
               <h3 className="card-title">Leitura executiva</h3>
-              <p className="card-sub">{ai ? `Gerada em ${fmtDate(ai.generated_at, true)}${ai.model ? ` · ${ai.model}` : ""} — revise antes de apresentar` : "Resumo, riscos de negócio, quick wins por domínio e roadmap em ondas"}</p>
+              <p className="card-sub">{ai ? `Gerada em ${fmtDate(ai.generated_at, true)} · revise antes de apresentar` : "Resumo, riscos e roadmap escritos pela IA a partir das respostas"}</p>
             </div>
           </div>
-          <button className="btn btn-sm btn-ai no-print" onClick={generate} disabled={busy || s.answered < 5}>
-            {busy ? <Spinner /> : <Sparkles size={14} />} {ai ? "Regenerar" : "Gerar insights"}
+          <button className="btn btn-sm no-print" onClick={generate} disabled={busy || s.answered < 5}>
+            {busy ? <Spinner /> : <Sparkles size={14} />} {ai ? "Gerar novamente" : "Gerar leitura"}
+          </button>
+        </div>
+        {ai && (
+          <div className="card-body stack" style={{ gap: 22 }}>
+            <div>
+              <p className="insight-quote">{ai.headline}</p>
+              <p style={{ margin: 0, color: "var(--ink-2)", maxWidth: 820 }}>{ai.executive_summary}</p>
+            </div>
+            <div className="grid g-2" style={{ gap: 28 }}>
+              <div>
+                <p className="section-title">Forças</p>
+                <ul className="plain-list">
+                  {ai.strengths?.map((x, i) => (
+                    <li key={i}>{x}</li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <p className="section-title">Riscos</p>
+                <ul className="plain-list">
+                  {ai.risks?.map((r, i) => (
+                    <li key={i}>
+                      <b style={{ fontWeight: 600 }}>{r.title}.</b> <span className="muted">{r.detail}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            {ai.domain_insights?.length > 0 && (
+              <div>
+                <p className="section-title">Ganhos rápidos por área</p>
+                <ul className="plain-list">
+                  {ai.domain_insights.map((d, i) => (
+                    <li key={i}>
+                      <b style={{ fontWeight: 600 }}>{d.domain}:</b> {d.quick_win}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {ai.questions_for_next_meeting?.length > 0 && (
+              <div>
+                <p className="section-title">Para a próxima reunião</p>
+                <ul className="plain-list">
+                  {ai.questions_for_next_meeting.map((q, i) => (
+                    <li key={i}>{q}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* Anotações redigidas com o assistente */}
+      <section className="card" id="anotacoes" style={{ marginBottom: 20, scrollMarginTop: 20 }}>
+        <div className="card-head">
+          <div>
+            <h3 className="card-title">Anotações do relatório</h3>
+            <p className="card-sub">Textos que você montou com o assistente — e-mails, pautas, justificativas</p>
+          </div>
+          <button className="btn btn-sm no-print" onClick={() => copilot.ask("Escreva um resumo executivo deste diagnóstico para a diretoria, pronto para colar no relatório.")}>
+            <Sparkles size={14} /> Redigir com o assistente
           </button>
         </div>
         <div className="card-body">
-          {!ai ? (
-            <p className="muted small" style={{ margin: 0 }}>
-              {s.answered < 5 ? "Responda ao menos 5 perguntas para gerar a leitura." : "A IA combina respostas, evidências, gates, alertas, plano de ação e o estado do catálogo/glossário para produzir a leitura que a consultoria apresentaria à diretoria."}
+          {!(a.report_notes || []).length ? (
+            <p className="small muted" style={{ margin: 0 }}>
+              Peça ao assistente um texto (ex.: “escreva um e-mail para a diretoria com os resultados”) e clique em <b>Salvar no relatório</b>.
             </p>
           ) : (
-            <div className="stack" style={{ gap: 20 }}>
-              <div>
-                <p className="insight-quote">“{ai.headline}”</p>
-                <p style={{ margin: 0, color: "var(--ink-2)", maxWidth: 820 }}>{ai.executive_summary}</p>
-              </div>
-              <div className="grid g-2">
-                <div>
-                  <p className="section-title">Forças</p>
-                  <ul style={{ margin: 0, paddingLeft: 18 }}>
-                    {ai.strengths?.map((x, i) => (
-                      <li key={i} style={{ marginBottom: 6 }}>
-                        {x}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div>
-                  <p className="section-title">Riscos de negócio</p>
-                  {ai.risks?.map((r, i) => (
-                    <div key={i} className={`callout ${r.severity === "alta" ? "risk" : ""}`}>
-                      <div className="callout-title">
-                        {r.title} <span className="badge badge-soft">{r.severity}</span>
-                      </div>
-                      <div className="small muted">{r.detail}</div>
+            <div className="stack" style={{ gap: 18 }}>
+              {(a.report_notes || []).map((n) => (
+                <article key={n.id} className="note">
+                  <div className="row-between">
+                    <div>
+                      <div style={{ fontWeight: 600 }}>{n.title}</div>
+                      <div className="xs muted">{fmtDate(n.created_at, true)}</div>
                     </div>
-                  ))}
-                </div>
-              </div>
-              {ai.domain_insights?.length > 0 && (
-                <div>
-                  <p className="section-title">Por domínio</p>
-                  <div className="grid g-2">
-                    {ai.domain_insights.map((d, i) => (
-                      <div key={i} className="card card-pad" style={{ boxShadow: "none" }}>
-                        <div style={{ fontWeight: 600, marginBottom: 4 }}>{d.domain}</div>
-                        <div className="small">{d.insight}</div>
-                        <div className="small" style={{ marginTop: 8, paddingTop: 8, borderTop: "1px dashed var(--line)" }}>
-                          <b>Quick win:</b> {d.quick_win}
-                        </div>
-                      </div>
-                    ))}
+                    <button className="btn btn-ghost btn-sm btn-icon no-print" onClick={() => removeNote(n.id)} aria-label="Remover anotação">
+                      <Trash2 size={15} />
+                    </button>
                   </div>
-                </div>
-              )}
-              {ai.roadmap?.length > 0 && (
-                <div>
-                  <p className="section-title">Roadmap sugerido pela IA</p>
-                  <div className="grid g-3">
-                    {ai.roadmap.map((w, i) => (
-                      <div key={i} className="wave">
-                        <div className="wave-head">
-                          <b>{w.wave}</b>
-                        </div>
-                        {w.actions.map((x, j) => (
-                          <div key={j} className="wave-item" style={{ gridTemplateColumns: "22px 1fr" }}>
-                            <span className="i">{j + 1}</span>
-                            <span className="small">{x}</span>
-                          </div>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {ai.questions_for_next_meeting?.length > 0 && (
-                <div className="callout soft">
-                  <div className="callout-title">Para a próxima reunião</div>
-                  <ul style={{ margin: "4px 0 0", paddingLeft: 18 }} className="small">
-                    {ai.questions_for_next_meeting.map((q, i) => (
-                      <li key={i}>{q}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+                  <div className="note-body" dangerouslySetInnerHTML={{ __html: miniMarkdown(n.body) }} />
+                </article>
+              ))}
             </div>
           )}
         </div>
-      </div>
+      </section>
 
-      {/* CAPACIDADES */}
-      <div className="card" style={{ marginBottom: 20 }}>
+      {/* Capacidades */}
+      <section className="card" style={{ marginBottom: 20 }}>
         <div className="card-head">
-          <div>
-            <h3 className="card-title">Capacidades de gestão de dados</h3>
-            <p className="card-sub">8 dimensões inspiradas em DAMA-DMBOK, DGI, DCAM e NIST</p>
-          </div>
+          <h3 className="card-title">Capacidades</h3>
         </div>
         <div className="card-body">
           <div className="grid-radar">
             <div style={{ display: "grid", placeItems: "center" }}>
-              <Radar axes={s.dims.map((d) => ({ label: d.dim.code, value: d.score }))} size={340} />
+              <Radar axes={s.dims.map((d) => ({ label: d.dim.code, value: d.score }))} size={320} />
             </div>
             <div className="dim-list">
               {s.dims.map(({ dim, score }) => {
@@ -316,99 +341,80 @@ export default function Result() {
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* OPERAÇÃO */}
-      <div className="card page-break" style={{ marginBottom: 20 }}>
+      {/* Qualidade por área */}
+      <section className="card page-break" style={{ marginBottom: 20 }}>
         <div className="card-head">
           <div>
-            <h3 className="card-title">Consistência da operação × dimensões de qualidade</h3>
-            <p className="card-sub">Cada célula = média dos pontos de controle daquele domínio naquela dimensão de qualidade</p>
+            <h3 className="card-title">Qualidade dos dados por área</h3>
+            <p className="card-sub">Nota de 0 a 100 em cada dimensão de qualidade</p>
           </div>
         </div>
         <div className="card-body">
           <QualityHeatmap domains={s.domains.map((d) => d.domain)} matrix={s.matrix} />
-          <div className="grid g-2" style={{ marginTop: 24 }}>
-            <div>
-              <p className="section-title">Por domínio</p>
-              {s.domains.map(({ domain, score }) => (
-                <div key={domain.key} className="meter-row">
-                  <div className="lbl">{domain.title}</div>
-                  <Bar value={score} thin />
-                  <div className="val">{score === null ? "—" : Math.round(score)}</div>
-                </div>
-              ))}
-            </div>
-            <div>
-              <p className="section-title">Por dimensão de qualidade</p>
-              {s.quality.map((q) => (
-                <div key={q.key} className="meter-row">
-                  <div className="lbl">{q.label}</div>
-                  <Bar value={q.score} thin />
-                  <div className="val">{q.score === null ? "—" : Math.round(q.score)}</div>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
-      </div>
+      </section>
 
-      {alerts.length > 0 && (
-        <div className="card" style={{ marginBottom: 20 }}>
+      {/* Pontos de atenção */}
+      {attention.length > 0 && (
+        <section className="card" style={{ marginBottom: 20 }}>
           <div className="card-head">
             <div>
-              <h3 className="card-title">Alertas de consistência</h3>
-              <p className="card-sub">Respostas que se contradizem ou áreas sem visibilidade — valide com evidência</p>
+              <h3 className="card-title">Pontos de atenção</h3>
+              <p className="card-sub">Fundamentos pendentes e respostas que merecem validação com evidência</p>
             </div>
           </div>
           <div className="card-body">
-            {alerts.map((al) => (
-              <div key={al.id} className={`callout ${al.severity === "alta" ? "risk" : ""}`}>
-                <div className="callout-title">
-                  {al.severity === "alta" && <TriangleAlert size={14} />} {al.title}
+            <ul className="attention">
+              {attention.map((x) => (
+                <li key={x.key}>
+                  <span className={`dot ${x.high ? "dot-risk" : ""}`} />
+                  <div>
+                    <div style={{ fontWeight: 600 }}>{x.title}</div>
+                    <div className="small muted">{x.detail}</div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
+
+      {/* Plano */}
+      <section className="card page-break" id="plano" style={{ marginBottom: 20, scrollMarginTop: 20 }}>
+        <div className="card-head">
+          <div>
+            <h3 className="card-title">Plano de ação</h3>
+            <p className="card-sub">Priorizado pelo que mais limita a maturidade</p>
+          </div>
+        </div>
+        <div className="card-body">
+          <div className="plan-cols">
+            {waves.map(({ w, items }) => (
+              <div key={w} className="plan-col">
+                <div className="plan-head">
+                  <b>{WAVES[w].label}</b>
                 </div>
-                <div className="small muted">{al.detail}</div>
+                {!items.length && <p className="small muted">Nada pendente.</p>}
+                <ol className="steps-list">
+                  {items.map((p) => (
+                    <li key={p.id}>
+                      <span>{p.title}</span>
+                      <span className="xs muted">{p.origin.replace(/^D\d · /, "")}</span>
+                    </li>
+                  ))}
+                </ol>
               </div>
             ))}
           </div>
         </div>
-      )}
+      </section>
 
-      {/* PLANO */}
-      <div className="card page-break" id="plano" style={{ marginBottom: 20, scrollMarginTop: 20 }}>
-        <div className="card-head">
-          <div>
-            <h3 className="card-title">Plano de ação 30 · 60 · 90</h3>
-            <p className="card-sub">Priorizado por lacuna × peso × criticidade. Fundações primeiro: owner → fonte oficial → chave mestra → qualidade → automação.</p>
-          </div>
-        </div>
-        <div className="card-body stack">
-          {waves.map(({ w, items }) => (
-            <div key={w} className="wave">
-              <div className="wave-head">
-                <b>{WAVES[w].label}</b>
-                <span className="xs muted">{WAVES[w].focus}</span>
-              </div>
-              {!items.length && <div className="wave-item small muted">Nada pendente nesta onda.</div>}
-              {items.map((p, i) => (
-                <div key={p.id} className="wave-item">
-                  <span className="i">{String(i + 1).padStart(2, "0")}</span>
-                  <div>
-                    {p.title}
-                    <div className="xs muted">{p.origin}</div>
-                  </div>
-                  <span className="badge badge-soft">{p.reason}</span>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ANEXO */}
-      <div className="card">
-        <div className="card-head">
-          <h3 className="card-title">Anexo · respostas e evidências</h3>
+      {/* Anexo */}
+      <section className="card">
+        <div className="card-head" style={{ paddingBottom: showAnswers ? 0 : 20 }}>
+          <h3 className="card-title">Respostas e evidências</h3>
           <button className="btn btn-sm btn-ghost no-print" onClick={() => setShowAnswers((v) => !v)}>
             {showAnswers ? "Ocultar" : "Mostrar"}
           </button>
@@ -427,9 +433,7 @@ export default function Result() {
                 {s.dims.flatMap(({ dim }) =>
                   dim.questions.map((q) => (
                     <tr key={q.id}>
-                      <td className="small">
-                        <span className="mono xs muted">{dim.code}</span> {q.prompt}
-                      </td>
+                      <td className="small">{q.prompt}</td>
                       <td className="small">{answerLabel(a.answers[q.id], q.levels)}</td>
                       <td className="small muted">{a.evidence?.[q.id] || ""}</td>
                     </tr>
@@ -439,7 +443,7 @@ export default function Result() {
                   domain.checks.map((c) => (
                     <tr key={c.id}>
                       <td className="small">
-                        <span className="xs muted">{domain.title}</span> · {c.prompt}
+                        <span className="muted">{domain.title} ·</span> {c.prompt}
                       </td>
                       <td className="small">{answerLabel(a.answers[c.id], CHECK_OPTIONS)}</td>
                       <td className="small muted">{a.evidence?.[c.id] || ""}</td>
@@ -450,7 +454,7 @@ export default function Result() {
             </table>
           </div>
         )}
-      </div>
+      </section>
     </>
   );
 }
@@ -458,10 +462,5 @@ export default function Result() {
 function answerLabel(v: number | undefined, levels: { v: number; label: string }[]) {
   if (v === undefined) return <span className="muted">—</span>;
   if (v === UNKNOWN) return <span className="badge badge-dashed">Não sei</span>;
-  const l = levels.find((x) => x.v === v);
-  return (
-    <span>
-      <b className="num">{v}</b> · {l?.label}
-    </span>
-  );
+  return levels.find((x) => x.v === v)?.label;
 }

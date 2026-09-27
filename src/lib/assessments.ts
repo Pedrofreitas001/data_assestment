@@ -15,6 +15,7 @@ export async function createAssessment(org: Organization, createdBy?: string | n
     answers: {},
     evidence: {},
     ai_insights: null,
+    report_notes: [],
     score: null,
     level: null,
     created_by: createdBy ?? null,

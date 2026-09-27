@@ -1,245 +1,239 @@
-import { useState } from "react";
 import { Lock } from "lucide-react";
-import { BANDS, DIMENSIONS, DOMAINS, QUALITY_DIMS } from "../model/framework";
-import { DIM_PLAYBOOK, WAVES } from "../model/playbook";
-import { LAYERS, PIPELINE_LEVELS, SENSITIVITY } from "../model/catalogOptions";
-import { PageHead, Tabs } from "../components/ui";
+import { BANDS, DIMENSIONS, DOMAINS } from "../model/framework";
+import { DIM_PLAYBOOK } from "../model/playbook";
+import { CONCEPTS, PRINCIPLES, QUALITY_EXPLAINED, REFERENCES, STEPS, SUCCESS, WAVES_DETAIL, WHY } from "../model/concepts";
+import { PageHead } from "../components/ui";
+import { useCopilot } from "../context/copilot";
 
-type Tab = "niveis" | "capacidades" | "operacao" | "governanca";
+const TOC = [
+  { id: "porque", label: "Por que medir" },
+  { id: "como", label: "Como funciona" },
+  { id: "niveis", label: "Níveis" },
+  { id: "calculo", label: "Cálculo" },
+  { id: "capacidades", label: "Capacidades" },
+  { id: "qualidade", label: "Qualidade dos dados" },
+  { id: "conceitos", label: "Conceitos" },
+  { id: "plano", label: "Plano de ação" },
+];
 
 export default function Framework() {
-  const [tab, setTab] = useState<Tab>("niveis");
+  const copilot = useCopilot();
+  const gates = DIMENSIONS.flatMap((d) => d.questions.filter((q) => q.gate).map((q) => q.gate!));
+  const groups = ["Papéis", "Arquitetura", "Qualidade e governança"] as const;
+
   return (
-    <>
+    <div className="method">
       <PageHead
-        eyebrow="Manual de Data Governance v0.2"
-        title="Framework Moulis"
-        desc="Como a maturidade é medida, o que cada nível significa e as boas práticas por trás de cada pergunta. Baseado em DAMA-DMBOK, DGI, DCAM e NIST, adaptado à realidade de PMEs."
-      />
-      <Tabs<Tab>
-        value={tab}
-        onChange={setTab}
-        tabs={[
-          { key: "niveis", label: "Níveis & cálculo" },
-          { key: "capacidades", label: "8 capacidades" },
-          { key: "operacao", label: "Consistência da operação" },
-          { key: "governanca", label: "Papéis, camadas & pipeline" },
-        ]}
+        eyebrow="Metodologia"
+        title="Como medimos a maturidade de dados"
+        desc="Um método simples e replicável, baseado em DAMA-DMBOK, DGI, DCAM e NIST — adaptado à realidade de empresas de médio porte."
       />
 
-      {tab === "niveis" && (
-        <div className="stack" style={{ gap: 20 }}>
-          <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
-            {BANDS.map((b) => (
-              <div key={b.level} className="card card-pad" style={{ borderTop: `4px solid ${b.color}` }}>
-                <div className="serif" style={{ fontSize: 44, lineHeight: 1, color: b.color }}>
-                  {b.level}
-                </div>
-                <div style={{ fontWeight: 600, margin: "8px 0 4px" }}>{b.label}</div>
-                <div className="xs" style={{ opacity: 0.6 }}>
-                  {b.min}–{Math.min(100, b.max)} pontos
-                </div>
-                <p className="small" style={{ margin: "10px 0 0", opacity: 0.85 }}>
-                  {b.summary}
-                </p>
+      <nav className="toc no-print" aria-label="Nesta página">
+        {TOC.map((t) => (
+          <a key={t.id} href={`#${t.id}`} className="chip chip-sm">
+            {t.label}
+          </a>
+        ))}
+      </nav>
+
+      <section id="porque" className="card card-pad m-sec">
+        <p className="section-title">{WHY.title}</p>
+        <div className="prose">
+          {WHY.paragraphs.map((p, i) => (
+            <p key={i}>{p}</p>
+          ))}
+        </div>
+      </section>
+
+      <section id="como" className="card card-pad m-sec">
+        <p className="section-title">Como funciona</p>
+        <div className="steps-row">
+          {STEPS.map((s) => (
+            <div key={s.n} className="step-card">
+              <span className="step-n">{s.n}</span>
+              <div className="step-t">{s.title}</div>
+              <p>{s.text}</p>
+            </div>
+          ))}
+        </div>
+        <div className="principles">
+          {PRINCIPLES.map((p) => (
+            <div key={p.title}>
+              <div className="pr-t">{p.title}</div>
+              <p>{p.text}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section id="niveis" className="card card-pad m-sec">
+        <p className="section-title">Os 5 níveis</p>
+        <div className="levels">
+          {BANDS.map((b) => (
+            <div key={b.level} className="level-col">
+              <div className="level-num" style={{ color: b.color }}>
+                {b.level}
               </div>
+              <div className="level-name">{b.label}</div>
+              <div className="xs muted" style={{ marginBottom: 6 }}>
+                {b.min}–{Math.min(100, b.max)} pontos
+              </div>
+              <p>{b.summary}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <div id="calculo" className="grid g-2 m-sec">
+        <section className="card card-pad">
+          <p className="section-title">Como o resultado é calculado</p>
+          <ul className="plain-list">
+            <li>Cada resposta vira uma nota de 0 a 100 conforme a opção escolhida.</li>
+            <li>“Não sei” vale 0 e aparece como ponto a investigar.</li>
+            <li>
+              <b>Score geral</b> = 60% capacidades + 40% qualidade dos dados por área.
+            </li>
+            <li>Qualidade, integração e governança pesam um pouco mais, porque sustentam todo o resto.</li>
+            <li>A <b>confiabilidade</b> sobe quando tudo está respondido e com evidências.</li>
+          </ul>
+        </section>
+        <section className="card card-pad">
+          <p className="section-title">Requisitos fundamentais</p>
+          <p className="small muted" style={{ marginTop: 0 }}>
+            Mesmo com média alta, o nível fica limitado a 3 enquanto faltar:
+          </p>
+          <ul className="plain-list">
+            {gates.map((g) => (
+              <li key={g.reason}>
+                <Lock size={12} style={{ marginRight: 6, verticalAlign: -1 }} />
+                {g.reason}
+              </li>
             ))}
-          </div>
-          <div className="grid g-2">
-            <div className="card card-pad">
-              <p className="section-title">Como o score é calculado</p>
-              <ul className="small" style={{ margin: 0, paddingLeft: 18, lineHeight: 1.8 }}>
-                <li>Cada pergunta é normalizada de 0 a 100 pelo nível escolhido.</li>
-                <li>
-                  <b>“Não sei” vale 0</b> e vira ponto cego — desconhecer o próprio dado é um achado.
-                </li>
-                <li>Capacidades (D1–D8) são ponderadas: Qualidade 1,3; Integração e Governança 1,2; demais ~1.</li>
-                <li>
-                  Score geral = <b>60% capacidades + 40% consistência da operação</b>.
-                </li>
-                <li>A confiabilidade do diagnóstico sobe com cobertura e evidências registradas.</li>
-              </ul>
-            </div>
-            <div className="card card-pad">
-              <p className="section-title">Gates — não se pula etapa (DCAM)</p>
-              {DIMENSIONS.flatMap((d) => d.questions.filter((q) => q.gate).map((q) => ({ d, q }))).map(({ d, q }) => (
-                <div key={q.id} className="callout">
-                  <div className="callout-title">
-                    <Lock size={13} /> {d.code} · limita ao nível {q.gate!.capLevel}
-                  </div>
-                  <div className="small">{q.gate!.reason}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="card card-pad">
-            <p className="section-title">Roadmap em ondas</p>
-            <div className="grid g-3">
-              {([1, 2, 3] as const).map((w) => (
-                <div key={w}>
-                  <div style={{ fontWeight: 600 }}>{WAVES[w].label}</div>
-                  <div className="small muted">{WAVES[w].focus}</div>
-                </div>
-              ))}
-            </div>
+          </ul>
+        </section>
+      </div>
+
+      <section id="capacidades" className="card m-sec">
+        <div className="card-head">
+          <div>
+            <h3 className="card-title">As 8 capacidades avaliadas</h3>
+            <p className="card-sub">Clique para ver as perguntas e o primeiro passo recomendado.</p>
           </div>
         </div>
-      )}
-
-      {tab === "capacidades" && (
-        <div className="stack">
-          {DIMENSIONS.map((d) => (
-            <div key={d.key} className="card">
-              <div className="card-head">
-                <div>
-                  <p className="eyebrow" style={{ marginBottom: 4 }}>
-                    {d.code} · {d.refs} · peso {d.weight}
-                  </p>
-                  <h3 className="card-title" style={{ fontSize: 18 }}>
-                    {d.title}
-                  </h3>
-                  <p className="card-sub">{d.description}</p>
+        <div className="card-body" style={{ paddingTop: 8 }}>
+          {DIMENSIONS.map((d, i) => (
+            <details key={d.key} className="acc">
+              <summary>
+                <span className="acc-n">{i + 1}</span>
+                <span className="grow">
+                  <b style={{ fontWeight: 600 }}>{d.title}</b>
+                  <span className="small muted" style={{ display: "block" }}>
+                    {d.description}
+                  </span>
+                </span>
+              </summary>
+              <div className="acc-body">
+                <ol className="small" style={{ margin: "0 0 12px", paddingLeft: 18 }}>
+                  {d.questions.map((q) => (
+                    <li key={q.id} style={{ marginBottom: 4 }}>
+                      {q.prompt}
+                    </li>
+                  ))}
+                </ol>
+                <div className="small">
+                  <b>Primeiro passo quando está crítico:</b> {DIM_PLAYBOOK[d.key].critico}
+                </div>
+                <div className="xs muted" style={{ marginTop: 6 }}>
+                  Referência: {d.refs}
                 </div>
               </div>
-              <div className="card-body">
-                <div className="grid g-3" style={{ marginBottom: 16 }}>
-                  {(["critico", "atencao", "maduro"] as const).map((t) => (
-                    <div key={t} className="callout soft" style={{ margin: 0 }}>
-                      <div className="callout-title">{t === "critico" ? "Crítico (< 40)" : t === "atencao" ? "Em desenvolvimento (40–67)" : "Maduro (≥ 67)"}</div>
-                      <span className="small">{DIM_PLAYBOOK[d.key][t]}</span>
-                    </div>
-                  ))}
-                </div>
-                {d.questions.map((q) => (
-                  <div key={q.id} style={{ padding: "10px 0", borderTop: "1px solid var(--line)" }}>
-                    <div style={{ fontWeight: 500 }}>
-                      {q.prompt} {q.gate && <span className="badge badge-solid"><Lock size={10} /> Fundacional</span>}
-                    </div>
-                    <ol className="small muted" style={{ margin: "6px 0 0", paddingLeft: 20 }}>
-                      {q.levels.map((l) => (
-                        <li key={l.v}>{l.label}</li>
-                      ))}
-                    </ol>
+            </details>
+          ))}
+        </div>
+      </section>
+
+      <section id="qualidade" className="card card-pad m-sec">
+        <p className="section-title">Qualidade dos dados — 6 dimensões</p>
+        <p className="small muted" style={{ marginTop: 0 }}>
+          Para cada área avaliada ({DOMAINS.map((d) => d.title).join(", ")}) perguntamos se os pontos de conferência existem na prática. O relatório mostra um mapa área × dimensão.
+        </p>
+        <div className="q-grid">
+          {QUALITY_EXPLAINED.map((q) => (
+            <div key={q.key} className="q-item">
+              <div className="pr-t">{q.label}</div>
+              <div className="small">{q.text}</div>
+              <div className="xs muted" style={{ marginTop: 4 }}>
+                Ex.: {q.example}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section id="conceitos" className="card m-sec">
+        <div className="card-head">
+          <div>
+            <h3 className="card-title">Conceitos essenciais</h3>
+            <p className="card-sub">O vocabulário mínimo para conversar sobre dados na empresa.</p>
+          </div>
+          <button className="btn btn-sm no-print" onClick={() => copilot.ask("Explique com um exemplo prático a diferença entre Data Owner, Data Steward e Data User.", "Explique owner, steward e user")}>
+            Pedir exemplo ao assistente
+          </button>
+        </div>
+        <div className="card-body">
+          {groups.map((g) => (
+            <div key={g} className="concept-group">
+              <div className="concept-g">{g}</div>
+              <dl className="concepts">
+                {CONCEPTS.filter((c) => c.group === g).map((c) => (
+                  <div key={c.term}>
+                    <dt>{c.term}</dt>
+                    <dd>{c.def}</dd>
                   </div>
                 ))}
-              </div>
+              </dl>
             </div>
           ))}
         </div>
-      )}
+      </section>
 
-      {tab === "operacao" && (
-        <div className="stack">
-          <div className="card card-pad">
-            <p className="section-title">Dimensões de qualidade</p>
-            <div className="grid g-3">
-              {QUALITY_DIMS.map((q) => (
-                <div key={q.key}>
-                  <div style={{ fontWeight: 600 }}>{q.label}</div>
-                  <div className="small muted">{q.question}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-          {DOMAINS.map((d) => (
-            <div key={d.key} className="card">
-              <div className="card-head">
-                <div>
-                  <h3 className="card-title" style={{ fontSize: 18 }}>
-                    {d.title}
-                  </h3>
-                  <p className="card-sub">
-                    {d.description} Fontes típicas: {d.typicalSources.join(", ")}.
-                  </p>
-                </div>
+      <section id="plano" className="card card-pad m-sec">
+        <p className="section-title">Plano de ação em ondas</p>
+        <div className="plan-cols">
+          {WAVES_DETAIL.map((w) => (
+            <div key={w.wave} className="plan-col">
+              <div className="plan-head">
+                <b>{w.wave}</b> <span className="muted">· {w.focus}</span>
               </div>
-              <div className="card-body table-wrap">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>Ponto de consistência</th>
-                      <th>Qualidade</th>
-                      <th>Ação recomendada se falhar</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {d.checks.map((c) => (
-                      <tr key={c.id}>
-                        <td className="small">
-                          {c.prompt} {c.critical && <span className="badge badge-risk">Crítico</span>}
-                        </td>
-                        <td className="small">{QUALITY_DIMS.find((q) => q.key === c.quality)?.label}</td>
-                        <td className="small muted">{c.action}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <ul className="plain-list">
+                {w.items.map((i) => (
+                  <li key={i}>{i}</li>
+                ))}
+              </ul>
             </div>
           ))}
         </div>
-      )}
+        <hr className="divider" />
+        <p className="section-title">Como saber que deu certo</p>
+        <ul className="plain-list">
+          {SUCCESS.map((s) => (
+            <li key={s}>{s}</li>
+          ))}
+        </ul>
+      </section>
 
-      {tab === "governanca" && (
-        <div className="stack">
-          <div className="grid g-3">
-            {[
-              { t: "Data Owner", d: "Autoridade de negócio sobre o domínio. Aprova premissas, prioriza demandas, responde pelas decisões sobre o dado.", p: "Gerente da área" },
-              { t: "Data Steward", d: "Execução: ingestão, consolidação, primeira validação de qualidade. Ponto focal técnico do dia a dia.", p: "Analista sênior" },
-              { t: "Data User", d: "Consome o dado consolidado para decidir, sem responsabilidade de manutenção.", p: "Times operacionais" },
-            ].map((r) => (
-              <div key={r.t} className="card card-pad">
-                <div className="serif" style={{ fontSize: 24 }}>
-                  {r.t}
-                </div>
-                <p className="small" style={{ margin: "8px 0" }}>
-                  {r.d}
-                </p>
-                <span className="badge badge-soft">{r.p}</span>
-              </div>
-            ))}
-          </div>
-          <div className="callout">
-            <div className="callout-title">Apontamento de campo</div>
-            <span className="small">Governança emperra mais pela falta de owner do que de steward. Um steward sem owner produz dado tecnicamente correto, mas sem legitimidade — ninguém confia nele para decidir.</span>
-          </div>
-          <div className="grid g-2">
-            <div className="card card-pad">
-              <p className="section-title">Camadas (medallion)</p>
-              {LAYERS.map((l) => (
-                <div key={l.key} className="row-between small" style={{ padding: "8px 0", borderTop: "1px solid var(--line)" }}>
-                  <b>{l.label}</b>
-                  <span className="muted" style={{ textAlign: "right" }}>
-                    {l.hint}
-                  </span>
-                </div>
-              ))}
+      <section className="card card-pad m-sec">
+        <p className="section-title">Referências</p>
+        <div className="q-grid">
+          {REFERENCES.map((r) => (
+            <div key={r.name} className="q-item">
+              <div className="pr-t">{r.name}</div>
+              <div className="small muted">{r.text}</div>
             </div>
-            <div className="card card-pad">
-              <p className="section-title">Maturidade de pipeline</p>
-              {PIPELINE_LEVELS.map((l) => (
-                <div key={l.v} className="row-between small" style={{ padding: "8px 0", borderTop: "1px solid var(--line)" }}>
-                  <b>{l.label}</b>
-                  <span className="muted" style={{ textAlign: "right" }}>
-                    {l.hint}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="card card-pad">
-            <p className="section-title">Classificação de sensibilidade</p>
-            <div className="grid g-4">
-              {SENSITIVITY.map((s) => (
-                <div key={s.key}>
-                  <div style={{ fontWeight: 600 }}>{s.label}</div>
-                  <div className="small muted">{s.hint}</div>
-                </div>
-              ))}
-            </div>
-          </div>
+          ))}
         </div>
-      )}
-    </>
+      </section>
+    </div>
   );
 }

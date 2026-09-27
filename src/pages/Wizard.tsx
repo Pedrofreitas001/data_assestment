@@ -7,6 +7,8 @@ import { callSkill } from "../lib/llm";
 import { assessmentForLlm } from "../lib/snapshot";
 import { useToast } from "../context/toast";
 import { useOrg } from "../context/org";
+import { useCopilot, type AnswerSuggestion, type InterviewSection } from "../context/copilot";
+import { normReview } from "../lib/sanitize";
 import {
   CHECK_OPTIONS,
   DIMENSIONS,
@@ -22,7 +24,7 @@ import {
 import { isAnswered, scopedDomains, scoreAssessment } from "../model/scoring";
 import { consistencyAlerts } from "../model/consistency";
 import type { Assessment } from "../model/types";
-import { AiMark, BandScale, Bar, Empty, Field, LoadingPage, Spinner } from "../components/ui";
+import { AiMark, BandScale, Bar, Empty, Field, LoadingPage, Metrics, Spinner } from "../components/ui";
 import { ScoreRing } from "../components/charts";
 
 // ---------------------------------------------------------------------
@@ -38,11 +40,6 @@ interface Suggestion {
   confidence: "alta" | "media" | "baixa";
   rationale: string;
   evidence_quote?: string;
-}
-interface FillOutput {
-  suggestions: Suggestion[];
-  follow_up_questions: { id: string; question: string }[];
-  notes?: string;
 }
 interface ReviewOutput {
   verdict: "confiavel" | "revisar" | "inconsistente";
@@ -63,11 +60,11 @@ function buildSections(a: Assessment): Section[] {
     desc: d.description,
     refs: d.refs,
     kind: "questions",
-    items: d.questions.map((q) => ({ id: q.id, prompt: q.prompt, help: q.help, levels: q.levels, tags: q.gate ? ["Fundacional"] : [] })),
+    items: d.questions.map((q) => ({ id: q.id, prompt: q.prompt, help: q.help, levels: q.levels, tags: q.gate ? ["Fundamental"] : [] })),
   }));
   const doms: Section[] = scopedDomains(a).map((d) => ({
     key: d.key,
-    group: "Consistência da operação",
+    group: "Qualidade por área",
     title: d.title,
     desc: `${d.description} Fontes típicas: ${d.typicalSources.join(", ")}.`,
     kind: "questions",
@@ -144,8 +141,151 @@ export default function Wizard() {
     topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  // ---------------------------------------------------------- assistente
+  const copilot = useCopilot();
+  const stepRef = useRef(step);
+  stepRef.current = step;
+  const sectionsRef = useRef(sections);
+  sectionsRef.current = sections;
+
+  const toInterview = (s: Section): InterviewSection | null =>
+    s.kind === "questions" ? { key: s.key, title: s.title, desc: s.desc, questions: s.items.map((q) => ({ id: q.id, prompt: q.prompt, options: q.levels })) } : null;
+
+  const startInterviewFor = useCallback(
+    (s: Section) => {
+      const iv = toInterview(s);
+      if (!iv) return;
+      copilot.startInterview(
+        iv,
+        () => Object.fromEntries(iv.questions.filter((q) => isAnswered(aRef.current?.answers[q.id])).map((q) => [q.id, aRef.current!.answers[q.id]])),
+        aRef.current?.context,
+      );
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [copilot.startInterview],
+  );
+
+  useEffect(() => {
+    const applyOne = (x: Assessment, sg: AnswerSuggestion): Assessment => {
+      const evidence = { ...x.evidence };
+      if (sg.evidence_quote && !(evidence[sg.id] || "").trim()) evidence[sg.id] = `Relato: "${sg.evidence_quote}"`;
+      return { ...x, answers: { ...x.answers, [sg.id]: sg.value }, evidence };
+    };
+    return copilot.registerHandlers({
+      apply_answers: (items) => {
+        const list = items as AnswerSuggestion[];
+        update((x) => list.reduce(applyOne, x));
+        setSuggestions((prev) => {
+          const n = { ...prev };
+          list.forEach((i) => delete n[i.id]);
+          return n;
+        });
+      },
+      preview_answers: (items) => {
+        const list = (items as AnswerSuggestion[]).filter((i) => i.value > 0);
+        setSuggestions((prev) => ({ ...prev, ...Object.fromEntries(list.map((i) => [i.id, { id: i.id, value: i.value, confidence: i.confidence || "media", rationale: i.rationale || "", evidence_quote: i.evidence_quote }])) }));
+      },
+      start_interview: () => startInterviewFor(sectionsRef.current[stepRef.current]),
+      next_section: () => {
+        const nextIdx = Math.min(sectionsRef.current.length - 1, stepRef.current + 1);
+        go(nextIdx);
+        const next = sectionsRef.current[nextIdx];
+        if (next.kind === "questions") startInterviewFor(next);
+        else copilot.stopInterview();
+      },
+      review_consistency: () => go(sectionsRef.current.length - 1),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [copilot.registerHandlers, update, startInterviewFor]);
+
+  // Foco: o que o usuário está vendo agora.
+  useEffect(() => {
+    if (!a) return;
+    const cur = sections[step];
+    copilot.setFocus({
+      tela: "Diagnóstico — preenchimento",
+      assessment_id: a.id,
+      secao_atual: cur ? cur.title : null,
+      descricao_secao: cur && cur.kind === "questions" ? cur.desc : null,
+      perguntas_da_secao:
+        cur && cur.kind === "questions"
+          ? cur.items.map((q) => ({ pergunta: q.prompt, opcoes: q.levels.map((l) => `${l.v}: ${l.label}`), resposta_atual: a.answers[q.id] === undefined ? null : a.answers[q.id] === 0 ? "Não sei" : a.answers[q.id] }))
+          : null,
+      progresso: `${Math.round((scoreAssessment(a).progress || 0) * 100)}%`,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [a, step, sections]);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => () => copilot.setFocus(null), []);
+
+  // Chamadas proativas: ao entrar numa seção vazia e quando o usuário para.
+  const lastActivity = useRef(Date.now());
+  useEffect(() => {
+    lastActivity.current = Date.now();
+  }, [a?.answers]);
+  useEffect(() => {
+    const cur = sections[step];
+    if (!cur || !a) return;
+    if (cur.kind === "questions") {
+      const answered = cur.items.filter((q) => isAnswered(a.answers[q.id])).length;
+      if (answered === 0 && !copilot.interview)
+        copilot.nudge({
+          id: `enter-${cur.key}`,
+          text: `Nesta seção — **${cur.title}** — posso fazer as perguntas em linguagem simples e marcar as respostas para você. Quer tentar?`,
+          actions: [{ type: "start_interview", label: "Responder conversando" }],
+          followUps: ["Me explique esta seção"],
+        });
+      const t = setInterval(() => {
+        const idle = Date.now() - lastActivity.current > 75_000;
+        const left = cur.items.filter((q) => !isAnswered(aRef.current?.answers[q.id])).length;
+        if (idle && left > 0 && !copilot.interview)
+          copilot.nudge({
+            id: `idle-${cur.key}`,
+            text: "Ficou em dúvida em alguma pergunta? Posso explicar as opções ou você me conta como funciona e eu preencho.",
+            actions: [{ type: "start_interview", label: "Responder conversando" }],
+            followUps: ["Qual a diferença entre as opções?"],
+          });
+      }, 15_000);
+      return () => clearInterval(t);
+    }
+    if (cur.kind === "review")
+      copilot.nudge({
+        id: `review-${a.id}`,
+        text: "Antes de concluir, vale uma revisão: eu leio todas as respostas como um consultor sênior e aponto contradições e pontos cegos.",
+        actions: [{ type: "run_review", label: "Revisar agora" }],
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, sections.length]);
+
+  // Seção concluída → oferece leitura da nota.
+  const doneSeen = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!a || !score) return;
+    const cur = sections[step];
+    if (!cur || cur.kind !== "questions") return;
+    const complete = cur.items.every((q) => isAnswered(a.answers[q.id]));
+    if (!complete) {
+      doneSeen.current.add(`open-${cur.key}`);
+      return;
+    }
+    if (!doneSeen.current.has(`open-${cur.key}`) || doneSeen.current.has(cur.key)) return;
+    doneSeen.current.add(cur.key);
+    const dimScore = score.dims.find((d) => d.dim.key === cur.key)?.score ?? score.domains.find((d) => d.domain.key === cur.key)?.score ?? null;
+    copilot.nudge({
+      id: `done-${a.id}-${cur.key}`,
+      urgent: true,
+      text: `Seção **${cur.title}** concluída${dimScore !== null ? ` — nota **${Math.round(dimScore)}**` : ""}. Quer que eu explique o que isso significa e o que faria subir?`,
+      actions: [
+        { type: "ask", label: "O que significa?", payload: `Concluí a seção ${cur.title}${dimScore !== null ? ` com nota ${Math.round(dimScore)}` : ""}. O que isso significa para a empresa e qual o primeiro passo para melhorar?` },
+        { type: "next_section", label: "Próxima seção" },
+      ],
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [a?.answers, step]);
+
   if (loading) return <LoadingPage />;
-  if (!a || !score) return <Empty title="Assessment não encontrado" action={<Link className="btn" to="/assessments">Voltar</Link>} />;
+  if (!a || !score) return <Empty title="Diagnóstico não encontrado" action={<Link className="btn" to="/assessments">Voltar</Link>} />;
 
   const sec = sections[Math.min(step, sections.length - 1)];
   const setAnswer = (qid: string, v: number | undefined) =>
@@ -178,14 +318,14 @@ export default function Wizard() {
           </Link>
           <div>
             <p className="eyebrow" style={{ margin: 0 }}>
-              {org?.name} · Assessment
+              {org?.name} · Diagnóstico
             </p>
             <input
               className="serif"
               value={a.title}
               onChange={(e) => update((x) => ({ ...x, title: e.target.value }))}
-              aria-label="Título do assessment"
-              style={{ fontSize: 26, border: "none", background: "transparent", padding: 0, outline: "none", width: "min(520px, 70vw)" }}
+              aria-label="Título do diagnóstico"
+              style={{ fontSize: 24, fontWeight: 700, letterSpacing: "-0.02em", border: "none", background: "transparent", padding: 0, outline: "none", width: "min(520px, 70vw)" }}
             />
           </div>
         </div>
@@ -218,7 +358,7 @@ export default function Wizard() {
 
       <div className="wizard">
         {/* Stepper */}
-        <nav className="stepper" aria-label="Seções do assessment">
+        <nav className="stepper" aria-label="Seções do diagnóstico">
           {sections.map((s, i) => {
             const p = sectionProgress(s);
             const header = s.group !== lastGroup ? <div className="stepper-group">{s.group}</div> : null;
@@ -231,7 +371,7 @@ export default function Wizard() {
                   <span className={`step-dot ${p >= 1 ? "done" : p > 0 ? "partial" : ""}`} style={{ ["--p" as string]: `${p * 360}deg` }}>
                     {p >= 1 ? <Check size={11} /> : null}
                   </span>
-                  <span className="t">{s.kind === "questions" && s.code ? `${s.code} · ${s.title}` : s.title}</span>
+                  <span className="t">{s.title}</span>
                   {s.kind === "questions" && (
                     <span className="s">
                       {answered}/{s.items.length}
@@ -262,6 +402,21 @@ export default function Wizard() {
               setEvidence={setEvidence}
               suggestions={suggestions}
               setSuggestions={setSuggestions}
+              onInterview={() => startInterviewFor(sec)}
+              onExplain={(q) =>
+                copilot.ask(
+                  `Explique esta pergunta em linguagem simples: "${q.prompt}". O que ela quer saber, o que diferencia cada opção (${q.levels.map((l) => `${l.v}: ${l.label}`).join("; ")}) e como descubro a resposta certa na minha empresa?`,
+                  `Explique: “${q.prompt}”`,
+                )
+              }
+              onUnknown={(q) =>
+                copilot.nudge({
+                  id: `unknown-${q.id}`,
+                  urgent: true,
+                  text: "Tudo bem não saber — isso vira um **ponto a investigar** no relatório. Quer que eu diga a quem perguntar e que evidência pedir?",
+                  actions: [{ type: "ask", label: "Como descubro isso?", payload: `Como descubro a resposta para: "${q.prompt}"? A quem devo perguntar na empresa e que evidência pedir?` }],
+                })
+              }
             />
           )}
           {sec.kind === "review" && (
@@ -279,7 +434,7 @@ export default function Wizard() {
                 pending.current = null;
                 clearTimeout(timer.current);
                 await saveAssessment(next);
-                toast(status === "concluido" ? "Assessment concluído" : "Status atualizado");
+                toast(status === "concluido" ? "Diagnóstico concluído" : "Status atualizado");
                 if (status === "concluido") nav(`/assessments/${a.id}/resultado`);
               }}
             />
@@ -306,7 +461,7 @@ export default function Wizard() {
         <aside className="wizard-rail stack" style={{ position: "sticky", top: 24 }}>
           <div className="card card-pad" style={{ textAlign: "center" }}>
             <p className="section-title" style={{ textAlign: "left" }}>
-              Leitura ao vivo
+              Resultado parcial
             </p>
             <ScoreRing value={score.overall} size={132} label={score.band ? score.band.label.toUpperCase() : "SCORE"} />
             <div style={{ marginTop: 14, textAlign: "left" }}>
@@ -341,22 +496,6 @@ export default function Wizard() {
               )}
             </div>
           </div>
-          <div className="card card-pad">
-            <p className="section-title">Capacidades</p>
-            {score.dims.map(({ dim, score: v }) => (
-              <div key={dim.key} className="row small" style={{ padding: "5px 0" }}>
-                <span className="mono xs muted" style={{ width: 22 }}>
-                  {dim.code}
-                </span>
-                <div className="grow">
-                  <Bar value={v} thin />
-                </div>
-                <span className="num xs" style={{ width: 24, textAlign: "right" }}>
-                  {v === null ? "—" : Math.round(v)}
-                </span>
-              </div>
-            ))}
-          </div>
         </aside>
       </div>
     </div>
@@ -375,18 +514,18 @@ function ContextStep({ a, setCtx, update }: { a: Assessment; setCtx: (p: Partial
   return (
     <>
       <div className="section-hero">
-        <span className="code">Etapa 0</span>
+        <span className="code">Etapa inicial</span>
         <h2>Contexto da empresa</h2>
-        <p>O contexto calibra a leitura: a IA usa estas informações para interpretar respostas e as regras de consistência cruzam segmento e sistemas com as respostas.</p>
+        <p>Algumas informações rápidas para calibrar o diagnóstico.</p>
       </div>
       <div className="card card-pad">
         <div className="form-section">
           <h4>Identificação</h4>
           <div className="form-grid">
-            <Field label="Escopo do diagnóstico" hint="Empresa toda, uma área ou uma unidade.">
+            <Field label="Escopo do diagnóstico">
               <input className="input" value={a.scope || ""} onChange={(e) => update((x) => ({ ...x, scope: e.target.value }))} />
             </Field>
-            <Field label="Respondentes" hint="Nome e cargo de quem está respondendo.">
+            <Field label="Quem está respondendo">
               <input className="input" value={a.respondent || ""} onChange={(e) => update((x) => ({ ...x, respondent: e.target.value }))} placeholder="Ex.: Marina (Dir. Comercial) + Tiago (BI)" />
             </Field>
             <Field label="Segmento">
@@ -404,18 +543,6 @@ function ContextStep({ a, setCtx, update }: { a: Assessment; setCtx: (p: Partial
                   <option key={s}>{s}</option>
                 ))}
               </select>
-            </Field>
-            <Field label="Faturamento anual (faixa)">
-              <input className="input" value={c.faturamento || ""} onChange={(e) => setCtx({ faturamento: e.target.value })} placeholder="Ex.: R$ 30–50 mi" />
-            </Field>
-            <Field label="Lojas / CDs">
-              <input className="input" value={c.lojas_cds || ""} onChange={(e) => setCtx({ lojas_cds: e.target.value })} placeholder="Ex.: 12 lojas, 1 CD" />
-            </Field>
-            <Field label="SKUs ativos (aprox.)">
-              <input className="input" value={c.skus || ""} onChange={(e) => setCtx({ skus: e.target.value })} />
-            </Field>
-            <Field label="Time de dados">
-              <input className="input" value={c.time_dados || ""} onChange={(e) => setCtx({ time_dados: e.target.value })} placeholder="Ex.: 1 analista + TI terceirizada" />
             </Field>
           </div>
         </div>
@@ -442,20 +569,17 @@ function ContextStep({ a, setCtx, update }: { a: Assessment; setCtx: (p: Partial
           </form>
         </div>
         <div className="form-section">
-          <h4>Dores e objetivo</h4>
+          <h4>Principais dificuldades</h4>
           <div className="form-grid">
-            <Field label="Principais dores com dados hoje" full>
-              <textarea className="textarea" value={c.dores || ""} onChange={(e) => setCtx({ dores: e.target.value })} placeholder="Ex.: faturamento do e-commerce não bate com o ERP; ninguém confia no saldo de estoque…" />
-            </Field>
-            <Field label="O que a empresa quer conseguir com dados em 6 meses?" full>
-              <textarea className="textarea" value={c.objetivo || ""} onChange={(e) => setCtx({ objetivo: e.target.value })} style={{ minHeight: 64 }} />
+            <Field label="O que mais incomoda hoje nos dados da empresa?" full>
+              <textarea className="textarea" value={c.dores || ""} onChange={(e) => setCtx({ dores: e.target.value })} placeholder="Ex.: os números de vendas não batem entre sistemas; o relatório leva dias para sair…" />
             </Field>
           </div>
         </div>
         <div className="form-section">
-          <h4>Domínios da operação em escopo</h4>
+          <h4>Áreas avaliadas</h4>
           <p className="small muted" style={{ marginTop: -4 }}>
-            Cada domínio adiciona um checklist de consistência (4–5 pontos). Selecione os que fazem parte da operação.
+            Selecione as áreas da empresa que entram no diagnóstico. Cada uma adiciona 4 ou 5 perguntas.
           </p>
           <div className="grid g-2" style={{ gap: 8 }}>
             {DOMAINS.map((d) => {
@@ -473,7 +597,7 @@ function ContextStep({ a, setCtx, update }: { a: Assessment; setCtx: (p: Partial
               );
             })}
           </div>
-          {!domains.length && <p className="xs muted" style={{ marginTop: 8 }}>Nenhum selecionado = todos os domínios entram no assessment.</p>}
+          {!domains.length && <p className="xs muted" style={{ marginTop: 8 }}>Nenhuma selecionada = todas as áreas entram.</p>}
         </div>
       </div>
     </>
@@ -488,7 +612,13 @@ function QuestionsStep({
   setEvidence,
   suggestions,
   setSuggestions,
+  onInterview,
+  onExplain,
+  onUnknown,
 }: {
+  onInterview: () => void;
+  onExplain: (q: Item) => void;
+  onUnknown: (q: Item) => void;
   section: Extract<Section, { kind: "questions" }>;
   a: Assessment;
   setAnswer: (id: string, v: number | undefined) => void;
@@ -496,41 +626,9 @@ function QuestionsStep({
   suggestions: Record<string, Suggestion>;
   setSuggestions: (fn: (s: Record<string, Suggestion>) => Record<string, Suggestion>) => void;
 }) {
-  const toast = useToast();
-  const [aiOpen, setAiOpen] = useState(false);
-  const [narrative, setNarrative] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [followUps, setFollowUps] = useState<{ id: string; question: string }[]>([]);
-  const [notes, setNotes] = useState("");
   const [openEvidence, setOpenEvidence] = useState<Record<string, boolean>>({});
-
   const pendingSugs = section.items.filter((q) => suggestions[q.id] && a.answers[q.id] !== suggestions[q.id].value);
-
-  async function runAssist() {
-    if (narrative.trim().length < 20) return toast("Descreva com um pouco mais de detalhe (2–3 frases).", "err");
-    setBusy(true);
-    try {
-      const { output } = await callSkill<FillOutput>("assist-fill", {
-        section: {
-          title: section.title,
-          kind: section.code ? "capacidade" : "dominio_operacional",
-          questions: section.items.map((q) => ({ id: q.id, prompt: q.prompt, options: q.levels })),
-        },
-        narrative,
-        context: a.context,
-        current_answers: Object.fromEntries(section.items.filter((q) => isAnswered(a.answers[q.id])).map((q) => [q.id, a.answers[q.id]])),
-      });
-      const valid = (output.suggestions || []).filter((s) => section.items.some((q) => q.id === s.id && q.levels.some((l) => l.v === s.value)));
-      setSuggestions((prev) => ({ ...prev, ...Object.fromEntries(valid.map((s) => [s.id, s])) }));
-      setFollowUps(output.follow_up_questions || []);
-      setNotes(output.notes || "");
-      toast(valid.length ? `${valid.length} sugestão(ões) — revise e aplique` : "O relato não trouxe elementos suficientes");
-    } catch (e) {
-      toast(e instanceof Error ? e.message : "Erro na IA", "err");
-    } finally {
-      setBusy(false);
-    }
-  }
+  void setSuggestions;
 
   function apply(s: Suggestion) {
     setAnswer(s.id, s.value);
@@ -540,61 +638,25 @@ function QuestionsStep({
   return (
     <>
       <div className="section-hero">
-        {section.code && <span className="code">{section.code} · {section.refs}</span>}
-        {!section.code && <span className="code">Checklist de consistência</span>}
+        <span className="code">{section.code ? `Capacidade ${section.code.slice(1)} de ${DIMENSIONS.length}` : "Qualidade dos dados · área avaliada"}</span>
         <h2>{section.title}</h2>
         <p>{section.desc}</p>
       </div>
 
-      <div className="ai-box">
-        <div className="row-between wrap">
-          <div className="ai-box-head">
-            <AiMark />
-            <span>
-              Preencher com IA
-              <span className="xs muted" style={{ fontWeight: 400, display: "block" }}>
-                Descreva como funciona hoje — a IA sugere, você decide.
-              </span>
-            </span>
-          </div>
-          <button className="btn btn-sm btn-ghost" onClick={() => setAiOpen((v) => !v)}>
-            {aiOpen ? "Fechar" : "Abrir"}
-          </button>
+      <div className="interview-cta">
+        <AiMark />
+        <div className="grow">
+          <div style={{ fontWeight: 600 }}>Prefere conversar?</div>
+          <div className="small muted">O assistente faz estas perguntas em linguagem simples e marca as respostas para você revisar.</div>
         </div>
-        {aiOpen && (
-          <div style={{ marginTop: 12 }}>
-            <textarea
-              className="textarea"
-              value={narrative}
-              onChange={(e) => setNarrative(e.target.value)}
-              placeholder={`Ex.: "${section.code ? "O Tiago monta o relatório de vendas toda segunda juntando o export do ERP com a planilha da VTEX. Ninguém é dono formal dos números…" : "O saldo do ERP e do WMS a gente só confere quando dá problema. Inventário geral é anual…"}"`}
-            />
-            <div className="row wrap" style={{ marginTop: 10 }}>
-              <button className="btn btn-primary btn-sm" onClick={runAssist} disabled={busy}>
-                {busy ? <Spinner /> : <Sparkles size={14} />} Sugerir respostas
-              </button>
-              {pendingSugs.length > 0 && (
-                <button className="btn btn-sm" onClick={() => pendingSugs.forEach((q) => apply(suggestions[q.id]))}>
-                  Aplicar todas ({pendingSugs.length})
-                </button>
-              )}
-              <span className="xs muted">Senhas e tokens são removidos antes do envio.</span>
-            </div>
-            {notes && <div className="callout soft" style={{ marginTop: 12 }}>{notes}</div>}
-            {followUps.length > 0 && (
-              <div className="callout soft" style={{ marginTop: 12 }}>
-                <div className="callout-title">
-                  <MessageSquareText size={14} /> Perguntas para confirmar com o cliente
-                </div>
-                <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
-                  {followUps.map((f) => (
-                    <li key={f.id + f.question}>{f.question}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
+        {pendingSugs.length > 0 && (
+          <button className="btn btn-sm" onClick={() => pendingSugs.forEach((q) => apply(suggestions[q.id]))}>
+            Aplicar sugestões ({pendingSugs.length})
+          </button>
         )}
+        <button className="btn btn-sm btn-primary" onClick={onInterview}>
+          Responder conversando
+        </button>
       </div>
 
       {section.items.map((q, i) => {
@@ -603,7 +665,7 @@ function QuestionsStep({
         const ev = a.evidence?.[q.id] || "";
         const showEv = openEvidence[q.id] || !!ev;
         return (
-          <div key={q.id} className={`q-card ${isAnswered(v) ? "answered" : ""}`}>
+          <div key={q.id} id={`q-${q.id}`} className={`q-card ${isAnswered(v) ? "answered" : ""}`}>
             <div className="q-head">
               <span className="q-num">{String(i + 1).padStart(2, "0")}</span>
               <div className="grow">
@@ -612,8 +674,12 @@ function QuestionsStep({
                 {q.tags.length > 0 && (
                   <div className="q-tags">
                     {q.tags.map((t) => (
-                      <span key={t} className={`badge ${t === "Crítico" ? "badge-risk" : t === "Fundacional" ? "badge-solid" : "badge-brand"}`}>
-                        {t === "Fundacional" && <Lock size={10} />}
+                      <span
+                        key={t}
+                        className={`badge ${t === "Crítico" ? "badge-risk" : t === "Fundamental" ? "badge-solid" : "badge-brand"}`}
+                        title={t === "Fundamental" ? "Requisito fundamental: uma resposta baixa aqui limita o nível geral a 3." : t === "Crítico" ? "Ponto crítico de consistência dos dados desta área." : `Dimensão de qualidade: ${t}`}
+                      >
+                        {t === "Fundamental" && <Lock size={10} />}
                         {t}
                       </span>
                     ))}
@@ -628,7 +694,14 @@ function QuestionsStep({
                   role="radio"
                   aria-checked={v === l.v}
                   className={`opt ${v === l.v ? "on" : ""} ${sug?.value === l.v ? "suggested" : ""}`}
-                  onClick={() => setAnswer(q.id, v === l.v ? undefined : l.v)}
+                  onClick={() => {
+                    const wasEmpty = !isAnswered(v);
+                    setAnswer(q.id, v === l.v ? undefined : l.v);
+                    if (wasEmpty) {
+                      const next = section.items.slice(i + 1).find((x) => !isAnswered(a.answers[x.id]));
+                      if (next) setTimeout(() => document.getElementById(`q-${next.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 180);
+                    }
+                  }}
                 >
                   <span className="lv">{l.v}</span>
                   <span>{l.label}</span>
@@ -648,9 +721,15 @@ function QuestionsStep({
               </div>
             )}
             <div className="q-foot">
-              <button className={`unknown-btn ${v === UNKNOWN ? "on" : ""}`} onClick={() => setAnswer(q.id, v === UNKNOWN ? undefined : UNKNOWN)}>
+              <button className={`unknown-btn ${v === UNKNOWN ? "on" : ""}`} onClick={() => {
+                  setAnswer(q.id, v === UNKNOWN ? undefined : UNKNOWN);
+                  if (v !== UNKNOWN) onUnknown(q);
+                }}>
                 <CircleHelp size={12} style={{ verticalAlign: -2, marginRight: 4 }} />
                 Não sei
+              </button>
+              <button className="link-btn" onClick={() => onExplain(q)}>
+                <AiMark size={9} /> Explicar
               </button>
               {!showEv && (
                 <button className="link-btn" onClick={() => setOpenEvidence((o) => ({ ...o, [q.id]: true }))}>
@@ -700,11 +779,16 @@ function ReviewStep({
   const blind = qSections.flatMap((sec) => sec.items.filter((q) => a.answers[q.id] === UNKNOWN).map((q) => ({ sec, q })));
   const findPrompt = (qid: string) => qSections.flatMap((x) => x.items).find((q) => q.id === qid)?.prompt ?? qid;
 
+  const copilot = useCopilot();
+  const runRef = useRef<() => Promise<void>>(async () => {});
+  useEffect(() => copilot.registerHandlers({ run_review: () => runRef.current() }), [copilot.registerHandlers]);
+  runRef.current = runReview;
+
   async function runReview() {
     setBusy(true);
     try {
-      const { output } = await callSkill<ReviewOutput>("review-consistency", assessmentForLlm(a));
-      setReview(output);
+      const { output } = await callSkill<unknown>("review-consistency", assessmentForLlm(a));
+      setReview(normReview(output));
     } catch (e) {
       toast(e instanceof Error ? e.message : "Erro na IA", "err");
     } finally {
@@ -722,19 +806,14 @@ function ReviewStep({
         <p>Antes de fechar o nível, valide contradições e pontos cegos. Um diagnóstico assertivo vale mais que um diagnóstico otimista.</p>
       </div>
 
-      <div className="grid g-3" style={{ marginBottom: 16 }}>
-        <div className="card stat">
-          <div className="stat-label">Sem resposta</div>
-          <div className="stat-value num">{unanswered.length}</div>
-        </div>
-        <div className="card stat">
-          <div className="stat-label">"Não sei" (pontos cegos)</div>
-          <div className="stat-value num">{blind.length}</div>
-        </div>
-        <div className="card stat">
-          <div className="stat-label">Alertas de consistência</div>
-          <div className="stat-value num">{alerts.length}</div>
-        </div>
+      <div style={{ marginBottom: 16 }}>
+        <Metrics
+          items={[
+            { label: "Perguntas sem resposta", value: unanswered.length },
+            { label: "Respondidas com “Não sei”", value: blind.length },
+            { label: "Alertas de consistência", value: alerts.length },
+          ]}
+        />
       </div>
 
       {alerts.length > 0 && (
@@ -769,14 +848,14 @@ function ReviewStep({
       <div className="ai-box">
         <div className="row-between wrap">
           <div className="ai-box-head">
-            <AiMark /> Revisão de consistência com IA
+            <AiMark /> Revisão com o assistente
           </div>
           <button className="btn btn-sm btn-primary" onClick={runReview} disabled={busy || s.answered < 5}>
             {busy ? <Spinner /> : <Sparkles size={14} />} {review ? "Revisar novamente" : "Revisar diagnóstico"}
           </button>
         </div>
         <p className="small muted" style={{ margin: "8px 0 0" }}>
-          Um "consultor sênior" lê todas as respostas, evidências e o contexto e aponta contradições, otimismo de autoavaliação e o que perguntar para validar.
+          O assistente lê todas as respostas como um consultor sênior e aponta contradições, excesso de otimismo e o que confirmar com o time.
         </p>
         {review && (
           <div style={{ marginTop: 14 }} className="stack">

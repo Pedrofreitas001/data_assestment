@@ -3,8 +3,8 @@ import { store } from "./store";
 import { consistencyAlerts } from "../model/consistency";
 import { scoreAssessment } from "../model/scoring";
 import { CHECK_OPTIONS as CHECK_LABELS } from "../model/framework";
-import { ASSET_REQUIRED_FIELDS, KPI_REQUIRED_FIELDS, completeness } from "../model/catalogOptions";
-import type { Assessment, CredentialRecord, DataAsset, Kpi, Organization } from "../model/types";
+import { KPI_REQUIRED_FIELDS, completeness } from "../model/kpiOptions";
+import type { Assessment, Kpi, Organization } from "../model/types";
 
 export function assessmentDigest(a: Assessment) {
   const s = scoreAssessment(a);
@@ -27,15 +27,8 @@ export function assessmentDigest(a: Assessment) {
   };
 }
 
-export function catalogDigest(assets: DataAsset[], creds: CredentialRecord[], kpis: Kpi[]) {
+export function kpiDigest(kpis: Kpi[]) {
   return {
-    ativos: assets.length,
-    ativos_sem_owner: assets.filter((a) => !a.owner).length,
-    ativos_lgpd: assets.filter((a) => a.sensitivity === "pessoal_lgpd").length,
-    completude_media_ativos: assets.length ? Math.round((assets.reduce((s, a) => s + completeness(a, ASSET_REQUIRED_FIELDS), 0) / assets.length) * 100) : null,
-    lista_ativos: assets.slice(0, 25).map((a) => `${a.name} [${a.asset_type}${a.system ? ", " + a.system : ""}${a.layer ? ", " + a.layer : ""}]`),
-    credenciais: creds.length,
-    credenciais_sem_controle: creds.filter((c) => c.status === "desconhecida" || !c.vault_location).length,
     kpis: kpis.length,
     kpis_validados: kpis.filter((k) => k.status === "validado").length,
     kpis_sem_owner: kpis.filter((k) => !k.owner).length,
@@ -46,10 +39,8 @@ export function catalogDigest(assets: DataAsset[], creds: CredentialRecord[], kp
 
 export async function orgSnapshot(org: Organization | null) {
   if (!org) return { empresa: null };
-  const [assessments, assets, creds, kpis] = await Promise.all([
+  const [assessments, kpis] = await Promise.all([
     store.list("assessments", { organization_id: org.id }),
-    store.list("data_assets", { organization_id: org.id }),
-    store.list("credentials", { organization_id: org.id }),
     store.list("kpis", { organization_id: org.id }),
   ]);
   const latest = assessments[0];
@@ -57,7 +48,7 @@ export async function orgSnapshot(org: Organization | null) {
     empresa: { nome: org.name, segmento: org.segment, porte: org.size },
     assessment_mais_recente: latest ? assessmentDigest(latest) : null,
     contexto: latest?.context ?? null,
-    catalogo_e_glossario: catalogDigest(assets, creds, kpis),
+    glossario: kpiDigest(kpis),
   };
 }
 

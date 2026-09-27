@@ -6,20 +6,6 @@ import { Field, MoulisMark, Spinner } from "../components/ui";
 
 type Mode = "password" | "magic" | "signup" | "reset";
 
-function ArtGrid() {
-  // Mosaico decorativo — uma "matriz de maturidade" abstrata.
-  const cells = Array.from({ length: 48 }, (_, i) => (Math.sin(i * 1.7) * 0.5 + 0.5) * 100 * ((i % 8) / 8 + 0.3));
-  return (
-    <svg className="login-grid" width="420" height="320" viewBox="0 0 420 320" aria-hidden>
-      {cells.map((v, i) => {
-        const x = (i % 8) * 52;
-        const y = Math.floor(i / 8) * 52;
-        return <rect key={i} x={x} y={y} width="46" height="46" rx="8" fill="#ffffff" opacity={0.04 + (v / 100) * 0.22} />;
-      })}
-    </svg>
-  );
-}
-
 export default function Login() {
   const { signInPassword, signInMagic, signUp, resetPassword, enterDemo } = useAuth();
   const [mode, setMode] = useState<Mode>("password");
@@ -63,21 +49,18 @@ export default function Login() {
           <span className="brand-mark">
             <MoulisMark size={18} />
           </span>
-          <span className="brand-name" style={{ fontSize: 24 }}>
+          <span className="brand-name" style={{ fontSize: 22 }}>
             moulis
           </span>
         </div>
         <div>
-          <p className="eyebrow" style={{ color: "#c7d5ff" }}>
-            Assessment de maturidade de dados
-          </p>
-          <h1>Dados que a operação consegue confiar.</h1>
-          <p>Diagnóstico de maturidade, catálogo de dados e glossário de KPIs para PMEs de varejo e logística — com um copiloto de IA que ajuda a preencher, interpretar e priorizar.</p>
+          <p className="login-eyebrow">Diagnóstico de maturidade de dados</p>
+          <h1>Saiba onde seus dados estão hoje — e o que fazer a seguir.</h1>
+          <p>Um diagnóstico objetivo, um relatório claro e um plano de ação priorizado.</p>
         </div>
-        <p className="xs" style={{ color: "#b9c8f5", margin: 0 }}>
-          Baseado em DAMA-DMBOK · DGI · DCAM · NIST · LGPD
+        <p className="xs" style={{ color: "#6b6b6b", margin: 0 }}>
+          © Moulis Consultoria
         </p>
-        <ArtGrid />
       </section>
 
       <section className="login-form">

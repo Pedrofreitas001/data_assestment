@@ -14,9 +14,7 @@ Navegador (React SPA)
 - `organizations` — clientes da consultoria
 - `profiles` — usuário ↔ papel (`admin` | `consultor` | `cliente`) ↔ organização
 - `assessments` — contexto, respostas (jsonb), evidências, insights da IA; `score`/`level` desnormalizados para o painel
-- `data_assets` — catálogo (tipo, camada, owner, steward, sensibilidade, pipeline N1–N5, `upstream[]` = linhagem)
-- `credentials` — governança de acessos (sem segredo)
-- `kpis` — glossário (definição, fórmula, premissas, owner, tabelas, `asset_ids[]`)
+- `kpis` — glossário (definição, fórmula, premissas, owner, tabelas/caminhos)
 
 ## Lógica de maturidade (determinística, em `src/model/`)
 

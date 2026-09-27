@@ -14,12 +14,20 @@ llm/
 
 | Skill | Onde aparece | Saída |
 |---|---|---|
-| `assist-fill` | Wizard → "Preencher com IA" em cada seção | sugestões por pergunta com confiança, justificativa e trecho do relato + perguntas de follow-up |
+| `assist-fill` | Diagnóstico → "Preencher com IA" em cada seção | sugestões por pergunta com confiança, justificativa e trecho do relato + perguntas de follow-up |
 | `review-consistency` | Wizard → Revisão | veredito, contradições, como validar, ajustes sugeridos, pontos cegos |
 | `generate-insights` | Relatório → Leitura executiva | headline, resumo, forças, riscos de negócio, quick wins por domínio, roadmap 3 ondas |
-| `catalog-assist` | Catálogo → "Mapear com IA" | ativos e credenciais estruturados + alertas de governança |
 | `kpi-assist` | Glossário → "Redigir com IA" / "Revisar com IA" | ficha completa ou revisão com issues e perguntas ao owner |
-| `copilot` | Botão flutuante | chat em markdown |
+| `copilot` | Painel do assistente (todas as telas) e barra “Pergunte ao assistente” | JSON: resposta em markdown + perguntas de continuação + ações (entrevistar, revisar, gerar leitura, salvar no relatório) |
+| `interview` | Diagnóstico → “Responder conversando” | reconhecimento + marcações sugeridas + próxima pergunta em linguagem simples |
+
+## O assistente como protagonista
+
+- **Painel fixo à direita** em todas as telas; lembra se estava aberto.
+- **Proativo** (`src/context/copilot.tsx` → `nudge`): chama o usuário ao entrar, ao começar uma seção vazia, quando fica parado numa seção, ao marcar “Não sei”, ao concluir uma seção, na revisão, no relatório sem leitura executiva e no glossário com KPIs sem owner. Intervalo mínimo de 40 s entre chamadas, cada chamada aparece uma vez por sessão e o usuário pode desligar em “Sugestões automáticas”.
+- **Entrevista guiada**: pergunta em linguagem simples, marca as respostas e o usuário aplica com um clique; ao concluir a seção, oferece ir para a próxima.
+- **Ações**: as páginas registram o que o assistente pode fazer ali (`registerHandlers`) e informam o que o usuário está vendo (`setFocus`). O modelo só pode sugerir ações registradas; nada muda sem clique do usuário.
+- **Relatório**: textos redigidos no chat podem ser salvos em “Anotações do relatório” (`assessments.report_notes`).
 
 ## Como criar uma skill nova
 

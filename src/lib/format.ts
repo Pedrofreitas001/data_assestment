@@ -30,7 +30,8 @@ export function pct(n: number | null | undefined): string {
 }
 
 /** Markdown mínimo e seguro (negrito, itálico, listas, parágrafos) para respostas da IA. */
-export function miniMarkdown(src: string): string {
+export function miniMarkdown(input: unknown): string {
+  const src = typeof input === "string" ? input : input == null ? "" : String(input);
   const esc = src.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const inline = (s: string) =>
     s
@@ -41,9 +42,10 @@ export function miniMarkdown(src: string): string {
   return blocks
     .map((b) => {
       const lines = b.split("\n");
+      if (lines.length === 1 && /^#{1,4}\s+/.test(lines[0])) return `<p><strong>${inline(lines[0].replace(/^#{1,4}\s+/, ""))}</strong></p>`;
       if (lines.every((l) => /^\s*([-*•]|\d+\.)\s+/.test(l)))
         return "<ul>" + lines.map((l) => `<li>${inline(l.replace(/^\s*([-*•]|\d+\.)\s+/, ""))}</li>`).join("") + "</ul>";
-      return `<p>${lines.map(inline).join("<br/>")}</p>`;
+      return `<p>${lines.map((l) => inline(l.replace(/^#{1,4}\s+(.*)$/, "**$1**").replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>"))).join("<br/>")}</p>`;
     })
     .join("");
 }

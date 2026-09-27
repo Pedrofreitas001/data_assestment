@@ -579,9 +579,7 @@ export const SEGMENTS = [
 export const SIZE_BANDS = ["Até 50 colaboradores", "51 a 200", "201 a 500", "Mais de 500"] as const;
 
 export const SYSTEM_SUGGESTIONS = [
-  "SAP Business One", "TOTVS Protheus", "TOTVS Winthor", "Senior", "Sankhya", "Omie", "Bling", "Tiny",
-  "Linx", "VTEX", "Shopify", "Nuvemshop", "Mercado Livre", "Amazon", "WMS próprio", "TMS",
-  "Power BI", "Excel / Google Sheets", "Zendesk", "Google Ads", "Meta Ads", "RD Station",
+  "SAP", "TOTVS", "Omie", "Bling", "Sankhya", "VTEX", "Shopify", "Mercado Livre", "WMS", "TMS", "Power BI", "Excel / Google Sheets",
 ];
 
 export interface AssessmentContext {
