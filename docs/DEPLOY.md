@@ -60,3 +60,17 @@ Recomendado: configure SMTP próprio (*Authentication → SMTP*) — o SMTP padr
 - [ ] Usuário cliente vê só a própria empresa
 - [ ] "Preencher com IA" responde (se der 401: sessão; 503: falta `OPENROUTER_API_KEY`)
 - [ ] Relatório imprime em PDF (Ctrl/Cmd + P → Salvar como PDF)
+
+## Problemas com e-mail ("email rate limit exceeded" / e-mail não chega)
+
+O SMTP padrão do Supabase tem limite muito baixo e, em projetos novos, só entrega para e-mails da equipe da organização no Supabase.
+
+**Para entrar agora** (SQL Editor):
+```sql
+update auth.users set email_confirmed_at = now() where email = 'seu@email.com';
+update public.profiles set role = 'admin' where email = 'seu@email.com';
+```
+
+**Para criar acessos sem e-mail:** em Clientes → Usuários, preencha "Senha provisória" e clique em "Criar acesso". O usuário já entra confirmado e troca a senha em "Conta".
+
+**Solução definitiva:** configure um SMTP próprio em Authentication → Emails → SMTP Settings (ex.: Resend, Brevo ou Amazon SES) e ajuste Authentication → Rate Limits. Enquanto testa, dá para desligar "Confirm email" em Authentication → Sign In / Providers → Email.

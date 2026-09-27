@@ -20,7 +20,7 @@ export default function AdminUsers({ embedded }: { embedded?: boolean }) {
   const { orgs } = useOrg();
   const toast = useToast();
   const users = useRows("profiles", null, { all: true });
-  const [form, setForm] = useState({ email: "", full_name: "", role: "cliente" as Role, organization_id: "" });
+  const [form, setForm] = useState({ email: "", full_name: "", role: "cliente" as Role, organization_id: "", password: "" });
   const [busy, setBusy] = useState(false);
 
   async function updateUser(p: Profile, patch: Partial<Profile>) {
@@ -41,12 +41,12 @@ export default function AdminUsers({ embedded }: { embedded?: boolean }) {
       const r = await fetch("/api/admin-invite", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session?.access_token}` },
-        body: JSON.stringify({ ...form, organization_id: form.organization_id || null }),
+        body: JSON.stringify({ ...form, organization_id: form.organization_id || null, password: form.password || undefined }),
       });
       const out = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(out.error || "Falha no convite");
-      toast(`Convite enviado para ${form.email}`);
-      setForm({ email: "", full_name: "", role: "cliente", organization_id: "" });
+      toast(form.password ? `Acesso criado para ${form.email} — envie a senha provisória por um canal seguro` : `Convite enviado para ${form.email}`);
+      setForm({ email: "", full_name: "", role: "cliente", organization_id: "", password: "" });
       setTimeout(() => users.reload(), 800);
     } catch (e) {
       toast(e instanceof Error ? e.message : "Erro", "err");
@@ -155,11 +155,18 @@ export default function AdminUsers({ embedded }: { embedded?: boolean }) {
                   </select>
                 </Field>
               )}
-              <button className="btn btn-primary" disabled={busy || !form.email || (form.role === "cliente" && !form.organization_id)} onClick={invite}>
-                {busy ? <Spinner /> : "Enviar convite"}
+              <Field label="Senha provisória (opcional)" hint="Preencha para criar o acesso na hora, sem depender de e-mail. A pessoa troca a senha em “Conta”.">
+                <input className="input" type="text" autoComplete="off" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="mín. 8 caracteres" />
+              </Field>
+              <button
+                className="btn btn-primary"
+                disabled={busy || !form.email || (form.role === "cliente" && !form.organization_id) || (!!form.password && form.password.length < 8)}
+                onClick={invite}
+              >
+                {busy ? <Spinner /> : form.password ? "Criar acesso" : "Enviar convite por e-mail"}
               </button>
               <p className="xs muted" style={{ margin: 0 }}>
-                O convidado recebe um e-mail do Supabase, entra e define a senha em “Conta”.
+                {form.password ? "O usuário já entra confirmado. Envie a senha por um canal seguro." : "O convidado recebe um e-mail, entra e define a senha em “Conta”."}
               </p>
             </>
           )}
