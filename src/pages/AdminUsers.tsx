@@ -1,3 +1,4 @@
+import { friendlyError } from "../lib/errors";
 import { useState } from "react";
 import { MailPlus, Users } from "lucide-react";
 import { useAuth } from "../context/auth";
@@ -29,7 +30,7 @@ export default function AdminUsers({ embedded }: { embedded?: boolean }) {
       await users.save({ ...p, ...patch });
       toast("Usuário atualizado");
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Erro", "err");
+      toast(friendlyError(e, "Erro"), "err");
     }
   }
 
@@ -49,7 +50,7 @@ export default function AdminUsers({ embedded }: { embedded?: boolean }) {
       setForm({ email: "", full_name: "", role: "cliente", organization_id: "", password: "" });
       setTimeout(() => users.reload(), 800);
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Erro", "err");
+      toast(friendlyError(e, "Erro"), "err");
     } finally {
       setBusy(false);
     }

@@ -1,3 +1,4 @@
+import { friendlyError } from "./errors";
 import { useCallback, useEffect, useState } from "react";
 import { store } from "./store";
 import type { TableName, TableRow } from "../model/types";
@@ -18,7 +19,7 @@ export function useRows<T extends TableName>(table: T, orgId: string | null | un
       setRows(await store.list(table, opts.all ? undefined : { organization_id: orgId }));
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(friendlyError(e));
     } finally {
       setLoading(false);
     }

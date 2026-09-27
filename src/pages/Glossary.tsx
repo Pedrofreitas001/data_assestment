@@ -1,3 +1,4 @@
+import { friendlyError } from "../lib/errors";
 import { useEffect, useMemo, useState } from "react";
 import { BookMarked, Plus, Sigma, Sparkles, Trash2 } from "lucide-react";
 import { useOrg } from "../context/org";
@@ -223,7 +224,7 @@ function KpiDrawer({ kpi, context, onClose, onSave, onDelete }: { kpi: Kpi; cont
       const { output } = await callSkill<unknown>("kpi-assist", { mode: "review", kpi: f, context });
       setAi(normKpiAi(output) as KpiAiOut);
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Erro na IA", "err");
+      toast(friendlyError(e, "Erro na IA"), "err");
     } finally {
       setAiBusy(false);
     }
@@ -532,7 +533,7 @@ function DraftModal({ context, onClose, onDraft }: { context: unknown; onClose: 
               const output = normKpiAi((await callSkill<unknown>("kpi-assist", { mode: "draft", name, notes, context })).output) as KpiAiOut;
               onDraft({ ...output.kpi, name: output.kpi?.name || name, notes: output.clarifying_questions?.length ? `A validar com o owner:\n- ${output.clarifying_questions.join("\n- ")}` : null });
             } catch (e) {
-              toast(e instanceof Error ? e.message : "Erro na IA", "err");
+              toast(friendlyError(e, "Erro na IA"), "err");
             } finally {
               setBusy(false);
             }

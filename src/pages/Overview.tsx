@@ -1,3 +1,4 @@
+import { friendlyError } from "../lib/errors";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, Building2, ClipboardCheck, Lock, Plus } from "lucide-react";
@@ -75,7 +76,7 @@ export default function Overview() {
       const a = await createAssessment(org!, profile?.id);
       nav(`/assessments/${a.id}`);
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Erro ao criar", "err");
+      toast(friendlyError(e, "Erro ao criar"), "err");
     }
   }
 
