@@ -79,3 +79,16 @@ update public.profiles set role = 'admin' where email = 'seu@email.com';
 
 - **Banco desatualizado / coluna ou tabela faltando:** rode `supabase/setup_completo.sql` inteiro no SQL Editor. É seguro rodar mais de uma vez.
 - **Sem permissão:** sua conta precisa ser admin. No SQL Editor: `update public.profiles set role = 'admin' where email = 'seu@email.com';`
+
+## Dados de apresentação (dois diagnósticos prontos, para mostrar o produto)
+
+Para apresentar o app já preenchido — a uma sócia, investidor ou cliente em potencial — sem esperar um diagnóstico real:
+
+1. `node --experimental-strip-types scripts/seed-showcase.ts` (ou `npx tsx scripts/seed-showcase.ts`) → gera `supabase/seed_showcase.sql`.
+2. Cole o conteúdo desse arquivo no **SQL Editor** do Supabase de produção e rode. É seguro rodar mais de uma vez.
+3. Cria duas empresas com diagnóstico **concluído**, nível, score e leitura executiva já prontos:
+   - **Casa Aurora Utilidades** (varejo omnichannel) — nível 2 · Reativo
+   - **Rota Sul Logística** (operador logístico) — nível 4 · Gerenciado
+4. Dê à pessoa que vai apresentar um perfil **consultor** ou **admin** (Clientes → Usuários). Assim ela vê as duas empresas no seletor da barra lateral, sem precisar estar vinculada a nenhuma.
+
+Os dados são fictícios (nomes e e-mails de exemplo). Para atualizar o conteúdo, edite `scripts/seed-showcase.ts` e rode de novo.
