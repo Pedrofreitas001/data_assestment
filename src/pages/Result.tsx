@@ -119,6 +119,7 @@ export default function Result() {
       const insights: AiInsights = { ...output, generated_at: new Date().toISOString(), model };
       const saved = await saveAssessment({ ...a, ai_insights: insights });
       setA(saved);
+      copilot.dismissBubble();
       toast("Leitura executiva gerada");
     } catch (e) {
       toast(e instanceof Error ? e.message : "Erro na IA", "err");
