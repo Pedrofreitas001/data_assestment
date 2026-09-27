@@ -717,3 +717,6 @@ table.table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .shell.copilot-open .grid-radar { grid-template-columns: 1fr; }
 .shell.copilot-open .grid-radar > div:first-child { position: static; }
 @media (min-width: 1180px) { .shell.copilot-open .hero-home { grid-template-columns: minmax(0, 1fr) 240px; } }
+.error-box { max-width: 480px; margin: 64px auto; text-align: center; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 32px; }
+.error-box h3 { margin: 0 0 8px; font-size: 18px; }
+.error-box.compact { position: fixed; right: 24px; bottom: 24px; z-index: 96; margin: 0; max-width: 320px; padding: 18px; display: flex; flex-direction: column; gap: 8px; text-align: left; box-shadow: var(--shadow-lg); }

@@ -8,6 +8,7 @@ import { assessmentForLlm } from "../lib/snapshot";
 import { useToast } from "../context/toast";
 import { useOrg } from "../context/org";
 import { useCopilot, type AnswerSuggestion, type InterviewSection } from "../context/copilot";
+import { normReview } from "../lib/sanitize";
 import {
   CHECK_OPTIONS,
   DIMENSIONS,
@@ -776,8 +777,8 @@ function ReviewStep({
   async function runReview() {
     setBusy(true);
     try {
-      const { output } = await callSkill<ReviewOutput>("review-consistency", assessmentForLlm(a));
-      setReview(output);
+      const { output } = await callSkill<unknown>("review-consistency", assessmentForLlm(a));
+      setReview(normReview(output));
     } catch (e) {
       toast(e instanceof Error ? e.message : "Erro na IA", "err");
     } finally {

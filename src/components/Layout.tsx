@@ -7,6 +7,7 @@ import { IS_DEMO } from "../lib/supabase";
 import { initials } from "../lib/format";
 import { MoulisMark } from "./ui";
 import Copilot from "./Copilot";
+import ErrorBoundary from "./ErrorBoundary";
 import { useCopilot } from "../context/copilot";
 
 const ROLE_LABEL = { admin: "Gestora · admin", consultor: "Consultor", cliente: "Cliente" } as const;
@@ -99,10 +100,12 @@ export default function Layout({ children }: { children: ReactNode }) {
           </span>
         </div>
         <main className="content" key={loc.pathname.split("/")[1]}>
-          {children}
+          <ErrorBoundary key={loc.pathname}>{children}</ErrorBoundary>
         </main>
       </div>
-      <Copilot />
+      <ErrorBoundary compact onReset={copilot.reset}>
+        <Copilot />
+      </ErrorBoundary>
     </div>
   );
 }

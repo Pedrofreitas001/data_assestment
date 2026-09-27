@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BookMarked, Plus, Sigma, Sparkles, Trash2 } from "lucide-react";
 import { useOrg } from "../context/org";
 import { useCopilot } from "../context/copilot";
+import { normKpiAi } from "../lib/sanitize";
 import { useToast } from "../context/toast";
 import { useRows } from "../lib/useRows";
 import { store, uid } from "../lib/store";
@@ -219,8 +220,8 @@ function KpiDrawer({ kpi, context, onClose, onSave, onDelete }: { kpi: Kpi; cont
   async function review() {
     setAiBusy(true);
     try {
-      const { output } = await callSkill<KpiAiOut>("kpi-assist", { mode: "review", kpi: f, context });
-      setAi(output);
+      const { output } = await callSkill<unknown>("kpi-assist", { mode: "review", kpi: f, context });
+      setAi(normKpiAi(output) as KpiAiOut);
     } catch (e) {
       toast(e instanceof Error ? e.message : "Erro na IA", "err");
     } finally {
@@ -528,7 +529,7 @@ function DraftModal({ context, onClose, onDraft }: { context: unknown; onClose: 
           onClick={async () => {
             setBusy(true);
             try {
-              const { output } = await callSkill<KpiAiOut>("kpi-assist", { mode: "draft", name, notes, context });
+              const output = normKpiAi((await callSkill<unknown>("kpi-assist", { mode: "draft", name, notes, context })).output) as KpiAiOut;
               onDraft({ ...output.kpi, name: output.kpi?.name || name, notes: output.clarifying_questions?.length ? `A validar com o owner:\n- ${output.clarifying_questions.join("\n- ")}` : null });
             } catch (e) {
               toast(e instanceof Error ? e.message : "Erro na IA", "err");

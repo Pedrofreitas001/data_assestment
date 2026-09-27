@@ -30,7 +30,8 @@ export function pct(n: number | null | undefined): string {
 }
 
 /** Markdown mínimo e seguro (negrito, itálico, listas, parágrafos) para respostas da IA. */
-export function miniMarkdown(src: string): string {
+export function miniMarkdown(input: unknown): string {
+  const src = typeof input === "string" ? input : input == null ? "" : String(input);
   const esc = src.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const inline = (s: string) =>
     s

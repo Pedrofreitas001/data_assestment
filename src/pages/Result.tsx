@@ -7,6 +7,7 @@ import { callSkill } from "../lib/llm";
 import { assessmentForLlm, kpiDigest } from "../lib/snapshot";
 import { fmtDate, miniMarkdown } from "../lib/format";
 import { useCopilot } from "../context/copilot";
+import { normInsights, safeInsights } from "../lib/sanitize";
 import { useOrg } from "../context/org";
 import { useToast } from "../context/toast";
 import { CHECK_OPTIONS, UNKNOWN } from "../model/framework";
@@ -100,19 +101,21 @@ export default function Result() {
   if (!a || !s) return <Empty title="Diagnóstico não encontrado" action={<Link className="btn" to="/assessments">Voltar</Link>} />;
 
   const capped = s.computedBand && s.band && s.computedBand.level > s.band.level;
-  const ai = a.ai_insights;
+  const ai = safeInsights(a.ai_insights);
 
   async function generate() {
     if (!a || !s) return;
     setBusy(true);
     try {
       const kpis = await store.list("kpis", { organization_id: a.organization_id });
-      const { output, model } = await callSkill<Omit<AiInsights, "generated_at" | "model">>("generate-insights", {
+      const { output: raw, model } = await callSkill<unknown>("generate-insights", {
         empresa: { nome: org?.name, segmento: org?.segment, porte: org?.size },
         assessment: assessmentForLlm(a),
         plano_deterministico: plan.slice(0, 20).map((p) => ({ onda: p.wave, acao: p.title, origem: p.origin, motivo: p.reason })),
         glossario: kpiDigest(kpis),
       });
+      const output = normInsights(raw);
+      if (!output.headline && !output.executive_summary) throw new Error("A IA não retornou uma leitura válida. Tente novamente.");
       const insights: AiInsights = { ...output, generated_at: new Date().toISOString(), model };
       const saved = await saveAssessment({ ...a, ai_insights: insights });
       setA(saved);

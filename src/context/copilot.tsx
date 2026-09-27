@@ -9,6 +9,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { callSkill, type ChatTurn } from "../lib/llm";
 import { orgSnapshot, assessmentForLlm } from "../lib/snapshot";
 import { looksLikeSecret } from "../model/kpiOptions";
+import { normCopilot, normInterview } from "../lib/sanitize";
 import type { Assessment } from "../model/types";
 import { useAuth } from "./auth";
 import { useOrg } from "./org";
@@ -237,13 +238,14 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
       const report = (f.assessment as Assessment | undefined) ? assessmentForLlm(f.assessment as Assessment) : undefined;
       const { assessment: _a, ...pageFocus } = f;
       void _a;
-      const { output } = await callSkill<{ reply: string; follow_ups?: string[]; actions?: CopilotAction[] }>(
+      const { output: raw } = await callSkill<unknown>(
         "copilot",
         { page: { path: loc.pathname, ...pageFocus, acoes_disponiveis: availableActions }, snapshot, report, usuario: profile?.full_name },
         turns,
       );
-      const valid = (output.actions || []).filter((a) => availableActions.includes(a.type) && (a.type !== "add_to_report" || handlers.current.add_to_report));
-      push({ role: "assistant", content: output.reply || "…", followUps: (output.follow_ups || []).slice(0, 3), actions: valid.slice(0, 2) });
+      const output = normCopilot(raw);
+      const valid = output.actions.filter((a) => availableActions.includes(a.type) && (a.type !== "add_to_report" || handlers.current.add_to_report));
+      push({ role: "assistant", content: output.reply, followUps: output.follow_ups, actions: valid.slice(0, 2) });
     },
     [org, loc.pathname, availableActions, profile, push],
   );
@@ -252,14 +254,15 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
     async (userText: string) => {
       const iv = interviewRef.current!;
       iv.transcript.push({ role: "user", content: userText });
-      const { output } = await callSkill<{ reply: string; suggestions?: AnswerSuggestion[]; next_question?: string | null; section_complete?: boolean }>("interview", {
+      const { output: raw } = await callSkill<unknown>("interview", {
         section: iv.section,
         transcript: iv.transcript,
         current_answers: iv.getAnswers(),
         context: iv.context,
       });
+      const output = normInterview(raw);
       const qs = iv.section.questions;
-      const suggestions = (output.suggestions || [])
+      const suggestions = output.suggestions
         .filter((s) => { const q = qs.find((x) => x.id === s.id); return q && (s.value === 0 || q.options.some((o) => o.v === s.value)); })
         .map((s) => {
           const q = qs.find((x) => x.id === s.id)!;
