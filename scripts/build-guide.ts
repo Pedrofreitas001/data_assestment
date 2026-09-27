@@ -37,6 +37,8 @@ p { margin: 0 0 3mm; }
 .small { font-size: 9.5pt; }
 .eyebrow { font-size: 8pt; letter-spacing: 0.16em; text-transform: uppercase; color: #6e6e6b; font-weight: 600; margin: 0 0 3mm; }
 .page { break-before: page; }
+.flow { margin-top: 10mm; }
+.flow > h1:first-child { font-size: 20pt; }
 .avoid { break-inside: avoid; }
 
 /* capa */
@@ -78,7 +80,9 @@ td { padding: 2.3mm 2mm; border-bottom: 1px solid #e7e7e3; vertical-align: top; 
 .concept { break-inside: avoid; padding: 3mm 0; border-top: 1px solid #e7e7e3; }
 .callout { border-left: 3px solid #111; background: #f4f4f2; padding: 3.5mm 4.5mm; border-radius: 0 2mm 2mm 0; margin: 4mm 0; }
 figure { margin: 4mm 0 6mm; break-inside: avoid; }
-figure img { width: 100%; border: 1px solid #e3e3df; border-radius: 2.5mm; display: block; }
+figure img { max-width: 100%; max-height: 92mm; width: auto; margin: 0 auto; border: 1px solid #e3e3df; border-radius: 2.5mm; display: block; }
+figcaption { text-align: center; }
+h1, h2, h3, .eyebrow, .part { break-after: avoid; }
 figcaption { font-size: 8.5pt; color: #6e6e6b; margin-top: 1.5mm; }
 .steplist { counter-reset: s; list-style: none; padding: 0; margin: 0; }
 .steplist li { counter-increment: s; display: grid; grid-template-columns: 8mm 1fr; gap: 2mm; margin-bottom: 2mm; }
@@ -121,12 +125,12 @@ figcaption { font-size: 8.5pt; color: #6e6e6b; margin-top: 1.5mm; }
 
   <h2>Como o diagnóstico funciona</h2>
   <div class="grid4">${STEPS.map((s) => `<div class="box avoid"><span class="num">${s.n}</span><div class="t">${esc(s.title)}</div><p class="small muted">${esc(s.text)}</p></div>`).join("")}</div>
-  <h3>Princípios</h3>
-  <div class="grid2">${PRINCIPLES.map((p) => `<div class="box avoid"><div class="t">${esc(p.title)}</div><p class="small muted" style="margin:1mm 0 0">${esc(p.text)}</p></div>`).join("")}</div>
 </section>
 
 <section class="page">
-  <h2 style="margin-top:0">Os 5 níveis de maturidade</h2>
+  <h2 style="margin-top:0">Princípios</h2>
+  <div class="grid2">${PRINCIPLES.map((p) => `<div class="box avoid"><div class="t">${esc(p.title)}</div><p class="small muted" style="margin:1mm 0 0">${esc(p.text)}</p></div>`).join("")}</div>
+  <h2>Os 5 níveis de maturidade</h2>
   <div class="levels avoid">${BANDS.map((b) => `<div><div class="n" style="color:${b.color}">${b.level}</div><div class="l">${b.label}</div><div class="small muted" style="margin-bottom:1.5mm">${b.min}–${Math.min(100, b.max)} pontos</div><p>${esc(b.summary)}</p></div>`).join("")}</div>
 
   <h2>Como o resultado é calculado</h2>
@@ -196,7 +200,7 @@ figcaption { font-size: 8.5pt; color: #6e6e6b; margin-top: 1.5mm; }
   ${img("02-inicio", "Início: nível, score, capacidades e próximos passos.")}
 </section>
 
-<section class="page">
+<section class="flow">
   <h1>Passo a passo do diagnóstico</h1>
   <ol class="steplist">
     <li><div><b>Crie o diagnóstico</b> em Diagnósticos → “Novo diagnóstico”. Para um novo ciclo, use “Duplicar” e parta das respostas anteriores.</div></li>
@@ -209,7 +213,7 @@ figcaption { font-size: 8.5pt; color: #6e6e6b; margin-top: 1.5mm; }
   ${img("05-perguntas", "Perguntas de uma capacidade. “Não sei” é uma resposta válida; “Explicar” chama o assistente; “Evidência” registra a prova.")}
 </section>
 
-<section class="page">
+<section class="flow">
   <h2 style="margin-top:0">Responder conversando</h2>
   <p>Em qualquer seção, clique em <b>Responder conversando</b>. O assistente faz as perguntas em linguagem simples, entende o que a pessoa contou e propõe as marcações com a justificativa. Você aplica com um clique — nada muda sem a sua confirmação.</p>
   ${img("06-entrevista", "Entrevista guiada: o assistente sugere as marcações e faz a próxima pergunta.")}
@@ -220,22 +224,22 @@ figcaption { font-size: 8.5pt; color: #6e6e6b; margin-top: 1.5mm; }
   ${img("07-revisao", "Revisão: perguntas pendentes, respostas “Não sei” e alertas de consistência.")}
 </section>
 
-<section class="page">
+<section class="flow">
   <h1>O relatório</h1>
   <p>Reúne o nível atribuído (e o que o limita), a leitura executiva escrita pelo assistente, as notas por capacidade, o mapa de qualidade por área, os pontos de atenção e o plano de ação. Use “Exportar PDF” para compartilhar.</p>
+  <div class="callout avoid"><b>Anotações do relatório.</b> Peça ao assistente um texto — e-mail para a diretoria, pauta da reunião de resultados, justificativa do nível — e clique em “Salvar no relatório”. O texto passa a fazer parte do relatório e do PDF.</div>
   ${img("08-relatorio", "Nível atribuído e leitura executiva.")}
   ${img("09-plano", "Plano de ação em três ondas.")}
-  <div class="callout avoid"><b>Anotações do relatório.</b> Peça ao assistente um texto — e-mail para a diretoria, pauta da reunião de resultados, justificativa do nível — e clique em “Salvar no relatório”. O texto passa a fazer parte do relatório e do PDF.</div>
 </section>
 
-<section class="page">
+<section class="flow">
   <h1>Glossário de KPIs</h1>
   <p>Uma ficha por indicador: definição, fórmula, premissas, exclusões, owner, steward, tabelas de origem e conferências de qualidade. Comece pela <b>Biblioteca Moulis</b> (indicadores de referência) e adapte com o owner de cada um. O assistente redige fichas novas e revisa as existentes.</p>
   ${img("10-glossario", "Glossário de KPIs com completude de cada ficha.")}
   ${img("11-kpi", "Ficha de um KPI com revisão pelo assistente.")}
 </section>
 
-<section class="page">
+<section class="flow">
   <h1>Painel de clientes</h1>
   <p class="muted">Exclusivo da equipe Moulis.</p>
   <p>Carteira de clientes com o andamento e o nível de cada diagnóstico, comparativo de maturidade entre empresas e a aba <b>Usuários</b> para convidar pessoas e definir perfis. Para trocar de cliente, use o seletor “Empresa” na barra lateral.</p>
@@ -253,7 +257,7 @@ figcaption { font-size: 8.5pt; color: #6e6e6b; margin-top: 1.5mm; }
   <div class="callout avoid"><b>Privacidade.</b> Nunca cole senhas ou tokens no chat. O sistema bloqueia textos que parecem segredos e remove padrões sensíveis antes de qualquer envio à IA.</div>
 </section>
 
-<section class="page">
+<section class="flow">
   <h1>Como conduzir uma sessão com o cliente</h1>
   <ol class="steplist">
     <li><div><b>Convide as pessoas certas.</b> Quem decide (diretoria/gerência da área) e quem opera os dados (analista, TI). Um gestor sozinho tende a superestimar a maturidade.</div></li>
