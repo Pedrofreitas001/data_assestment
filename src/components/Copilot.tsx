@@ -22,7 +22,11 @@ export default function Copilot() {
   const page = loc.pathname.split("/")[1] || "";
   const onResult = loc.pathname.endsWith("/resultado");
 
-  useEffect(() => endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }), [c.messages, c.busy, c.isOpen]);
+  // Chaves obrigatórias: scrollIntoView retorna uma Promise nos navegadores novos,
+  // e o React trataria esse retorno como função de limpeza do efeito.
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [c.messages, c.busy, c.isOpen]);
   useEffect(() => {
     if (c.isOpen) setTimeout(() => inputRef.current?.focus(), 80);
   }, [c.isOpen, c.interview]);
