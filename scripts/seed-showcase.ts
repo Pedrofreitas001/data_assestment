@@ -5,7 +5,7 @@
 // Uso: node --experimental-strip-types scripts/seed-showcase.ts
 // Depois: cole o conteúdo de supabase/seed_showcase.sql no SQL Editor do
 // Supabase de PRODUÇÃO e rode. É seguro rodar de novo (idempotente).
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { scoreAssessment } from "../src/model/scoring.ts";
 import type { AiInsights, Assessment, Kpi, Organization } from "../src/model/types.ts";
@@ -230,7 +230,10 @@ const showcaseChats = [
     a: "**Cada cliente mede OTIF de um jeito.** Sem regra única, toda reunião vira disputa de número.\n\n1. Definir no glossário: janela, entrega parcial e ocorrência.\n2. Validar com os 5 maiores clientes.\n3. Publicar o OTIF com a mesma regra para todos.",
   },
 ];
-sql += `-- Histórico do assistente e Prioridades (exigem as tabelas de setup_completo.sql).
+// Cria as tabelas do histórico/Prioridades se ainda não existirem (mesmo SQL da migração 0004),
+// para o seed funcionar mesmo com um setup_completo.sql de versão anterior.
+sql += `-- Histórico do assistente e Prioridades.
+${readFileSync(join(import.meta.dirname, "..", "supabase", "migrations", "0004_chat_priorities.sql"), "utf8").replace("notify pgrst, 'reload schema';", "")}
 `;
 for (const c of showcaseChats) {
   const messages = [

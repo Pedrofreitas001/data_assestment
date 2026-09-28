@@ -89,7 +89,7 @@ Para apresentar o app já preenchido — a uma sócia, investidor ou cliente em 
 3. Cria duas empresas com diagnóstico **concluído**, nível, score e leitura executiva já prontos:
    - **Casa Aurora Utilidades** (varejo omnichannel) — nível 2 · Reativo
    - **Rota Sul Logística** (operador logístico) — nível 4 · Gerenciado
-   - Cada empresa também traz uma conversa com o assistente e uma **Prioridade** salva a partir dela (exigem `setup_completo.sql` atualizado).
+   - Cada empresa também traz uma conversa com o assistente e uma **Prioridade** salva a partir dela.
 4. Dê à pessoa que vai apresentar um perfil **consultor** ou **admin** (Clientes → Usuários). Assim ela vê as duas empresas no seletor da barra lateral, sem precisar estar vinculada a nenhuma.
 
 Os dados são fictícios (nomes e e-mails de exemplo). Para atualizar o conteúdo, edite `scripts/seed-showcase.ts` e rode de novo.
