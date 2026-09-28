@@ -5,7 +5,7 @@
 // Uso: node --experimental-strip-types scripts/seed-showcase.ts
 // Depois: cole o conteúdo de supabase/seed_showcase.sql no SQL Editor do
 // Supabase de PRODUÇÃO e rode. É seguro rodar de novo (idempotente).
-import { readFileSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { scoreAssessment } from "../src/model/scoring.ts";
 import type { AiInsights, Assessment, Kpi, Organization } from "../src/model/types.ts";
@@ -230,12 +230,47 @@ const showcaseChats = [
     a: "**Cada cliente mede OTIF de um jeito.** Sem regra única, toda reunião vira disputa de número.\n\n1. Definir no glossário: janela, entrega parcial e ocorrência.\n2. Validar com os 5 maiores clientes.\n3. Publicar o OTIF com a mesma regra para todos.",
   },
 ];
-// Cria as tabelas do histórico/Prioridades se ainda não existirem (mesmo SQL da migração 0004),
-// para o seed funcionar mesmo com um setup_completo.sql de versão anterior.
-sql += `-- Histórico do assistente e Prioridades.
-${readFileSync(join(import.meta.dirname, "..", "supabase", "migrations", "0004_chat_priorities.sql"), "utf8").replace("notify pgrst, 'reload schema';", "")}
+// Cria as tabelas do histórico/Prioridades se ainda não existirem (equivalente à migração 0004),
+// para o seed funcionar mesmo com um setup_completo.sql anterior. Sem blocos "do $$":
+// o SQL Editor do Supabase às vezes corta esses blocos ao dividir o script.
+const policy = (t: string) => `drop trigger if exists trg_touch_${t} on public.${t};
+create trigger trg_touch_${t} before update on public.${t} for each row execute function public.touch_updated_at();
+alter table public.${t} enable row level security;
+drop policy if exists ${t}_rw on public.${t};
+create policy ${t}_rw on public.${t} for all
+  using (public.is_staff() or organization_id = public.my_org())
+  with check (public.is_staff() or organization_id = public.my_org());
 `;
-for (const c of showcaseChats) {
+sql += `-- Histórico do assistente e Prioridades (cria as tabelas se faltarem).
+create table if not exists public.chat_threads (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  title text not null default 'Conversa',
+  messages jsonb not null default '[]'::jsonb,
+  created_by uuid references auth.users(id) on delete set null default auth.uid(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists chat_threads_org_idx on public.chat_threads(organization_id, updated_at desc);
+
+create table if not exists public.priorities (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  title text not null,
+  question text,
+  answer text not null,
+  status text not null default 'aberta' check (status in ('aberta','em_andamento','concluida')),
+  thread_id uuid references public.chat_threads(id) on delete set null,
+  message_id text,
+  created_by uuid references auth.users(id) on delete set null default auth.uid(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists priorities_org_idx on public.priorities(organization_id, updated_at desc);
+
+${policy("chat_threads")}
+${policy("priorities")}
+`;for (const c of showcaseChats) {
   const messages = [
     { id: "seed-q", role: "user", content: c.q },
     { id: "seed-a", role: "assistant", content: c.a, priority_id: c.priority },
