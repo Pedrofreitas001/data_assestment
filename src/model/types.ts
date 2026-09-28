@@ -99,11 +99,51 @@ export interface Kpi {
   updated_at?: string;
 }
 
-export type TableName = "organizations" | "assessments" | "kpis" | "profiles";
+/** Mensagem salva no histórico (sem estado de tela). */
+export interface StoredChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  llm?: string;
+  kind?: "nudge" | "interview" | "error";
+  priority_id?: string;
+}
+
+/** Uma conversa com o assistente, guardada no histórico da empresa. */
+export interface ChatThread {
+  id: string;
+  organization_id: string;
+  title: string;
+  messages: StoredChatMessage[];
+  created_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export type PriorityStatus = "aberta" | "em_andamento" | "concluida";
+
+/** Pergunta + resposta do assistente que virou prioridade da empresa. */
+export interface Priority {
+  id: string;
+  organization_id: string;
+  title: string;
+  question: string | null;
+  answer: string;
+  status: PriorityStatus;
+  thread_id: string | null;
+  message_id: string | null;
+  created_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export type TableName = "organizations" | "assessments" | "kpis" | "profiles" | "chat_threads" | "priorities";
 
 export interface TableRow {
   organizations: Organization;
   assessments: Assessment;
   kpis: Kpi;
   profiles: Profile;
+  chat_threads: ChatThread;
+  priorities: Priority;
 }

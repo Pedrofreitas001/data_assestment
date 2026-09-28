@@ -79,3 +79,24 @@ update public.profiles set role = 'admin' where email = 'seu@email.com';
 
 - **Banco desatualizado / coluna ou tabela faltando:** rode `supabase/setup_completo.sql` inteiro no SQL Editor. É seguro rodar mais de uma vez.
 - **Sem permissão:** sua conta precisa ser admin. No SQL Editor: `update public.profiles set role = 'admin' where email = 'seu@email.com';`
+
+## Dados de apresentação (dois diagnósticos prontos, para mostrar o produto)
+
+Para apresentar o app já preenchido — a uma sócia, investidor ou cliente em potencial — sem esperar um diagnóstico real:
+
+1. `node --experimental-strip-types scripts/seed-showcase.ts` (ou `npx tsx scripts/seed-showcase.ts`) → gera `supabase/seed_showcase.sql`.
+2. Cole o conteúdo desse arquivo no **SQL Editor** do Supabase de produção e rode. É seguro rodar mais de uma vez.
+3. Cria duas empresas com diagnóstico **concluído**, nível, score e leitura executiva já prontos:
+   - **Casa Aurora Utilidades** (varejo omnichannel) — nível 2 · Reativo
+   - **Rota Sul Logística** (operador logístico) — nível 4 · Gerenciado
+   - Cada empresa também traz uma conversa com o assistente e uma **Prioridade** salva a partir dela (exigem `setup_completo.sql` atualizado).
+4. Dê à pessoa que vai apresentar um perfil **consultor** ou **admin** (Clientes → Usuários). Assim ela vê as duas empresas no seletor da barra lateral, sem precisar estar vinculada a nenhuma.
+
+Os dados são fictícios (nomes e e-mails de exemplo). Para atualizar o conteúdo, edite `scripts/seed-showcase.ts` e rode de novo.
+
+## Histórico do assistente e Prioridades
+
+- Toda conversa com o assistente fica salva na empresa ativa (tabela `chat_threads`). Para revisitar, use o ícone de relógio no topo do painel do assistente.
+- Em qualquer resposta, **Priorizar** (aparece ao passar o mouse) salva a pergunta e a resposta como prioridade da empresa (tabela `priorities`). As prioridades aparecem no Início e no relatório, com status Aberta → Em andamento → Concluída (clique no círculo) e o link **Revisitar conversa**.
+- Mesma regra de acesso dos diagnósticos: a equipe Moulis vê todas as empresas; o cliente vê apenas a própria.
+- Bancos já existentes: rode `supabase/setup_completo.sql` de novo (ou só `supabase/migrations/0004_chat_priorities.sql`).

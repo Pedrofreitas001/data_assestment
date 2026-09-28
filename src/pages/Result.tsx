@@ -18,6 +18,7 @@ import { DIM_PLAYBOOK, WAVES, buildActionPlan } from "../model/playbook";
 import type { AiInsights, Assessment, ReportNote } from "../model/types";
 import { AiMark, BandScale, Empty, LoadingPage, Spinner } from "../components/ui";
 import { QualityHeatmap, Radar } from "../components/charts";
+import PrioritiesCard from "../components/Priorities";
 
 export default function Result() {
   const { id } = useParams();
@@ -274,6 +275,8 @@ export default function Result() {
           </div>
         )}
       </section>
+
+      <PrioritiesCard id="prioridades" style={{ marginBottom: 20 }} />
 
       {/* Anotações redigidas com o assistente */}
       <section className="card" id="anotacoes" style={{ marginBottom: 20, scrollMarginTop: 20 }}>

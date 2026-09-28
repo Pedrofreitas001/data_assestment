@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { ArrowUp, Check, MessageCircleQuestion, RotateCcw, X } from "lucide-react";
+import { ArrowLeft, ArrowUp, Check, History, MessageCircleQuestion, Pin, Plus, Trash2, X } from "lucide-react";
 import { useCopilot, type CopilotMessage } from "../context/copilot";
-import { miniMarkdown } from "../lib/format";
+import { miniMarkdown, relTime } from "../lib/format";
+import { friendlyError } from "../lib/errors";
+import { useToast } from "../context/toast";
 import { AiMark, Spinner } from "./ui";
 
 const STARTERS: Record<string, string[]> = {
@@ -17,6 +19,7 @@ export default function Copilot() {
   const c = useCopilot();
   const loc = useLocation();
   const [input, setInput] = useState("");
+  const [view, setView] = useState<"chat" | "history">("chat");
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const page = loc.pathname.split("/")[1] || "";
@@ -27,6 +30,10 @@ export default function Copilot() {
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [c.messages, c.busy, c.isOpen]);
+  // Qualquer conversa aberta (inclusive por fora do painel) volta para o chat.
+  useEffect(() => {
+    setView("chat");
+  }, [c.threadId]);
   useEffect(() => {
     if (c.isOpen) setTimeout(() => inputRef.current?.focus(), 80);
   }, [c.isOpen, c.interview]);
@@ -86,12 +93,34 @@ export default function Copilot() {
         <div className="grow">
           <div style={{ fontWeight: 600, fontSize: 14 }}>Assistente Moulis</div>
           <div className="xs" style={{ color: "#9a9a96" }}>
-            {c.interview ? `Entrevista · ${c.interview.title}` : "Explica, interpreta e redige com você"}
+            {view === "history" ? "Conversas desta empresa" : c.interview ? `Entrevista · ${c.interview.title}` : "Explica, interpreta e redige com você"}
           </div>
         </div>
-        {c.messages.length > 0 && (
-          <button className="side-btn" onClick={c.reset} title="Nova conversa" style={{ color: "#bbb" }}>
-            <RotateCcw size={15} />
+        <button
+          className={`side-btn ${view === "history" ? "on" : ""}`}
+          onClick={() => {
+            if (view === "history") return setView("chat");
+            setView("history");
+            c.loadThreads();
+          }}
+          title="Conversas anteriores"
+          aria-label="Conversas anteriores"
+          style={{ color: view === "history" ? "#fff" : "#bbb" }}
+        >
+          <History size={16} />
+        </button>
+        {(c.messages.length > 0 || view === "history") && (
+          <button
+            className="side-btn"
+            onClick={() => {
+              c.reset();
+              setView("chat");
+            }}
+            title="Nova conversa"
+            aria-label="Nova conversa"
+            style={{ color: "#bbb" }}
+          >
+            <Plus size={17} />
           </button>
         )}
         <button className="side-btn" onClick={c.close} aria-label="Fechar" style={{ color: "#fff" }}>
@@ -99,7 +128,9 @@ export default function Copilot() {
         </button>
       </header>
 
-      {c.interview && (
+      {view === "history" && <HistoryView onBack={() => setView("chat")} />}
+
+      {view === "chat" && c.interview && (
         <div className="interview-bar">
           <span>
             <b>Modo entrevista</b> — responda com suas palavras; eu marco as opções para você revisar.
@@ -110,7 +141,7 @@ export default function Copilot() {
         </div>
       )}
 
-      <div className="copilot-msgs">
+      <div className="copilot-msgs" hidden={view !== "chat"}>
         {!c.messages.length && (
           <div className="copilot-empty">
             <div className="ai-mark" style={{ width: 36, height: 36, borderRadius: 10 }}>
@@ -139,6 +170,7 @@ export default function Copilot() {
       </div>
 
       <form
+        hidden={view !== "chat"}
         className="copilot-input"
         onSubmit={(e) => {
           e.preventDefault();
@@ -164,7 +196,7 @@ export default function Copilot() {
           <ArrowUp size={17} />
         </button>
       </form>
-      <label className="copilot-foot">
+      <label className="copilot-foot" hidden={view !== "chat"}>
         <input type="checkbox" className="check" checked={c.proactive} onChange={(e) => c.setProactive(e.target.checked)} /> Sugestões automáticas do assistente
       </label>
     </aside>
@@ -234,6 +266,8 @@ function Message({ m, onResult }: { m: CopilotMessage; onResult: boolean }) {
         </div>
       )}
 
+      {m.kind !== "error" && m.kind !== "interview" && m.content.length > 40 && <PriorityTool m={m} />}
+
       {!!m.followUps?.length && (
         <div className="suggest" style={{ marginTop: 10 }}>
           {m.followUps.map((f) => (
@@ -243,6 +277,135 @@ function Message({ m, onResult }: { m: CopilotMessage; onResult: boolean }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Transforma pergunta + resposta numa prioridade da empresa. */
+function PriorityTool({ m }: { m: CopilotMessage }) {
+  const c = useCopilot();
+  const toast = useToast();
+  const [editing, setEditing] = useState(false);
+  const [title, setTitle] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  if (m.priority_id)
+    return (
+      <div className="msg-tools">
+        <span className="pin-done">
+          <Pin size={12} /> Em Prioridades
+        </span>
+      </div>
+    );
+
+  if (!editing)
+    return (
+      <div className="msg-tools hover-only">
+        <button
+          className="pin-btn"
+          onClick={() => {
+            setTitle(defaultTitle(c.questionFor(m.id), m.content));
+            setEditing(true);
+          }}
+          title="Salvar pergunta e resposta como prioridade da empresa"
+        >
+          <Pin size={12} /> Priorizar
+        </button>
+      </div>
+    );
+
+  async function save() {
+    setSaving(true);
+    try {
+      const p = await c.savePriority(m.id, title);
+      if (p) toast("Salvo em Prioridades");
+      setEditing(false);
+    } catch (e) {
+      toast(friendlyError(e, "Não foi possível salvar"), "err");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form
+      className="pin-form"
+      onSubmit={(e) => {
+        e.preventDefault();
+        save();
+      }}
+    >
+      <label className="xs muted" htmlFor={`pin-${m.id}`}>
+        Nome da prioridade
+      </label>
+      <input id={`pin-${m.id}`} className="input input-sm" autoFocus value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} />
+      <div className="row" style={{ gap: 6, justifyContent: "flex-end" }}>
+        <button type="button" className="btn btn-xs btn-ghost" onClick={() => setEditing(false)}>
+          Cancelar
+        </button>
+        <button className="btn btn-xs btn-primary" disabled={saving || !title.trim()}>
+          {saving ? "Salvando…" : "Salvar"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function defaultTitle(question: string | null, answer: string) {
+  // Prefere o primeiro destaque da resposta; senão, a pergunta; senão, a 1ª frase.
+  const bold = answer.match(/\*\*(.+?)\*\*/)?.[1];
+  const base = bold || question || answer.split(/[.\n]/)[0];
+  const t = base.replace(/[*#_`]/g, "").replace(/\s+/g, " ").trim().replace(/[.:]$/, "");
+  return t.length > 90 ? `${t.slice(0, 87)}…` : t;
+}
+
+function HistoryView({ onBack }: { onBack: () => void }) {
+  const c = useCopilot();
+  const toast = useToast();
+  return (
+    <div className="copilot-msgs history">
+      <button className="link-btn row" style={{ gap: 6, marginBottom: 12 }} onClick={onBack}>
+        <ArrowLeft size={14} /> Voltar à conversa
+      </button>
+      {c.threadsLoading && (
+        <div className="row muted small">
+          <Spinner /> Carregando…
+        </div>
+      )}
+      {!c.threadsLoading && !c.threads.length && <p className="small muted">Nenhuma conversa salva ainda. Tudo que você perguntar aqui fica guardado no histórico da empresa.</p>}
+      <ul className="thread-list">
+        {c.threads.map((t) => {
+          const n = (t.messages || []).filter((m) => m.role === "user").length;
+          const pins = (t.messages || []).filter((m) => m.priority_id).length;
+          return (
+            <li key={t.id} className={t.id === c.threadId ? "current" : ""}>
+              <button className="thread-main" onClick={() => c.openThread(t.id)}>
+                <span className="thread-title">{t.title}</span>
+                <span className="xs muted">
+                  {relTime(t.updated_at)} · {n} {n === 1 ? "pergunta" : "perguntas"}
+                  {pins > 0 && (
+                    <>
+                      {" · "}
+                      <Pin size={10} style={{ verticalAlign: -1 }} /> {pins}
+                    </>
+                  )}
+                </span>
+              </button>
+              <button
+                className="thread-del"
+                aria-label="Apagar conversa"
+                title="Apagar conversa"
+                onClick={() => {
+                  if (confirm("Apagar esta conversa do histórico? As prioridades salvas continuam."))
+                    c.deleteThread(t.id).catch((e) => toast(friendlyError(e), "err"));
+                }}
+              >
+                <Trash2 size={13} />
+              </button>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 // Dados fictícios para o modo demonstração (sem Supabase configurado).
 import { KPI_LIBRARY } from "../model/kpiLibrary";
-import type { Assessment, Kpi, Organization, Profile, TableName } from "../model/types";
+import type { Assessment, ChatThread, Kpi, Organization, Priority, Profile, TableName } from "../model/types";
 import { scoreAssessment } from "../model/scoring";
 
 const ORG_A = "00000000-0000-4000-8000-00000000000a";
@@ -79,5 +79,24 @@ export function demoSeed(): Record<TableName, unknown[]> {
 
   const profiles: Profile[] = [{ id: DEMO_USER_ID, email: "gestora@moulis.demo", full_name: "Gestora Moulis (demo)", role: "admin", organization_id: null, created_at: daysAgo(90) }];
 
-  return { organizations: orgs, assessments: [assessA, assessB], kpis, profiles };
+  const q = "O que fazer nos próximos 30 dias?";
+  const answer =
+    "**Nomear um dono para o faturamento.** Hoje VTEX e Winthor divergem ~3% porque usam datas diferentes, e ninguém decide qual vale.\n\n1. Diretoria Comercial vira owner do KPI.\n2. Regra oficial: data da NF.\n3. Conciliação semanal pelo BI.";
+  const threads: ChatThread[] = [
+    {
+      id: "00000000-0000-4000-8000-00000000c001", organization_id: ORG_A, title: q, created_at: daysAgo(1), updated_at: daysAgo(1),
+      messages: [
+        { id: "demo-q1", role: "user", content: q },
+        { id: "demo-a1", role: "assistant", content: answer, priority_id: "00000000-0000-4000-8000-00000000d001" },
+      ],
+    },
+  ];
+  const priorities: Priority[] = [
+    {
+      id: "00000000-0000-4000-8000-00000000d001", organization_id: ORG_A, title: "Definir owner e regra oficial do faturamento",
+      question: q, answer, status: "em_andamento", thread_id: threads[0].id, message_id: "demo-a1", created_at: daysAgo(1), updated_at: daysAgo(1),
+    },
+  ];
+
+  return { organizations: orgs, assessments: [assessA, assessB], kpis, profiles, chat_threads: threads, priorities };
 }
