@@ -30,16 +30,21 @@ create table if not exists public.priorities (
 );
 create index if not exists priorities_org_idx on public.priorities(organization_id, updated_at desc);
 
-do $$ declare t text; begin
-  foreach t in array array['chat_threads','priorities'] loop
-    execute format('drop trigger if exists trg_touch_%1$s on public.%1$s', t);
-    execute format('create trigger trg_touch_%1$s before update on public.%1$s for each row execute function public.touch_updated_at()', t);
-    execute format('alter table public.%1$s enable row level security', t);
-    execute format('drop policy if exists %1$s_rw on public.%1$s', t);
-    execute format($p$create policy %1$s_rw on public.%1$s for all
-      using (public.is_staff() or organization_id = public.my_org())
-      with check (public.is_staff() or organization_id = public.my_org())$p$, t);
-  end loop;
-end $$;
+drop trigger if exists trg_touch_chat_threads on public.chat_threads;
+create trigger trg_touch_chat_threads before update on public.chat_threads for each row execute function public.touch_updated_at();
+drop trigger if exists trg_touch_priorities on public.priorities;
+create trigger trg_touch_priorities before update on public.priorities for each row execute function public.touch_updated_at();
+
+alter table public.chat_threads enable row level security;
+drop policy if exists chat_threads_rw on public.chat_threads;
+create policy chat_threads_rw on public.chat_threads for all
+  using (public.is_staff() or organization_id = public.my_org())
+  with check (public.is_staff() or organization_id = public.my_org());
+
+alter table public.priorities enable row level security;
+drop policy if exists priorities_rw on public.priorities;
+create policy priorities_rw on public.priorities for all
+  using (public.is_staff() or organization_id = public.my_org())
+  with check (public.is_staff() or organization_id = public.my_org());
 
 notify pgrst, 'reload schema';
