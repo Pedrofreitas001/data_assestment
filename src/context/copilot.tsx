@@ -9,7 +9,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useLocation, useNavigate } from "react-router-dom";
 import { callSkill, type ChatTurn } from "../lib/llm";
 import { orgSnapshot, assessmentForLlm } from "../lib/snapshot";
-import { store } from "../lib/store";
+import { store, uid as dbUid } from "../lib/store";
 import { looksLikeSecret } from "../model/kpiOptions";
 import { normCopilot, normInterview } from "../lib/sanitize";
 import type { Assessment, ChatThread, Priority, PriorityStatus, StoredChatMessage } from "../model/types";
@@ -107,6 +107,8 @@ interface CopilotState {
 
 const Ctx = createContext<CopilotState>(null as never);
 const uid = () => Math.random().toString(36).slice(2, 10);
+// Ids de MENSAGEM podem ser curtos (só vivem dentro do jsonb); ids de CONVERSA/PRIORIDADE
+// vão para colunas uuid de verdade no banco (chat_threads.id, priorities.thread_id) — usam dbUid().
 const COOLDOWN_MS = 40_000;
 
 const GLOBAL_ACTIONS = ["open_report", "continue_assessment"];
@@ -211,7 +213,7 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
     const orgId = org.id;
     const t = setTimeout(() => {
       dirty.current = false;
-      const id = threadIdRef.current || uid();
+      const id = threadIdRef.current || dbUid();
       if (!threadIdRef.current) {
         threadIdRef.current = id;
         setThreadId(id);
@@ -532,7 +534,7 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
       const msg = messagesRef.current.find((m) => m.id === msgId);
       if (!orgId || !msg) return null;
       // Garante que a conversa exista antes de apontar para ela.
-      const tid = threadIdRef.current || uid();
+      const tid = threadIdRef.current || dbUid();
       if (!threadIdRef.current) {
         threadIdRef.current = tid;
         setThreadId(tid);
