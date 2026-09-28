@@ -215,6 +215,38 @@ on conflict (id) do update set name = excluded.name, definition = excluded.defin
 `;
 }
 
+// Conversas com o assistente que viraram Prioridades (mostra o histórico por empresa).
+const showcaseChats = [
+  {
+    thread: "10000000-0000-4000-8000-00000000c00a", priority: "10000000-0000-4000-8000-00000000d00a", org: ORG_A, days: 1, status: "em_andamento",
+    title: "Conciliar faturamento VTEX × ERP toda semana",
+    q: "Qual o risco mais urgente para a diretoria?",
+    a: "**Conciliar o faturamento.** A diretoria usa um número que ninguém confere: pedidos da VTEX e notas do ERP não batem e não há regra oficial.\n\n1. Diretoria Comercial vira owner do KPI.\n2. Regra: vale a data da NF.\n3. Conciliação semanal, com divergência acima de 1% explicada.",
+  },
+  {
+    thread: "10000000-0000-4000-8000-00000000c00b", priority: "10000000-0000-4000-8000-00000000d00b", org: ORG_B, days: 3, status: "aberta",
+    title: "Regra única de OTIF acordada com os clientes",
+    q: "Por que os clientes contestam o OTIF?",
+    a: "**Cada cliente mede OTIF de um jeito.** Sem regra única, toda reunião vira disputa de número.\n\n1. Definir no glossário: janela, entrega parcial e ocorrência.\n2. Validar com os 5 maiores clientes.\n3. Publicar o OTIF com a mesma regra para todos.",
+  },
+];
+sql += `-- Histórico do assistente e Prioridades (exigem as tabelas de setup_completo.sql).
+`;
+for (const c of showcaseChats) {
+  const messages = [
+    { id: "seed-q", role: "user", content: c.q },
+    { id: "seed-a", role: "assistant", content: c.a, priority_id: c.priority },
+  ];
+  sql += `insert into public.chat_threads (id, organization_id, title, messages, created_at, updated_at)
+values (${esc(c.thread)}, ${esc(c.org)}, ${esc(c.q)}, ${esc(JSON.stringify(messages))}::jsonb, now() - interval '${c.days} days', now() - interval '${c.days} days')
+on conflict (id) do update set title = excluded.title, messages = excluded.messages;
+insert into public.priorities (id, organization_id, title, question, answer, status, thread_id, message_id, created_at, updated_at)
+values (${esc(c.priority)}, ${esc(c.org)}, ${esc(c.title)}, ${esc(c.q)}, ${esc(c.a)}, ${esc(c.status)}, ${esc(c.thread)}, 'seed-a', now() - interval '${c.days} days', now() - interval '${c.days} days')
+on conflict (id) do update set title = excluded.title, question = excluded.question, answer = excluded.answer, status = excluded.status;
+
+`;
+}
+
 sql += `-- Ajusta as datas para parecerem um histórico real (a IA/o app não usam isso para calcular nada).
 update public.assessments set created_at = now() - interval '18 days', updated_at = now() - interval '2 days' where id = ${esc(assessA.id)};
 update public.assessments set created_at = now() - interval '40 days', updated_at = now() - interval '6 days' where id = ${esc(assessB.id)};

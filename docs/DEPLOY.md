@@ -89,6 +89,14 @@ Para apresentar o app já preenchido — a uma sócia, investidor ou cliente em 
 3. Cria duas empresas com diagnóstico **concluído**, nível, score e leitura executiva já prontos:
    - **Casa Aurora Utilidades** (varejo omnichannel) — nível 2 · Reativo
    - **Rota Sul Logística** (operador logístico) — nível 4 · Gerenciado
+   - Cada empresa também traz uma conversa com o assistente e uma **Prioridade** salva a partir dela (exigem `setup_completo.sql` atualizado).
 4. Dê à pessoa que vai apresentar um perfil **consultor** ou **admin** (Clientes → Usuários). Assim ela vê as duas empresas no seletor da barra lateral, sem precisar estar vinculada a nenhuma.
 
 Os dados são fictícios (nomes e e-mails de exemplo). Para atualizar o conteúdo, edite `scripts/seed-showcase.ts` e rode de novo.
+
+## Histórico do assistente e Prioridades
+
+- Toda conversa com o assistente fica salva na empresa ativa (tabela `chat_threads`). Para revisitar, use o ícone de relógio no topo do painel do assistente.
+- Em qualquer resposta, **Priorizar** (aparece ao passar o mouse) salva a pergunta e a resposta como prioridade da empresa (tabela `priorities`). As prioridades aparecem no Início e no relatório, com status Aberta → Em andamento → Concluída (clique no círculo) e o link **Revisitar conversa**.
+- Mesma regra de acesso dos diagnósticos: a equipe Moulis vê todas as empresas; o cliente vê apenas a própria.
+- Bancos já existentes: rode `supabase/setup_completo.sql` de novo (ou só `supabase/migrations/0004_chat_priorities.sql`).

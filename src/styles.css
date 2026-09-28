@@ -781,3 +781,45 @@ html { scroll-behavior: smooth; }
 @media (max-width: 560px) { .steps-row, .principles { grid-template-columns: 1fr; } }
 .org-new { font-size: 12px; color: var(--side-ink-2); text-decoration: none; padding: 2px 4px; align-self: flex-start; border-radius: 4px; }
 .org-new:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
+
+/* ---------- Histórico do assistente e Prioridades ---------- */
+[hidden] { display: none !important; }
+.input-sm { padding: 6px 9px; font-size: 13px; }
+.msg-tools { margin-top: 8px; display: flex; }
+.msg-tools.hover-only { opacity: 0; transition: opacity 0.15s; }
+.msg-ai:hover .msg-tools.hover-only, .msg-tools.hover-only:focus-within { opacity: 1; }
+@media (hover: none) { .msg-tools.hover-only { opacity: 1; } }
+.pin-btn { background: none; border: 1px solid transparent; color: var(--ink-3); font-size: 11.5px; cursor: pointer; padding: 3px 7px; border-radius: 999px; display: inline-flex; gap: 5px; align-items: center; }
+.pin-btn:hover { color: var(--ink); border-color: var(--line); background: var(--surface-2); }
+.pin-done { font-size: 11.5px; color: var(--ink-2); display: inline-flex; gap: 5px; align-items: center; font-weight: 600; }
+.pin-done svg { fill: currentColor; }
+.pin-form { margin-top: 10px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); display: grid; gap: 6px; }
+.side-btn.on { background: #1b1b1a; }
+
+.thread-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.thread-list li { display: flex; align-items: stretch; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.thread-list li.current { border-color: var(--ink); }
+.thread-main { flex: 1; min-width: 0; text-align: left; background: none; border: none; cursor: pointer; padding: 10px 12px; display: grid; gap: 3px; color: var(--ink); }
+.thread-main:hover { background: var(--surface-2); border-radius: 8px 0 0 8px; }
+.thread-title { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.thread-del { background: none; border: none; color: var(--ink-3); cursor: pointer; padding: 0 10px; opacity: 0; }
+.thread-list li:hover .thread-del, .thread-del:focus { opacity: 1; }
+.thread-del:hover { color: var(--ink); }
+@media (hover: none) { .thread-del { opacity: 1; } }
+
+.prio-list { list-style: none; margin: 0; padding: 0; }
+.prio-item { border-top: 1px solid var(--line); }
+.prio-item:first-child { border-top: none; }
+.prio-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; }
+.prio-status { width: 20px; height: 20px; flex-shrink: 0; border-radius: 50%; border: 1.5px solid var(--ink-3); background: var(--surface); cursor: pointer; display: grid; place-items: center; padding: 0; color: #fff; }
+.prio-status:hover { border-color: var(--ink); }
+.prio-status.em_andamento { border-color: var(--ink); background: linear-gradient(90deg, var(--ink) 50%, var(--surface) 50%); }
+.prio-status.concluida { border-color: var(--ink); background: var(--ink); }
+.prio-title { flex: 1; min-width: 0; background: none; border: none; text-align: left; cursor: pointer; padding: 0; color: var(--ink); display: grid; gap: 2px; }
+.prio-title b { font-weight: 600; font-size: 14px; }
+.prio-item.concluida .prio-title b { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--line); }
+.prio-body { padding: 0 0 14px 32px; }
+.prio-q { font-size: 12.5px; color: var(--ink-3); margin-bottom: 6px; }
+.prio-a { font-size: 13.5px; line-height: 1.55; color: var(--ink-2); }
+.prio-a p { margin: 0 0 6px; }
+.prio-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }

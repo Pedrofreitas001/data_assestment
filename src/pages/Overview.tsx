@@ -14,6 +14,7 @@ import { BandScale, Bar, Empty, LoadingPage, PageHead, Spinner, StatusBadge } fr
 import { supabase } from "../lib/supabase";
 import { ScoreRing } from "../components/charts";
 import AskBar from "../components/AskBar";
+import PrioritiesCard from "../components/Priorities";
 import { useCopilot } from "../context/copilot";
 
 export default function Overview() {
@@ -91,6 +92,7 @@ export default function Overview() {
             Cerca de 40 minutos de perguntas objetivas. Ao final você recebe o nível de maturidade e um plano de ação priorizado.
           </Empty>
         </div>
+        <PrioritiesCard style={{ marginTop: 20 }} />
         <div style={{ marginTop: 20 }}>
           <AskBar title="Tire dúvidas antes de começar" placeholder="Ex.: o que é maturidade de dados?" chips={["Como funciona o diagnóstico?", "O que é um Data Owner?", "Quem deve responder?"]} />
         </div>
@@ -158,6 +160,8 @@ export default function Overview() {
           chips={["O que mais pesa no resultado?", "O que fazer nos próximos 30 dias?", "Explique a nota de Governança"]}
         />
       </div>
+
+      <PrioritiesCard id="prioridades" style={{ marginTop: 20 }} />
 
       <div className="grid g-2" style={{ marginTop: 20 }}>
         <section className="card">

@@ -12,7 +12,7 @@ import { orgSnapshot, assessmentForLlm } from "../lib/snapshot";
 import { store } from "../lib/store";
 import { looksLikeSecret } from "../model/kpiOptions";
 import { normCopilot, normInterview } from "../lib/sanitize";
-import type { Assessment } from "../model/types";
+import type { Assessment, ChatThread, Priority, PriorityStatus, StoredChatMessage } from "../model/types";
 import { useAuth } from "./auth";
 import { useOrg } from "./org";
 
@@ -43,6 +43,8 @@ export interface CopilotMessage {
   suggestions?: AnswerSuggestion[];
   applied?: string[];
   kind?: "nudge" | "interview" | "error";
+  /** Prioridade criada a partir desta resposta. */
+  priority_id?: string;
 }
 
 export interface InterviewSection {
@@ -86,6 +88,21 @@ interface CopilotState {
   proactive: boolean;
   setProactive: (v: boolean) => void;
   reset: () => void;
+  // Histórico da empresa
+  threadId: string | null;
+  threads: ChatThread[];
+  threadsLoading: boolean;
+  loadThreads: () => Promise<void>;
+  openThread: (id: string) => Promise<void>;
+  deleteThread: (id: string) => Promise<void>;
+  // Prioridades
+  priorities: Priority[];
+  prioritiesLoading: boolean;
+  savePriority: (msgId: string, title: string) => Promise<Priority | null>;
+  updatePriority: (id: string, patch: { title?: string; status?: PriorityStatus }) => Promise<void>;
+  removePriority: (id: string) => Promise<void>;
+  /** Pergunta do usuário que originou a resposta (para montar a prioridade). */
+  questionFor: (msgId: string) => string | null;
 }
 
 const Ctx = createContext<CopilotState>(null as never);
@@ -93,6 +110,17 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 const COOLDOWN_MS = 40_000;
 
 const GLOBAL_ACTIONS = ["open_report", "continue_assessment"];
+const MAX_STORED = 80;
+
+const toStored = (m: CopilotMessage): StoredChatMessage => ({
+  id: m.id, role: m.role, content: m.content, llm: m.llm, kind: m.kind, priority_id: m.priority_id,
+});
+
+function threadTitle(msgs: CopilotMessage[]) {
+  const first = msgs.find((m) => m.role === "user" && !m.content.startsWith("••••"))?.content || "Conversa";
+  const t = first.replace(/\s+/g, " ").trim();
+  return t.length > 70 ? `${t.slice(0, 67)}…` : t;
+}
 
 export function CopilotProvider({ children }: { children: ReactNode }) {
   const { org } = useOrg();
@@ -131,11 +159,71 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
   const isOpenRef = useRef(isOpen);
   isOpenRef.current = isOpen;
 
+  // Histórico: cada conversa é salva na empresa ativa assim que o usuário escreve.
+  const [threadId, setThreadId] = useState<string | null>(null);
+  const threadIdRef = useRef<string | null>(null);
+  threadIdRef.current = threadId;
+  const dirty = useRef(false);
+  const [threads, setThreads] = useState<ChatThread[]>([]);
+  const [threadsLoading, setThreadsLoading] = useState(false);
+  const [priorities, setPriorities] = useState<Priority[]>([]);
+  const [prioritiesLoading, setPrioritiesLoading] = useState(true);
+  const prioritiesRef = useRef<Priority[]>([]);
+  prioritiesRef.current = priorities;
+  const orgIdRef = useRef<string | null>(null);
+  orgIdRef.current = org?.id ?? null;
+
   const push = useCallback((m: Omit<CopilotMessage, "id">) => {
     const msg = { ...m, id: uid() };
+    dirty.current = true;
     setMessages((xs) => [...xs, msg]);
     return msg;
   }, []);
+
+  // Troca de empresa: nova conversa e prioridades da empresa.
+  useEffect(() => {
+    interviewRef.current = null;
+    setInterview(null);
+    setMessages([]);
+    setThreadId(null);
+    setThreads([]);
+    dirty.current = false;
+    setPriorities([]);
+    if (!org?.id) {
+      setPrioritiesLoading(false);
+      return;
+    }
+    let alive = true;
+    setPrioritiesLoading(true);
+    store
+      .list("priorities", { organization_id: org.id })
+      .then((rows) => alive && setPriorities(rows))
+      .catch(() => alive && setPriorities([]))
+      .finally(() => alive && setPrioritiesLoading(false));
+    return () => {
+      alive = false;
+    };
+  }, [org?.id]);
+
+  // Salva a conversa (com pequeno atraso para agrupar mensagens seguidas).
+  useEffect(() => {
+    if (!dirty.current || !org?.id || !messages.some((m) => m.role === "user")) return;
+    const orgId = org.id;
+    const t = setTimeout(() => {
+      dirty.current = false;
+      const id = threadIdRef.current || uid();
+      if (!threadIdRef.current) {
+        threadIdRef.current = id;
+        setThreadId(id);
+      }
+      const row = { id, organization_id: orgId, title: threadTitle(messages), messages: messages.slice(-MAX_STORED).map(toStored) };
+      store
+        .upsert("chat_threads", row)
+        .then((saved) => setThreads((xs) => (xs.length ? [saved, ...xs.filter((x) => x.id !== saved.id)] : xs)))
+        .catch((e) => console.warn("[copilot] histórico não salvo:", friendlyError(e)));
+    }, 700);
+    return () => clearTimeout(t);
+  }, [messages, org?.id]);
 
   const persistOpen = (v: boolean) => {
     setIsOpen(v);
@@ -243,7 +331,13 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
       void _a;
       const { output: raw } = await callSkill<unknown>(
         "copilot",
-        { page: { path: loc.pathname, ...pageFocus, acoes_disponiveis: availableActions }, snapshot, report, usuario: profile?.full_name },
+        {
+          page: { path: loc.pathname, ...pageFocus, acoes_disponiveis: availableActions },
+          snapshot,
+          prioridades: prioritiesRef.current.map((p) => ({ titulo: p.title, status: p.status })),
+          report,
+          usuario: profile?.full_name,
+        },
         turns,
       );
       const output = normCopilot(raw);
@@ -381,11 +475,109 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
     interviewRef.current = null;
     setInterview(null);
     setMessages([]);
+    setThreadId(null);
+    dirty.current = false;
   };
+
+  // ------------------------------------------------------------ histórico
+  const loadThreads = useCallback(async () => {
+    if (!org?.id) return;
+    setThreadsLoading(true);
+    try {
+      setThreads(await store.list("chat_threads", { organization_id: org.id }));
+    } catch (e) {
+      console.warn("[copilot] histórico indisponível:", friendlyError(e));
+      setThreads([]);
+    } finally {
+      setThreadsLoading(false);
+    }
+  }, [org?.id]);
+
+  const openThread = useCallback(
+    async (id: string) => {
+      const t = threads.find((x) => x.id === id) || (await store.get("chat_threads", id));
+      if (!t) throw new Error("Essa conversa foi apagada do histórico.");
+      interviewRef.current = null;
+      setInterview(null);
+      dirty.current = false;
+      setThreadId(t.id);
+      setMessages((Array.isArray(t.messages) ? t.messages : []).map((m) => ({ ...m, id: m.id || uid() })));
+      persistOpen(true);
+      setBubble(null);
+    },
+    [threads],
+  );
+
+  const deleteThread = useCallback(async (id: string) => {
+    await store.remove("chat_threads", id);
+    setThreads((xs) => xs.filter((x) => x.id !== id));
+    if (threadIdRef.current === id) {
+      setMessages([]);
+      setThreadId(null);
+      dirty.current = false;
+    }
+  }, []);
+
+  // ----------------------------------------------------------- prioridades
+  const questionFor = useCallback((msgId: string) => {
+    const xs = messagesRef.current;
+    const i = xs.findIndex((m) => m.id === msgId);
+    for (let j = i - 1; j >= 0; j--) if (xs[j].role === "user") return xs[j].content;
+    return null;
+  }, []);
+
+  const savePriority = useCallback(
+    async (msgId: string, title: string) => {
+      const orgId = orgIdRef.current;
+      const msg = messagesRef.current.find((m) => m.id === msgId);
+      if (!orgId || !msg) return null;
+      // Garante que a conversa exista antes de apontar para ela.
+      const tid = threadIdRef.current || uid();
+      if (!threadIdRef.current) {
+        threadIdRef.current = tid;
+        setThreadId(tid);
+      }
+      const saved = await store.upsert("priorities", {
+        organization_id: orgId,
+        title: title.trim() || "Prioridade",
+        question: questionFor(msgId),
+        answer: msg.content,
+        status: "aberta",
+        thread_id: tid,
+        message_id: msgId,
+      });
+      setPriorities((xs) => [saved, ...xs]);
+      dirty.current = true;
+      setMessages((xs) => xs.map((m) => (m.id === msgId ? { ...m, priority_id: saved.id } : m)));
+      return saved;
+    },
+    [questionFor],
+  );
+
+  const updatePriority = useCallback(async (id: string, patch: { title?: string; status?: PriorityStatus }) => {
+    const cur = prioritiesRef.current.find((x) => x.id === id);
+    if (!cur) return;
+    setPriorities((xs) => xs.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+    try {
+      const saved = await store.upsert("priorities", { ...cur, ...patch });
+      setPriorities((xs) => xs.map((x) => (x.id === id ? saved : x)));
+    } catch (e) {
+      setPriorities((xs) => xs.map((x) => (x.id === id ? cur : x)));
+      throw e;
+    }
+  }, []);
+
+  const removePriority = useCallback(async (id: string) => {
+    await store.remove("priorities", id);
+    setPriorities((xs) => xs.filter((x) => x.id !== id));
+    setMessages((xs) => xs.map((m) => (m.priority_id === id ? { ...m, priority_id: undefined } : m)));
+  }, []);
 
   const value: CopilotState = {
     isOpen, open, close, messages, busy, send, ask, runAction, applySuggestions, bubble, dismissBubble, acceptBubble, nudge,
     setFocus, registerHandlers, availableActions, interview, startInterview, stopInterview, proactive, setProactive, reset,
+    threadId, threads, threadsLoading, loadThreads, openThread, deleteThread,
+    priorities, prioritiesLoading, savePriority, updatePriority, removePriority, questionFor,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
