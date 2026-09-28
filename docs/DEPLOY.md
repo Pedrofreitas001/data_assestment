@@ -8,6 +8,7 @@
 
 1. Crie um projeto em supabase.com (região São Paulo).
 2. **SQL Editor** → cole e rode `supabase/setup_completo.sql` (cria ou atualiza tudo; pode rodar de novo sempre que o app for atualizado).
+   - Se o SQL Editor não mostrar erro mas o app continuar dizendo "banco de dados incompleto", rode em 3 partes menores, uma de cada vez, nesta ordem: `supabase/setup_parte_1_tabelas.sql`, `supabase/setup_parte_2_funcoes_rls.sql`, `supabase/setup_parte_3_atualizacoes.sql`. Isso ajuda a identificar em qual trecho algo travou.
 3. **Authentication → URL Configuration**: *Site URL* = URL da Vercel (ex.: `https://moulis-maturidade.vercel.app`); em *Redirect URLs* adicione `https://SEU-DOMINIO/**` e `http://localhost:5173/**`.
 4. **Authentication → Providers → Email**: deixe habilitado. Se não quiser cadastro aberto, desligue *Allow new users to sign up* depois de criar sua conta (convites continuam funcionando).
 5. Crie sua conta (pelo `/login` do app → "Criar conta", ou *Authentication → Users → Add user*).

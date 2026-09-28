@@ -98,12 +98,14 @@ create index if not exists kpis_org_idx on public.kpis(organization_id);
 create or replace function public.touch_updated_at() returns trigger
 language plpgsql as $$ begin new.updated_at = now(); return new; end $$;
 
-do $$ declare t text; begin
-  foreach t in array array['organizations','profiles','assessments','kpis'] loop
-    execute format('drop trigger if exists trg_touch_%1$s on public.%1$s', t);
-    execute format('create trigger trg_touch_%1$s before update on public.%1$s for each row execute function public.touch_updated_at()', t);
-  end loop;
-end $$;
+drop trigger if exists trg_touch_organizations on public.organizations;
+create trigger trg_touch_organizations before update on public.organizations for each row execute function public.touch_updated_at();
+drop trigger if exists trg_touch_profiles on public.profiles;
+create trigger trg_touch_profiles before update on public.profiles for each row execute function public.touch_updated_at();
+drop trigger if exists trg_touch_assessments on public.assessments;
+create trigger trg_touch_assessments before update on public.assessments for each row execute function public.touch_updated_at();
+drop trigger if exists trg_touch_kpis on public.kpis;
+create trigger trg_touch_kpis before update on public.kpis for each row execute function public.touch_updated_at();
 
 -- ---------- Perfil criado automaticamente no signup/convite ----------
 create or replace function public.handle_new_user() returns trigger
@@ -186,14 +188,14 @@ drop policy if exists prof_admin_delete on public.profiles;
 create policy prof_admin_delete on public.profiles for delete using (public.is_admin());
 
 -- tabelas por organização (mesma regra para todas)
-do $$ declare t text; begin
-  foreach t in array array['assessments','kpis'] loop
-    execute format('drop policy if exists %1$s_rw on public.%1$s', t);
-    execute format($p$create policy %1$s_rw on public.%1$s for all
-      using (public.is_staff() or organization_id = public.my_org())
-      with check (public.is_staff() or organization_id = public.my_org())$p$, t);
-  end loop;
-end $$;
+drop policy if exists assessments_rw on public.assessments;
+create policy assessments_rw on public.assessments for all
+  using (public.is_staff() or organization_id = public.my_org())
+  with check (public.is_staff() or organization_id = public.my_org());
+drop policy if exists kpis_rw on public.kpis;
+create policy kpis_rw on public.kpis for all
+  using (public.is_staff() or organization_id = public.my_org())
+  with check (public.is_staff() or organization_id = public.my_org());
 
 -- ---------- Visão consolidada para o painel da gestora ----------
 drop view if exists public.portfolio_overview;
@@ -289,17 +291,22 @@ create table if not exists public.priorities (
 );
 create index if not exists priorities_org_idx on public.priorities(organization_id, updated_at desc);
 
-do $$ declare t text; begin
-  foreach t in array array['chat_threads','priorities'] loop
-    execute format('drop trigger if exists trg_touch_%1$s on public.%1$s', t);
-    execute format('create trigger trg_touch_%1$s before update on public.%1$s for each row execute function public.touch_updated_at()', t);
-    execute format('alter table public.%1$s enable row level security', t);
-    execute format('drop policy if exists %1$s_rw on public.%1$s', t);
-    execute format($p$create policy %1$s_rw on public.%1$s for all
-      using (public.is_staff() or organization_id = public.my_org())
-      with check (public.is_staff() or organization_id = public.my_org())$p$, t);
-  end loop;
-end $$;
+drop trigger if exists trg_touch_chat_threads on public.chat_threads;
+create trigger trg_touch_chat_threads before update on public.chat_threads for each row execute function public.touch_updated_at();
+drop trigger if exists trg_touch_priorities on public.priorities;
+create trigger trg_touch_priorities before update on public.priorities for each row execute function public.touch_updated_at();
+
+alter table public.chat_threads enable row level security;
+drop policy if exists chat_threads_rw on public.chat_threads;
+create policy chat_threads_rw on public.chat_threads for all
+  using (public.is_staff() or organization_id = public.my_org())
+  with check (public.is_staff() or organization_id = public.my_org());
+
+alter table public.priorities enable row level security;
+drop policy if exists priorities_rw on public.priorities;
+create policy priorities_rw on public.priorities for all
+  using (public.is_staff() or organization_id = public.my_org())
+  with check (public.is_staff() or organization_id = public.my_org());
 
 -- Perfis para usuários criados antes do trigger existir.
 insert into public.profiles (id, email, full_name)
