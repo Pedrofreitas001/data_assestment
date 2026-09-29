@@ -358,7 +358,7 @@ export default function Wizard() {
               {org?.name} · Diagnóstico
             </p>
             <input
-              className="serif"
+              className="serif wiz-title"
               value={a.title}
               onChange={(e) => update((x) => ({ ...x, title: e.target.value }))}
               aria-label="Título do diagnóstico"

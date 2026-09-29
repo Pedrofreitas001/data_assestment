@@ -98,7 +98,7 @@ figcaption { font-size: 8.5pt; color: #6e6e6b; margin-top: 1.5mm; }
     <p>Como a ferramenta funciona, o método por trás do resultado e os conceitos essenciais para conduzir o diagnóstico com os clientes.</p>
     <div class="scale">${BANDS.map((b) => `<span style="background:${b.color}"></span>`).join("")}</div>
   </div>
-  <div class="foot"><span>Moulis Consultoria</span><span>${today}</span></div>
+  <div class="foot"><span>Moulis Advisory</span><span>${today}</span></div>
 </section>
 
 <section class="page toc">

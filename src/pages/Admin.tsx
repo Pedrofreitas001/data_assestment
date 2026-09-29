@@ -72,7 +72,7 @@ export default function Admin() {
   return (
     <>
       <PageHead
-        eyebrow="Consultoria Moulis"
+        eyebrow="Moulis Advisory"
         title="Clientes"
         desc="Carteira, andamento dos diagnósticos e acessos."
         actions={
@@ -103,7 +103,7 @@ export default function Admin() {
             </Empty>
           ) : (
             <div className="table-wrap">
-              <table className="table">
+              <table className="table table-stack">
                 <thead>
                   <tr>
                     <th>Cliente</th>
@@ -119,14 +119,14 @@ export default function Admin() {
                 <tbody>
                   {rows.map(({ o, latest, s, kpis: nk, activity }) => (
                     <tr key={o.id} className="click" onClick={() => openOrg(o.id)}>
-                      <td>
+                      <td className="c-main">
                         <div className="cell-title row" style={{ gap: 8 }}>
                           {o.name} {o.status !== "ativo" && <StatusBadge status={o.status} />}
                         </div>
                         <div className="cell-sub">{[o.segment, o.size].filter(Boolean).join(" · ") || "—"}</div>
                       </td>
-                      <td>{latest ? <StatusBadge status={latest.status} /> : <span className="badge badge-dashed">Não iniciado</span>}</td>
-                      <td>
+                      <td data-label="Diagnóstico">{latest ? <StatusBadge status={latest.status} /> : <span className="badge badge-dashed">Não iniciado</span>}</td>
+                      <td data-label="Progresso">
                         {s ? (
                           <div className="row">
                             <div className="grow">
@@ -138,13 +138,13 @@ export default function Admin() {
                           "—"
                         )}
                       </td>
-                      <td className="serif num" style={{ fontSize: 20 }}>
+                      <td className="serif num c-score" data-label="Score" style={{ fontSize: 20 }}>
                         {s?.overall == null ? "—" : Math.round(s.overall)}
                       </td>
-                      <td>{s ? <LevelPill level={s.band?.level} light /> : "—"}</td>
-                      <td className="num small">{nk}</td>
-                      <td className="small muted nowrap">{relTime(activity)}</td>
-                      <td onClick={(e) => e.stopPropagation()}>
+                      <td data-label="Nível">{s ? <LevelPill level={s.band?.level} light /> : "—"}</td>
+                      <td className="num small" data-label="KPIs">{nk}</td>
+                      <td className="small muted nowrap" data-label="Atividade">{relTime(activity)}</td>
+                      <td className="c-actions" onClick={(e) => e.stopPropagation()}>
                         <div className="row" style={{ gap: 4, justifyContent: "flex-end" }}>
                           <button className="btn btn-ghost btn-sm btn-icon" title="Editar" onClick={() => setEdit(o)}>
                             <Pencil size={15} />
