@@ -15,41 +15,46 @@ const ORG_B = "10000000-0000-4000-8000-00000000000b";
 const daysAgo = (n: number) => new Date(Date.now() - n * 864e5).toISOString();
 
 const orgA: Organization = {
-  id: ORG_A, name: "Casa Aurora Utilidades", segment: "Varejo omnichannel", size: "51 a 200", city: "Campinas/SP",
+  id: ORG_A, name: "Casa Aurora Utilidades", segment: "Varejo / E-commerce", size: "51 a 200", city: "Campinas/SP",
   contact_name: "Marina Alves (Diretora Comercial)", contact_email: "marina@casaaurora.exemplo.com", status: "ativo",
   notes: "12 lojas físicas + e-commerce (VTEX) + 1 CD próprio. Diagnóstico piloto do programa de maturidade de dados.",
 };
 const orgB: Organization = {
-  id: ORG_B, name: "Rota Sul Logística", segment: "Operador logístico / Transportadora", size: "201 a 500", city: "Joinville/SC",
+  id: ORG_B, name: "Rota Sul Logística", segment: "Logística / Transporte", size: "201 a 500", city: "Joinville/SC",
   contact_name: "Carlos Menezes (Gerente de Operações)", contact_email: "carlos@rotasul.exemplo.com", status: "ativo",
   notes: "Armazenagem e transporte fracionado para ~40 clientes contratantes.",
 };
 
 const answersA: Record<string, number> = {
-  est_uso: 3, est_producao: 3, est_prioridade: 2,
-  fnt_oficial: 2, fnt_arquitetura: 2, fnt_acesso: 2,
-  qual_confianca: 4, qual_monitor: 1, qual_premissas: 2,
+  est_uso: 3, est_prioridade: 2, est_resultado: 1,
+  fnt_oficial: 2, fnt_arquitetura: 2, fnt_acesso: 2, fnt_backup: 2,
+  qual_confianca: 3, qual_monitor: 1, qual_correcao: 1,
   int_chave: 2, int_consol: 2, int_linhagem: 2,
-  gov_owner: 2, gov_glossario: 1, gov_processo: 1,
+  gov_owner: 2, gov_glossario: 1, gov_decisao: 1,
   seg_cred: 2, seg_acesso: 2, seg_lgpd: 1,
-  pes_skill: 2, pes_dependencia: 1, pes_adocao: 2,
-  ia_automacao: 2, ia_uso: 2, ia_dados: 1,
-  com_fat_bate: 2, com_devolucao: 1, com_preco: 1, com_cliente_dup: 1,
-  est_acuracidade: 2, est_erp_wms: 1, est_negativo: 2, est_ruptura: 1, est_atualizacao: 2,
+  pes_skill: 3, pes_letramento: 2, pes_dependencia: 1, pes_adocao: 2,
+  ia_automacao: 2, ia_politica: 1, ia_dados: 2,
+  com_fat_bate: 2, com_devolucao: 1, com_funil: -1, com_preco: 1, com_cliente_dup: 1,
+  fin_dre: 2, fin_rateio: 1, fin_fechamento: 2, fin_orcado: 1,
+  rh_headcount: 2, rh_indicadores: 1, rh_matricula: 3, rh_ponto: 2,
+  op_prazo: 1, op_registro: 2, op_status: 2, op_ocorrencias: 1,
+  cmp_custo: 1, cmp_recebimento: 2, cmp_leadtime: 1, cmp_fornecedor_dup: 2,
+  cad_regra: 1, cad_hierarquia: 2, cad_completo: 1, cad_sync: 1,
+  est_acuracidade: 2, est_erp_wms: 1, est_negativo: 2, est_ruptura: 1, est_atualizacao: 2, cad_unidade: 2,
   ecm_pedidos_erp: 2, ecm_sku_map: 1, ecm_roi: 1, ecm_estoque_sync: 2,
-  cad_regra: 1, cad_hierarquia: 2, cad_completo: 1, cad_unidade: 2,
 };
 const assessA: Assessment = {
   id: "10000000-0000-4000-8000-0000000000a1", organization_id: ORG_A,
-  title: "Diagnóstico inicial — Fase 0", scope: "Empresa toda (Comercial, Estoque, E-commerce, Cadastro)",
+  title: "Diagnóstico inicial — Fase 0", scope: "Empresa toda",
   respondent: "Marina Alves (Dir. Comercial) + Tiago Souza (Analista de BI)", status: "concluido",
   context: {
-    segmento: "Varejo omnichannel", porte: "51 a 200", faturamento: "R$ 60–80 mi/ano", lojas_cds: "12 lojas, 1 CD",
-    skus: "~8.500 SKUs ativos", sistemas: ["TOTVS Winthor", "VTEX", "Excel / Google Sheets", "Power BI", "Mercado Livre"],
-    time_dados: "1 analista de BI + apoio de TI terceirizado",
+    segmento: "Varejo / E-commerce", porte: "51 a 200", faturamento: "R$ 60–80 mi/ano", unidades: "12 lojas e 1 CD",
+    sistemas: ["TOTVS", "VTEX", "Excel / Google Sheets", "Power BI", "Mercado Livre"],
+    time_dados: "um",
     dores: "Faturamento da VTEX não bate com o ERP; ninguém confia no saldo de estoque do site; relatório de vendas leva 2 dias para sair.",
-    objetivo: "Visão diária consolidada de venda e estoque por SKU e canal.",
-    dominios: ["comercial", "estoque", "ecommerce", "cadastro"],
+    objetivo: "confianca",
+    dominios: ["comercial", "financeiro", "pessoas", "operacoes", "compras", "cadastro", "estoque", "ecommerce"],
+    versao: 3,
   },
   answers: answersA,
   evidence: {
@@ -60,23 +65,28 @@ const assessA: Assessment = {
 };
 
 const answersB: Record<string, number> = {
-  est_uso: 4, est_producao: 4, est_prioridade: 3, fnt_oficial: 3, fnt_arquitetura: 4, fnt_acesso: 3,
-  qual_confianca: 3, qual_monitor: 3, qual_premissas: 3, int_chave: 3, int_consol: 4, int_linhagem: 3,
-  gov_owner: 3, gov_glossario: 3, gov_processo: 2, seg_cred: 3, seg_acesso: 3, seg_lgpd: 3,
-  pes_skill: 3, pes_dependencia: 3, pes_adocao: 3, ia_automacao: 3, ia_uso: 2, ia_dados: 2,
+  est_uso: 4, est_prioridade: 3, est_resultado: 3, fnt_oficial: 3, fnt_arquitetura: 4, fnt_acesso: 3, fnt_backup: 3,
+  qual_confianca: 3, qual_monitor: 3, qual_correcao: 3, int_chave: 3, int_consol: 4, int_linhagem: 3,
+  gov_owner: 3, gov_glossario: 3, gov_decisao: 2, seg_cred: 3, seg_acesso: 3, seg_lgpd: 3,
+  pes_skill: 3, pes_letramento: 3, pes_dependencia: 3, pes_adocao: 3, ia_automacao: 3, ia_politica: 2, ia_dados: 2,
   log_otif_regra: 3, log_frete_conc: 2, log_entrega_real: 2, log_status: 3, log_cadastro: 2,
-  est_acuracidade: 3, est_erp_wms: 3, est_negativo: 3, est_ruptura: 2, est_atualizacao: 3,
+  est_acuracidade: 3, est_erp_wms: 3, est_negativo: 3, est_ruptura: 2, est_atualizacao: 3, cad_unidade: 3,
   fin_dre: 2, fin_rateio: 2, fin_fechamento: 2, fin_orcado: 1,
+  op_prazo: 3, op_registro: 3, op_status: 3, op_ocorrencias: 2,
+  com_fat_bate: 3, com_devolucao: 2, com_funil: 2, com_preco: 3, com_cliente_dup: 3,
+  rh_headcount: 3, rh_indicadores: 2, rh_matricula: 3, rh_ponto: 3,
 };
 const assessB: Assessment = {
   id: "10000000-0000-4000-8000-0000000000b1", organization_id: ORG_B,
   title: "Assessment anual 2026", scope: "Operações + Financeiro", respondent: "Carlos Menezes (Ger. de Operações)",
   status: "concluido",
   context: {
-    segmento: "Operador logístico / Transportadora", porte: "201 a 500",
-    sistemas: ["WMS próprio", "TMS", "Senior", "Power BI"], dominios: ["logistica", "estoque", "financeiro"],
+    segmento: "Logística / Transporte", porte: "201 a 500",
+    sistemas: ["WMS próprio", "TMS", "Senior", "Power BI"], time_dados: "time",
+    dominios: ["comercial", "financeiro", "pessoas", "operacoes", "logistica", "estoque"],
     dores: "Faturas de frete com divergência recorrente; OTIF discutido cliente a cliente, sem regra única.",
-    objetivo: "Painel único de OTIF e custo de frete por cliente, sem retrabalho manual no fechamento.",
+    objetivo: "manual",
+    versao: 3,
   },
   answers: answersB, evidence: {}, ai_insights: null, score: null, level: null, report_notes: [],
   created_at: daysAgo(40), updated_at: daysAgo(6),

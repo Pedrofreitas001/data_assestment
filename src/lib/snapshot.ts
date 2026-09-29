@@ -2,13 +2,17 @@
 import { store } from "./store";
 import { consistencyAlerts } from "../model/consistency";
 import { scoreAssessment } from "../model/scoring";
+import { buildRoadmap } from "../model/roadmap";
 import { CHECK_OPTIONS as CHECK_LABELS } from "../model/framework";
 import { KPI_REQUIRED_FIELDS, completeness } from "../model/kpiOptions";
 import type { Assessment, Kpi, Organization } from "../model/types";
 
 export function assessmentDigest(a: Assessment) {
   const s = scoreAssessment(a);
+  const r = buildRoadmap(a, s);
   return {
+    perfil: `${r.profile.title} — ${r.profile.summary}`,
+    proximos_passos: r.steps.slice(0, 6).map((p) => `[Onda ${p.wave}] ${p.title} (${p.owner}; entregável: ${p.deliverable})`),
     titulo: a.title,
     escopo: a.scope,
     status: a.status,
@@ -56,7 +60,7 @@ export async function orgSnapshot(org: Organization | null) {
 export function assessmentForLlm(a: Assessment) {
   const answers = a.answers || {};
   const label = (levels: { v: number; label: string }[], v: number | undefined) =>
-    v === undefined ? null : v === 0 ? "Não sei" : levels.find((l) => l.v === v)?.label ?? String(v);
+    v === undefined ? null : v === 0 ? "Não sei" : v === -1 ? "Não se aplica" : levels.find((l) => l.v === v)?.label ?? String(v);
   const s = scoreAssessment(a);
   return {
     contexto: a.context,

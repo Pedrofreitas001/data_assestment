@@ -125,7 +125,7 @@ export default function Glossary() {
       {!list.length ? (
         <div className="card">
           <Empty icon={<Sigma size={20} />} title={kpis.rows.length ? "Nada encontrado" : "Glossário vazio"} action={!kpis.rows.length ? <button className="btn btn-primary" onClick={() => setLibOpen(true)}><BookMarked size={15} /> Começar pela biblioteca</button> : undefined}>
-            {kpis.rows.length ? "Ajuste os filtros." : "Importe definições de referência de varejo e logística e adapte com o owner de cada indicador."}
+            {kpis.rows.length ? "Ajuste os filtros." : "Importe definições de referência e adapte com o responsável por cada indicador."}
           </Empty>
         </div>
       ) : (
@@ -389,7 +389,7 @@ function KpiDrawer({ kpi, context, onClose, onSave, onDelete }: { kpi: Kpi; cont
             </select>
           </Field>
           <Field label="Granularidade">
-            <input className="input" {...txt("granularity")} placeholder="Dia × loja × SKU" />
+            <input className="input" {...txt("granularity")} placeholder="Mês × unidade × produto/serviço" />
           </Field>
           <Field label="Frequência">
             <input className="input" {...txt("frequency")} placeholder="Diária" />
@@ -431,7 +431,7 @@ function KpiDrawer({ kpi, context, onClose, onSave, onDelete }: { kpi: Kpi; cont
             <textarea className="textarea mono" {...txt("source_tables")} style={{ minHeight: 56 }} />
           </Field>
           <Field label="Linhagem" full>
-            <input className="input" {...txt("lineage")} placeholder="ERP → bronze.nf → prata.vendas → ouro.fato_vendas → Painel" />
+            <input className="input" {...txt("lineage")} placeholder="ERP (notas fiscais) → base central (vendas) → Painel comercial" />
           </Field>
           <Field label="Checagens de qualidade" full>
             <textarea className="textarea" {...txt("quality_checks")} style={{ minHeight: 56 }} />
@@ -452,7 +452,7 @@ function LibraryModal({ existing, onClose, onImport }: { existing: Kpi[]; onClos
   const [busy, setBusy] = useState(false);
   return (
     <Modal
-      eyebrow="Biblioteca Moulis · varejo & logística"
+      eyebrow="Biblioteca Moulis · modelos de indicadores"
       title="Importar definições de referência"
       onClose={onClose}
       footer={

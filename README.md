@@ -1,6 +1,6 @@
 # Moulis · Assessment de Maturidade de Dados
 
-Web app para a consultoria Moulis diagnosticar a maturidade de dados de empresas de médio porte e documentar o **glossário de KPIs** — com um copiloto de IA (OpenRouter) que ajuda a preencher, interpretar e gerar insights.
+Web app para a Moulis Advisory diagnosticar a maturidade de dados de empresas de médio porte e documentar o **glossário de KPIs** — com um copiloto de IA (OpenRouter) que ajuda a preencher, interpretar e gerar insights.
 
 Stack: **React 19 + Vite + TypeScript** · **Supabase** (auth + Postgres com RLS) · **Vercel** (site estático + Functions para a IA). Sem VPS.
 

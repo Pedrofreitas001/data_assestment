@@ -11,10 +11,12 @@ import { useCopilot } from "../context/copilot";
 import { normInsights, safeInsights } from "../lib/sanitize";
 import { useOrg } from "../context/org";
 import { useToast } from "../context/toast";
-import { CHECK_OPTIONS, UNKNOWN } from "../model/framework";
+import { CHECK_OPTIONS, NOT_APPLICABLE, UNKNOWN } from "../model/framework";
 import { scoreAssessment, tierFor, TIER_LABEL } from "../model/scoring";
 import { consistencyAlerts } from "../model/consistency";
-import { DIM_PLAYBOOK, WAVES, buildActionPlan } from "../model/playbook";
+import { DIM_PLAYBOOK } from "../model/playbook";
+import { buildRoadmap } from "../model/roadmap";
+import NextSteps from "../components/NextSteps";
 import type { AiInsights, Assessment, ReportNote } from "../model/types";
 import { AiMark, BandScale, Empty, LoadingPage, Spinner } from "../components/ui";
 import { QualityHeatmap, Radar } from "../components/charts";
@@ -43,7 +45,8 @@ export default function Result() {
 
   const s = useMemo(() => (a ? scoreAssessment(a) : null), [a]);
   const alerts = useMemo(() => (a ? consistencyAlerts(a) : []), [a]);
-  const plan = useMemo(() => (a && s ? buildActionPlan(a, s) : []), [a, s]);
+  const roadmap = useMemo(() => (a && s ? buildRoadmap(a, s) : null), [a, s]);
+  const plan = roadmap?.steps ?? [];
 
   // ---------------------------------------------------------- assistente
   const copilot = useCopilot();
@@ -113,7 +116,8 @@ export default function Result() {
       const { output: raw, model } = await callSkill<unknown>("generate-insights", {
         empresa: { nome: org?.name, segmento: org?.segment, porte: org?.size },
         assessment: assessmentForLlm(a),
-        plano_deterministico: plan.slice(0, 20).map((p) => ({ onda: p.wave, acao: p.title, origem: p.origin, motivo: p.reason })),
+        perfil: roadmap?.profile,
+        plano_deterministico: plan.slice(0, 20).map((p) => ({ onda: p.wave, acao: p.title, origem: p.origin, por_que: p.why, entregavel: p.deliverable, responsavel: p.owner })),
         glossario: kpiDigest(kpis),
       });
       const output = normInsights(raw);
@@ -137,7 +141,6 @@ export default function Result() {
     setA(await saveAssessment({ ...a, report_notes: (a.report_notes || []).filter((n) => n.id !== id) }));
   }
 
-  const waves = ([1, 2, 3] as const).map((w) => ({ w, items: plan.filter((p) => p.wave === w).slice(0, 5) }));
   const attention = [
     ...s.gates.map((g) => ({ key: g.questionId, title: `Limita o nível a ${g.capLevel}`, detail: g.reason, high: true })),
     ...alerts.map((al) => ({ key: al.id, title: al.title, detail: al.detail, high: al.severity === "alta" })),
@@ -389,29 +392,12 @@ export default function Result() {
       <section className="card page-break" id="plano" style={{ marginBottom: 20, scrollMarginTop: 20 }}>
         <div className="card-head">
           <div>
-            <h3 className="card-title">Plano de ação</h3>
-            <p className="card-sub">Priorizado pelo que mais limita a maturidade</p>
+            <h3 className="card-title">Próximos passos</h3>
+            <p className="card-sub">O que fazer, como, quem conduz e como saber que terminou — ajustado ao contexto da empresa</p>
           </div>
         </div>
         <div className="card-body">
-          <div className="plan-cols">
-            {waves.map(({ w, items }) => (
-              <div key={w} className="plan-col">
-                <div className="plan-head">
-                  <b>{WAVES[w].label}</b>
-                </div>
-                {!items.length && <p className="small muted">Nada pendente.</p>}
-                <ol className="steps-list">
-                  {items.map((p) => (
-                    <li key={p.id}>
-                      <span>{p.title}</span>
-                      <span className="xs muted">{p.origin.replace(/^D\d · /, "")}</span>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-            ))}
-          </div>
+          {roadmap && <NextSteps roadmap={roadmap} />}
         </div>
       </section>
 
@@ -466,5 +452,6 @@ export default function Result() {
 function answerLabel(v: number | undefined, levels: { v: number; label: string }[]) {
   if (v === undefined) return <span className="muted">—</span>;
   if (v === UNKNOWN) return <span className="badge badge-dashed">Não sei</span>;
+  if (v === NOT_APPLICABLE) return <span className="badge badge-dashed">Não se aplica</span>;
   return levels.find((x) => x.v === v)?.label;
 }

@@ -44,7 +44,7 @@ export default function Assessments() {
           </Empty>
         ) : (
           <div className="table-wrap">
-            <table className="table">
+            <table className="table table-stack">
               <thead>
                 <tr>
                   <th>Diagnóstico</th>
@@ -61,14 +61,14 @@ export default function Assessments() {
                   const s = scoreAssessment(a);
                   return (
                     <tr key={a.id} className="click" onClick={() => nav(`/assessments/${a.id}`)}>
-                      <td>
+                      <td className="c-main">
                         <div className="cell-title">{a.title}</div>
                         <div className="cell-sub">{a.scope || "—"}</div>
                       </td>
-                      <td>
+                      <td data-label="Status">
                         <StatusBadge status={a.status} />
                       </td>
-                      <td>
+                      <td data-label="Progresso">
                         <div className="row">
                           <div className="grow">
                             <Bar value={s.progress * 100} thin brand />
@@ -76,14 +76,14 @@ export default function Assessments() {
                           <span className="xs muted num">{Math.round(s.progress * 100)}%</span>
                         </div>
                       </td>
-                      <td className="num serif" style={{ fontSize: 20 }}>
+                      <td className="num serif c-score" data-label="Score" style={{ fontSize: 20 }}>
                         {s.overall === null ? "—" : Math.round(s.overall)}
                       </td>
-                      <td>
+                      <td data-label="Nível">
                         <LevelPill level={s.band?.level} light />
                       </td>
-                      <td className="muted small nowrap">{relTime(a.updated_at)}</td>
-                      <td onClick={(e) => e.stopPropagation()}>
+                      <td className="muted small nowrap" data-label="Atualizado">{relTime(a.updated_at)}</td>
+                      <td className="c-actions" onClick={(e) => e.stopPropagation()}>
                         <div className="row" style={{ gap: 4, justifyContent: "flex-end" }}>
                           <button className="btn btn-ghost btn-sm btn-icon" title="Relatório" onClick={() => nav(`/assessments/${a.id}/resultado`)}>
                             <FileBarChart size={16} />

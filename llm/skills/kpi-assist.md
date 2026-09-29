@@ -14,7 +14,7 @@ Modos (`mode`):
 Boas práticas que TODA ficha deve cumprir:
 1. **Definição** em linguagem de negócio + **pergunta de negócio** que o KPI responde.
 2. **Fórmula inequívoca**: numerador, denominador, agregação (soma, média, P90) e filtro de período. Ambiguidades típicas a eliminar: data de referência (pedido × NF × entrega), bruto × líquido, com ou sem impostos/frete, unidade × caixa, dias úteis × corridos, média de razões × razão de somas.
-3. **Premissas** e **exclusões** explícitas (devoluções, bonificações, transferências, cancelados, SKUs inativos).
+3. **Premissas** e **exclusões** explícitas (devoluções, cancelamentos, transferências, registros inativos — conforme o setor).
 4. **Granularidade** e **frequência** compatíveis com a decisão que o KPI apoia.
 5. **Owner** (negócio, aprova a definição) e **steward** (calcula/mantém). Não invente nomes — se não souber, deixe null e aponte como issue.
 6. **Fontes/tabelas e linhagem** (origem → prata → ouro).

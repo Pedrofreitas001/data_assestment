@@ -9,7 +9,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useLocation, useNavigate } from "react-router-dom";
 import { callSkill, type ChatTurn } from "../lib/llm";
 import { orgSnapshot, assessmentForLlm } from "../lib/snapshot";
-import { store } from "../lib/store";
+import { store, uid as dbUid } from "../lib/store";
 import { looksLikeSecret } from "../model/kpiOptions";
 import { normCopilot, normInterview } from "../lib/sanitize";
 import type { Assessment, ChatThread, Priority, PriorityStatus, StoredChatMessage } from "../model/types";
@@ -99,6 +99,8 @@ interface CopilotState {
   priorities: Priority[];
   prioritiesLoading: boolean;
   savePriority: (msgId: string, title: string) => Promise<Priority | null>;
+  /** Cria uma prioridade fora do chat (ex.: a partir de um passo do plano). */
+  addPriority: (p: { title: string; question?: string | null; answer: string; key?: string }) => Promise<Priority | null>;
   updatePriority: (id: string, patch: { title?: string; status?: PriorityStatus }) => Promise<void>;
   removePriority: (id: string) => Promise<void>;
   /** Pergunta do usuário que originou a resposta (para montar a prioridade). */
@@ -107,6 +109,8 @@ interface CopilotState {
 
 const Ctx = createContext<CopilotState>(null as never);
 const uid = () => Math.random().toString(36).slice(2, 10);
+// Ids de MENSAGEM podem ser curtos (só vivem dentro do jsonb); ids de CONVERSA/PRIORIDADE
+// vão para colunas uuid de verdade no banco (chat_threads.id, priorities.thread_id) — usam dbUid().
 const COOLDOWN_MS = 40_000;
 
 const GLOBAL_ACTIONS = ["open_report", "continue_assessment"];
@@ -211,7 +215,7 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
     const orgId = org.id;
     const t = setTimeout(() => {
       dirty.current = false;
-      const id = threadIdRef.current || uid();
+      const id = threadIdRef.current || dbUid();
       if (!threadIdRef.current) {
         threadIdRef.current = id;
         setThreadId(id);
@@ -532,7 +536,7 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
       const msg = messagesRef.current.find((m) => m.id === msgId);
       if (!orgId || !msg) return null;
       // Garante que a conversa exista antes de apontar para ela.
-      const tid = threadIdRef.current || uid();
+      const tid = threadIdRef.current || dbUid();
       if (!threadIdRef.current) {
         threadIdRef.current = tid;
         setThreadId(tid);
@@ -553,6 +557,23 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
     },
     [questionFor],
   );
+
+  const addPriority = useCallback(async (p: { title: string; question?: string | null; answer: string; key?: string }) => {
+    const orgId = orgIdRef.current;
+    if (!orgId) return null;
+    const saved = await store.upsert("priorities", {
+      organization_id: orgId,
+      title: p.title.trim() || "Prioridade",
+      question: p.question ?? null,
+      answer: p.answer,
+      status: "aberta",
+      thread_id: null,
+      // Guarda a origem (ex.: "plano:qual_monitor") para não duplicar e marcar o passo.
+      message_id: p.key ?? null,
+    });
+    setPriorities((xs) => [saved, ...xs]);
+    return saved;
+  }, []);
 
   const updatePriority = useCallback(async (id: string, patch: { title?: string; status?: PriorityStatus }) => {
     const cur = prioritiesRef.current.find((x) => x.id === id);
@@ -577,7 +598,7 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
     isOpen, open, close, messages, busy, send, ask, runAction, applySuggestions, bubble, dismissBubble, acceptBubble, nudge,
     setFocus, registerHandlers, availableActions, interview, startInterview, stopInterview, proactive, setProactive, reset,
     threadId, threads, threadsLoading, loadThreads, openThread, deleteThread,
-    priorities, prioritiesLoading, savePriority, updatePriority, removePriority, questionFor,
+    priorities, prioritiesLoading, savePriority, addPriority, updatePriority, removePriority, questionFor,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

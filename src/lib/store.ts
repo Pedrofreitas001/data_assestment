@@ -2,6 +2,12 @@ import { supabase } from "./supabase";
 import type { TableName, TableRow } from "../model/types";
 import { demoSeed } from "./demoSeed";
 import { toError } from "./errors";
+import { upgradeAssessment } from "../model/migrate";
+
+// Diagnósticos antigos são migrados para a versão atual do questionário na leitura.
+function upgrade<T>(table: TableName, row: T): T {
+  return table === "assessments" && row ? (upgradeAssessment(row as never) as T) : row;
+}
 
 type Row<T extends TableName> = TableRow[T];
 type Filter = { organization_id?: string | null };
@@ -26,12 +32,12 @@ const remoteStore: Store = {
     if (filter?.organization_id) q = q.eq("organization_id", filter.organization_id);
     const { data, error } = await q.order("updated_at", { ascending: false });
     if (error) throw toError(error);
-    return data as never;
+    return (data || []).map((r) => upgrade(table, r)) as never;
   },
   async get(table, id) {
     const { data, error } = await supabase!.from(table).select("*").eq("id", id).maybeSingle();
     if (error) throw toError(error);
-    return data as never;
+    return upgrade(table, data) as never;
   },
   async upsert(table, row) {
     const payload = { ...row, id: row.id || uid() } as Record<string, unknown>;
@@ -98,11 +104,11 @@ const localStore: Store = {
     let rows = read<Row<typeof table>>(table);
     if (filter?.organization_id) rows = rows.filter((r) => (r as { organization_id?: string }).organization_id === filter.organization_id);
     rows.sort((a, b) => String((b as { updated_at?: string }).updated_at || "").localeCompare(String((a as { updated_at?: string }).updated_at || "")));
-    return delay(rows as never);
+    return delay(rows.map((r) => upgrade(table, r)) as never);
   },
   async get(table, id) {
     ensureSeed();
-    return delay((read<{ id: string }>(table).find((r) => r.id === id) as never) ?? null);
+    return delay(upgrade(table, (read<{ id: string }>(table).find((r) => r.id === id) as never) ?? null));
   },
   async upsert(table, row) {
     ensureSeed();

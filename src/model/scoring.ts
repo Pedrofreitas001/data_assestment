@@ -2,8 +2,10 @@ import {
   ALL_CHECKS,
   DIMENSIONS,
   DOMAINS,
+  NOT_APPLICABLE,
   QUALITY_DIMS,
   UNKNOWN,
+  suggestedDomainKeys,
   bandForLevel,
   bandForScore,
   type Band,
@@ -24,14 +26,14 @@ export function isAnswered(v: number | undefined): v is number {
 }
 
 export function questionScore(q: Question, v: number | undefined): number | null {
-  if (!isAnswered(v)) return null;
+  if (!isAnswered(v) || v === NOT_APPLICABLE) return null;
   if (v === UNKNOWN) return 0;
   const max = q.levels.length;
   return max > 1 ? ((v - 1) / (max - 1)) * 100 : 100;
 }
 
 export function checkScore(v: number | undefined): number | null {
-  if (!isAnswered(v)) return null;
+  if (!isAnswered(v) || v === NOT_APPLICABLE) return null;
   if (v === UNKNOWN) return 0;
   return ((v - 1) / 2) * 100;
 }
@@ -56,8 +58,9 @@ export function domainScore(domain: OpDomain, answers: Answers): number | null {
 }
 
 export function scopedDomains(a: Pick<Assessment, "context">): OpDomain[] {
-  const keys = a.context?.dominios;
-  if (!keys || !keys.length) return DOMAINS;
+  const chosen = (a.context?.dominios || []).filter((k) => DOMAINS.some((d) => d.key === k));
+  // Sem escolha explícita: núcleo universal + módulos do setor.
+  const keys = chosen.length ? chosen : suggestedDomainKeys(a.context?.segmento);
   return DOMAINS.filter((d) => keys.includes(d.key));
 }
 
@@ -124,7 +127,7 @@ export function scoreAssessment(a: Pick<Assessment, "answers" | "context" | "evi
   for (const dim of DIMENSIONS)
     for (const q of dim.questions) {
       const v = answers[q.id];
-      if (q.gate && isAnswered(v) && v <= q.gate.belowOrEqual)
+      if (q.gate && isAnswered(v) && v !== NOT_APPLICABLE && v <= q.gate.belowOrEqual)
         gates.push({ questionId: q.id, prompt: q.prompt, capLevel: q.gate.capLevel, reason: q.gate.reason });
     }
 

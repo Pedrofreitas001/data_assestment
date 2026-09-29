@@ -1,6 +1,7 @@
 import { store, uid } from "./store";
 import { scoreAssessment } from "../model/scoring";
 import type { Assessment, Organization } from "../model/types";
+import { FRAMEWORK_VERSION } from "../model/framework";
 
 export async function createAssessment(org: Organization, createdBy?: string | null): Promise<Assessment> {
   const now = new Date();
@@ -11,7 +12,7 @@ export async function createAssessment(org: Organization, createdBy?: string | n
     scope: "Empresa toda",
     respondent: null,
     status: "rascunho",
-    context: { segmento: org.segment || undefined, porte: org.size || undefined },
+    context: { segmento: org.segment || undefined, porte: org.size || undefined, versao: FRAMEWORK_VERSION },
     answers: {},
     evidence: {},
     ai_insights: null,

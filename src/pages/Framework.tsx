@@ -156,7 +156,11 @@ export default function Framework() {
       <section id="qualidade" className="card card-pad m-sec">
         <p className="section-title">Qualidade dos dados — 6 dimensões</p>
         <p className="small muted" style={{ marginTop: 0 }}>
-          Para cada área avaliada ({DOMAINS.map((d) => d.title).join(", ")}) perguntamos se os pontos de conferência existem na prática. O relatório mostra um mapa área × dimensão.
+          Para cada área avaliada perguntamos se os controles existem na prática — com a opção “Não se aplica” quando não fazem sentido. O relatório mostra um mapa área × dimensão.
+          <br />
+          <b>Núcleo, para toda empresa:</b> {DOMAINS.filter((d) => d.core).map((d) => d.title).join(", ")}.
+          <br />
+          <b>Módulos por setor:</b> {DOMAINS.filter((d) => !d.core).map((d) => d.title).join(", ")}.
         </p>
         <div className="q-grid">
           {QUALITY_EXPLAINED.map((q) => (
@@ -199,7 +203,10 @@ export default function Framework() {
       </section>
 
       <section id="plano" className="card card-pad m-sec">
-        <p className="section-title">Plano de ação em ondas</p>
+        <p className="section-title">Próximos passos em ondas</p>
+        <p className="small muted" style={{ marginTop: 0 }}>
+          Cada resposta abaixo do ideal gera o passo que leva ao <b>próximo nível</b> daquela pergunta — com como fazer, entregável, quem conduz, prazo típico e critério de pronto. O plano começa pelo que limita o nível, sobe o que ataca o objetivo informado no contexto e cabe na capacidade do time: 3 passos na Onda 1 quando ninguém cuida de dados, até 5 quando há um time.
+        </p>
         <div className="plan-cols">
           {WAVES_DETAIL.map((w) => (
             <div key={w.wave} className="plan-col">

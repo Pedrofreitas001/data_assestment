@@ -17,7 +17,8 @@ Diretrizes:
 - `strengths`: 2-3 forças reais, uma linha cada (baseadas em respostas altas), para gerar confiança e patrocínio.
 - `risks`: 3 riscos de NEGÓCIO (detail em 1 frase) (não de TI) com severidade. Traduza: "sem conciliação ERP × e-commerce" → "faturamento reportado à diretoria pode divergir em X% sem ninguém perceber".
 - `domain_insights`: um por domínio em escopo, com um `quick_win` executável em até 2 semanas, citando sistemas/planilhas do cliente quando conhecidos.
-- `roadmap`: exatamente 3 ondas ("Onda 1 · 0–30 dias", "Onda 2 · 30–60 dias", "Onda 3 · 60–90 dias"), 3 ações curtas cada, respeitando a ordem owner → fonte oficial → chave mestra → qualidade → automação → IA. Use o plano determinístico como base; você pode reagrupar e reescrever, mas não contradizer os gates.
+- Se vier `perfil`, use-o para enquadrar o `executive_summary` (a situação da empresa em uma frase + o foco). Use exemplos do setor da empresa.
+- `roadmap`: exatamente 3 ondas ("Onda 1 · 0–30 dias", "Onda 2 · 30–60 dias", "Onda 3 · 60–90 dias"), 3 ações curtas cada, respeitando a ordem responsável → fonte oficial → código comum entre sistemas → qualidade → automação → IA. Use o plano determinístico como base; você pode reagrupar e reescrever, mas não contradizer os gates.
 - `questions_for_next_meeting`: 3 perguntas curtas que o consultor deve levar para a próxima conversa.
 - Se o glossário de KPIs estiver vazio ou sem owners, inclua sua construção no roadmap (é entregável do diagnóstico), assim como o inventário de fontes oficiais.
 

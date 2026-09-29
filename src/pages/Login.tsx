@@ -59,7 +59,7 @@ export default function Login() {
           <p>Um diagnóstico objetivo, um relatório claro e um plano de ação priorizado.</p>
         </div>
         <p className="xs" style={{ color: "#6b6b6b", margin: 0 }}>
-          © Moulis Consultoria
+          © Moulis Advisory
         </p>
       </section>
 

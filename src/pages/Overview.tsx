@@ -9,7 +9,8 @@ import { useRows } from "../lib/useRows";
 import { createAssessment } from "../lib/assessments";
 import { relTime } from "../lib/format";
 import { scoreAssessment } from "../model/scoring";
-import { buildActionPlan } from "../model/playbook";
+import { buildRoadmap } from "../model/roadmap";
+import { NextStepsCompact } from "../components/NextSteps";
 import { BandScale, Bar, Empty, LoadingPage, PageHead, Spinner, StatusBadge } from "../components/ui";
 import { supabase } from "../lib/supabase";
 import { ScoreRing } from "../components/charts";
@@ -26,7 +27,7 @@ export default function Overview() {
 
   const latest = assessments.rows[0];
   const s = useMemo(() => (latest ? scoreAssessment(latest) : null), [latest]);
-  const next = useMemo(() => (latest && s ? buildActionPlan(latest, s).slice(0, 4) : []), [latest, s]);
+  const roadmap = useMemo(() => (latest && s ? buildRoadmap(latest, s) : null), [latest, s]);
 
   const copilot = useCopilot();
   useEffect(() => {
@@ -153,52 +154,43 @@ export default function Overview() {
         </div>
       </section>
 
+      <section className="card" style={{ marginTop: 20 }}>
+        <div className="card-head">
+          <div>
+            <h3 className="card-title">Próximos passos</h3>
+            <p className="card-sub">Começando pelo que mais limita a maturidade e pelo seu objetivo</p>
+          </div>
+          <Link to={`/assessments/${latest.id}/resultado#plano`} className="btn btn-sm btn-ghost">
+            Plano completo <ArrowRight size={14} />
+          </Link>
+        </div>
+        <div className="card-body">{roadmap && <NextStepsCompact roadmap={roadmap} />}</div>
+      </section>
+
+      <PrioritiesCard id="prioridades" style={{ marginTop: 20 }} />
+
       <div style={{ marginTop: 20 }}>
         <AskBar
           title="Pergunte ao assistente sobre este diagnóstico"
           placeholder="Ex.: por que estamos no nível 2?"
-          chips={["O que mais pesa no resultado?", "O que fazer nos próximos 30 dias?", "Explique a nota de Governança"]}
+          chips={["O que mais pesa no resultado?", "Como começo o primeiro passo?", "Explique a nota de Governança"]}
         />
       </div>
 
-      <PrioritiesCard id="prioridades" style={{ marginTop: 20 }} />
-
-      <div className="grid g-2" style={{ marginTop: 20 }}>
-        <section className="card">
-          <div className="card-head">
-            <h3 className="card-title">Por capacidade</h3>
-          </div>
-          <div className="card-body">
-            {s.dims.map(({ dim, score }) => (
-              <div className="meter-row" key={dim.key}>
-                <div className="lbl">{dim.title}</div>
-                <Bar value={score} thin />
-                <div className="val">{score === null ? "—" : Math.round(score)}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="card">
-          <div className="card-head">
-            <h3 className="card-title">Próximos passos</h3>
-            <Link to={`/assessments/${latest.id}/resultado#plano`} className="btn btn-sm btn-ghost">
-              Plano completo <ArrowRight size={14} />
-            </Link>
-          </div>
-          <div className="card-body">
-            {!next.length && <p className="small muted">Nenhuma ação pendente.</p>}
-            <ol className="steps-list">
-              {next.map((p) => (
-                <li key={p.id}>
-                  <span>{p.title}</span>
-                  <span className="xs muted">{p.origin.replace(/^D\d · /, "")}</span>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </section>
-      </div>
+      <section className="card" style={{ marginTop: 20 }}>
+        <div className="card-head">
+          <h3 className="card-title">Por capacidade</h3>
+        </div>
+        <div className="card-body">
+          {s.dims.map(({ dim, score }) => (
+            <div className="meter-row" key={dim.key}>
+              <div className="lbl">{dim.title}</div>
+              <Bar value={score} thin />
+              <div className="val">{score === null ? "—" : Math.round(score)}</div>
+            </div>
+          ))}
+        </div>
+      </section>
     </>
   );
 }

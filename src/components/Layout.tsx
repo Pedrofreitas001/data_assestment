@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { BookOpen, Briefcase, ClipboardCheck, Home, LogOut, Menu, Sigma } from "lucide-react";
 import { useAuth } from "../context/auth";
@@ -18,6 +18,20 @@ export default function Layout({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const copilot = useCopilot();
   const loc = useLocation();
+
+  // Gaveta (celular/tablet): fecha ao trocar de página ou com Esc, e trava a rolagem do fundo.
+  useEffect(() => setOpen(false), [loc.pathname]);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
 
   const nav = (
     <nav className="nav" onClick={() => setOpen(false)}>
@@ -88,8 +102,8 @@ export default function Layout({ children }: { children: ReactNode }) {
             <div className="n">{profile?.full_name || profile?.email}</div>
             <div className="r">{profile ? ROLE_LABEL[profile.role] : ""}</div>
           </div>
-          <button className="side-btn" title="Sair" onClick={() => signOut()}>
-            <LogOut size={16} />
+          <button className="side-btn side-exit" title="Sair" aria-label="Sair da conta" onClick={() => signOut()}>
+            <LogOut size={16} /> <span className="side-exit-label">Sair</span>
           </button>
         </div>
       </aside>
@@ -100,9 +114,10 @@ export default function Layout({ children }: { children: ReactNode }) {
             <Menu size={20} />
           </button>
           <span className="brand-name">moulis</span>
-          <span className="xs" style={{ color: "#9b9b95", marginLeft: "auto", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {org?.name}
-          </span>
+          <span className="mobile-org">{org?.name}</span>
+          <button className="side-btn" onClick={() => signOut()} aria-label="Sair da conta" title="Sair" style={{ color: "#cfcfca" }}>
+            <LogOut size={18} />
+          </button>
         </div>
         <main className="content" key={loc.pathname.split("/")[1]}>
           <ErrorBoundary key={loc.pathname}>{children}</ErrorBoundary>

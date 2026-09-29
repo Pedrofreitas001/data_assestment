@@ -37,7 +37,7 @@ export const CONCEPTS: { term: string; def: string; group: "Papéis" | "Arquitet
   { group: "Papéis", term: "Data Owner", def: "Autoridade de negócio sobre um domínio de dados (ex.: gerente comercial para vendas). Aprova definições e premissas e prioriza demandas. Sem owner, o número pode estar tecnicamente certo, mas ninguém confia nele para decidir." },
   { group: "Papéis", term: "Data Steward", def: "Responsável pela execução: carrega, consolida e faz a primeira conferência de qualidade. Normalmente um analista sênior da área." },
   { group: "Papéis", term: "Data User", def: "Quem consome o dado consolidado para decidir, sem responsabilidade de manutenção." },
-  { group: "Arquitetura", term: "Chave mestra (tabela de-para)", def: "Campo que conecta a mesma informação entre sistemas — no varejo, o código do produto (SKU). O problema raramente é o SKU em si, e sim a falta de uma tabela única que traduza os códigos de cada sistema." },
+  { group: "Arquitetura", term: "Chave mestra (tabela de-para)", def: "Código que conecta a mesma coisa entre sistemas: o cliente, o produto ou serviço, o fornecedor, o colaborador. O problema raramente é o código em si, e sim a falta de uma tabela única que traduza os códigos de cada sistema." },
   { group: "Arquitetura", term: "Silo de dados", def: "Fonte isolada que não conversa com o resto da empresa. Surge naturalmente quando cada área resolve seus problemas com as ferramentas que tem — deve ser mapeado antes de ser eliminado." },
   { group: "Arquitetura", term: "Camadas bronze, prata e ouro", def: "Bronze: dado bruto, como veio da fonte. Prata: dado limpo, sem duplicidade e com a chave comum aplicada. Ouro: indicadores prontos para consumo em relatórios e painéis." },
   { group: "Arquitetura", term: "Fonte única da verdade", def: "Um lugar oficial para cada informação, que elimina a pergunta “qual planilha está certa?”. Exige também regra clara de quem pode alterá-la." },
@@ -49,9 +49,9 @@ export const CONCEPTS: { term: string; def: string; group: "Papéis" | "Arquitet
 ];
 
 export const WAVES_DETAIL = [
-  { wave: "Onda 1 · 0–30 dias", focus: "Fundações", items: ["Nomear owner e steward das áreas críticas", "Declarar a fonte oficial de cada informação crítica", "Construir e validar a chave mestra (tabela de-para)", "Tratar riscos críticos (LGPD, credenciais)"] },
-  { wave: "Onda 2 · 30–60 dias", focus: "Estrutura", items: ["Consolidar dados num banco único (camada prata)", "Publicar o glossário dos KPIs críticos", "Implantar as primeiras conferências de qualidade com responsável"] },
-  { wave: "Onda 3 · 60–90 dias", focus: "Escala", items: ["Automatizar as rotinas mais repetitivas", "Levar os painéis para os rituais de gestão", "Avaliar casos de IA sobre dados já governados"] },
+  { wave: "Onda 1 · 0–30 dias", focus: "Fundamentos", items: ["Nomear o responsável de negócio de cada área de dados", "Declarar a fonte oficial de cada informação importante", "Criar a tabela de correspondência de códigos entre sistemas", "Começar as conferências de qualidade e tratar riscos críticos (acessos, LGPD)"] },
+  { wave: "Onda 2 · 30–60 dias", focus: "Estrutura", items: ["Escrever a definição dos indicadores principais (Glossário)", "Centralizar os dados numa base única", "Corrigir erros na origem e registrar as causas"] },
+  { wave: "Onda 3 · 60–90 dias", focus: "Escala", items: ["Automatizar as rotinas mais repetitivas, com aviso de falha", "Levar os painéis para os rituais de gestão e formar os gestores", "Publicar regras de uso de IA e testar um caso com dados governados"] },
 ];
 
 export const SUCCESS = [
@@ -66,4 +66,7 @@ export const REFERENCES = [
   { name: "DGI", text: "Foco em direitos de decisão: quem decide sobre qual dado. Base dos papéis de owner e steward." },
   { name: "DCAM", text: "Modelo de avaliação de maturidade por níveis, sem pular etapas. Base dos requisitos fundamentais." },
   { name: "NIST", text: "Referência em risco e conformidade: acesso, proteção de dados sensíveis e aderência à LGPD." },
+  { name: "DCAM v3 (2025)", text: "Atualização do DCAM com foco em IA, privacidade e financiamento das iniciativas de dados — base das perguntas sobre orçamento e regras de uso de IA." },
+  { name: "Data Orchard / UK DMA", text: "Modelos que tratam liderança, cultura e habilidades como parte da maturidade, e escrevem cada nível como comportamento observável — base das perguntas de letramento e dos níveis do questionário." },
+  { name: "DAMA UK — 6 dimensões", text: "Acuracidade, completude, consistência, tempestividade, unicidade e validade: a régua usada nas checagens de cada área." },
 ];
