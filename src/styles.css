@@ -983,3 +983,92 @@ html { scroll-behavior: smooth; }
 }
 .side-exit { display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; }
 @media (min-width: 641px) and (max-width: 960px) { .table-stack td.c-main, .table td:first-child { min-width: 200px; } }
+
+/* =====================================================================
+   Fluidez no celular — menos caixas dentro de caixas, nada disputando
+   a mesma linha, formulários e filtros na largura toda.
+   ===================================================================== */
+.btn-row { flex-wrap: wrap; }
+.callout .link-btn { text-align: left; white-space: normal; height: auto; line-height: 1.4; }
+
+@media (max-width: 720px) {
+  .content { padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); padding-top: 18px; }
+
+  /* Cabeçalhos de cartão: o título ocupa a linha; botões descem em vez de espremer */
+  .card-head { flex-wrap: wrap; gap: 8px 12px; padding: 16px 16px 0; }
+  .card-head > :first-child { flex: 1 1 62%; min-width: 0; }
+  .card-head > .xs, .card-head > .badge { white-space: nowrap; }
+  .card-head > .btn { flex: 0 0 auto; }
+  .card-body, .card-pad { padding-left: 16px; padding-right: 16px; }
+  .card-body { padding-top: 14px; padding-bottom: 16px; }
+  .card-title { line-height: 1.3; }
+
+  /* Bloco de perfil: menos moldura dentro do cartão */
+  .profile-box { padding: 12px 14px; margin-left: -2px; margin-right: -2px; }
+  .profile-title { font-size: 17px; }
+  .profile-summary, .profile-focus { font-size: 13.5px; }
+
+  /* Passos: título em linha inteira; selos e prazo embaixo (nunca ao lado) */
+  .step-row-head { display: grid; grid-template-columns: minmax(0, 1fr) 20px; column-gap: 10px; row-gap: 6px; align-items: start; padding: 14px 0; }
+  .step-row-head > .grow { grid-column: 1; grid-row: 1; }
+  .step-row-head > .step-tags { grid-column: 1 / -1; grid-row: 2; margin: 0; }
+  .step-row-head > svg { grid-column: 2; grid-row: 1; margin-top: 2px; }
+  .step-row-title { font-size: 14.5px; line-height: 1.4; }
+  .step-row-head .xs { line-height: 1.45; }
+  .step-card { padding: 14px; }
+  .step-top { gap: 10px; }
+  .step-actions .btn { flex: 1 1 auto; justify-content: center; }
+
+  /* Barras por capacidade: nome + nota na primeira linha, barra na largura toda */
+  .meter-row { grid-template-columns: minmax(0, 1fr) auto; row-gap: 7px; padding: 11px 0; }
+  .meter-row > :nth-child(2) { grid-column: 1 / -1; grid-row: 2; }
+  .meter-row .val { grid-column: 2; grid-row: 1; }
+  .dim-list .dim-item { grid-template-columns: 34px minmax(0, 1fr) 44px; gap: 10px; }
+
+  /* Métricas em grade regular */
+  .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .metric { padding: 14px 16px; border-left: 1px solid var(--line); border-top: 0; }
+  .metric:nth-child(odd) { border-left: 0; }
+  .metric:nth-child(n+3) { border-top: 1px solid var(--line); }
+  .metric-value { font-size: 24px; }
+  .metrics:has(> :nth-child(3):last-child) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .metrics:has(> :nth-child(3):last-child) .metric { padding: 14px 12px; border-left: 1px solid var(--line); border-top: 0; }
+  .metrics:has(> :nth-child(3):last-child) .metric:first-child { border-left: 0; }
+  .metrics:has(> :nth-child(3):last-child) .metric-label { font-size: 11.5px; }
+
+  /* Filtros e barras de ferramentas: campo de busca inteiro, filtros lado a lado */
+  .toolbar { gap: 8px; }
+  .toolbar .input-search { flex: 1 1 100%; min-width: 0; width: 100%; }
+  .toolbar .select { flex: 1 1 calc(50% - 4px); min-width: 0; width: auto; }
+  .toolbar .input, .toolbar .select { height: 42px; }
+
+  /* Botões de fechamento e ações de rodapé */
+  .btn-row { width: 100%; }
+  .btn-row .btn { flex: 1 1 100%; justify-content: center; }
+  .row-between.wrap > .row:last-child:not(.btn-row) { width: 100%; }
+
+  /* Tabelas em cartão: campos de formulário na largura toda */
+  .table-stack td select { width: 100%; height: 40px !important; }
+
+  /* Heatmaps: cabeçalho na vertical para caber todas as colunas sem rolar */
+  .heat-q, .heat-m { min-width: 0 !important; gap: 3px; }
+  .heat-q { grid-template-columns: minmax(84px, 1.3fr) repeat(6, minmax(32px, 1fr)) !important; }
+  .heat-m { grid-template-columns: minmax(84px, 1.3fr) repeat(var(--hc, 10), minmax(26px, 1fr)) !important; }
+  .heat-q .heat-head { writing-mode: vertical-rl; transform: rotate(180deg); justify-content: flex-start; height: 84px; padding: 0 0 4px; font-size: 9.5px; letter-spacing: 0.04em; }
+  .heat-row-label { font-size: 12px; padding-right: 4px; line-height: 1.25; }
+  .heat-cell { min-height: 36px; font-size: 11px; border-radius: 4px; }
+  .heat-m .heat-head { font-size: 9.5px; letter-spacing: 0; }
+}
+
+@media (max-width: 420px) {
+  .page-title { font-size: 24px; }
+  .hero-main, .hero-side { padding-left: 16px; padding-right: 16px; }
+  .section-hero h2 { font-size: 24px; }
+  .q-card { padding: 16px 14px; }
+  .q-head { gap: 10px; }
+  .opt { padding-left: 12px; padding-right: 12px; }
+}
+@media (max-width: 720px) {
+  .wizard-nav { margin-left: -12px; margin-right: -12px; padding-left: 12px; padding-right: 12px; }
+  .card-head > .btn-ghost { padding-left: 0; margin-left: -2px; }
+}

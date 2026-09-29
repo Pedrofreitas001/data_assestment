@@ -69,7 +69,7 @@ export default function AdminUsers({ embedded }: { embedded?: boolean }) {
             <Empty icon={<Users size={20} />} title="Nenhum usuário" />
           ) : (
             <div className="table-wrap">
-              <table className="table">
+              <table className="table table-stack">
                 <thead>
                   <tr>
                     <th>Usuário</th>
@@ -81,7 +81,7 @@ export default function AdminUsers({ embedded }: { embedded?: boolean }) {
                 <tbody>
                   {users.rows.map((u) => (
                     <tr key={u.id}>
-                      <td>
+                      <td className="c-main">
                         <div className="row">
                           <span className="avatar" style={{ background: "var(--brand)", width: 30, height: 30, fontSize: 11 }}>
                             {initials(u.full_name || u.email)}
@@ -92,7 +92,7 @@ export default function AdminUsers({ embedded }: { embedded?: boolean }) {
                           </div>
                         </div>
                       </td>
-                      <td>
+                      <td data-label="Papel">
                         <select className="select" style={{ height: 34, paddingTop: 0, paddingBottom: 0 }} value={u.role} disabled={!isAdmin || u.id === me?.id} onChange={(e) => updateUser(u, { role: e.target.value as Role })}>
                           {ROLES.map((r) => (
                             <option key={r.key} value={r.key}>
@@ -101,7 +101,7 @@ export default function AdminUsers({ embedded }: { embedded?: boolean }) {
                           ))}
                         </select>
                       </td>
-                      <td>
+                      <td data-label="Empresa">
                         <select className="select" style={{ height: 34, paddingTop: 0, paddingBottom: 0 }} value={u.organization_id || ""} disabled={!isAdmin} onChange={(e) => updateUser(u, { organization_id: e.target.value || null })}>
                           <option value="">— nenhuma —</option>
                           {orgs.map((o) => (
@@ -111,7 +111,7 @@ export default function AdminUsers({ embedded }: { embedded?: boolean }) {
                           ))}
                         </select>
                       </td>
-                      <td className="small muted nowrap">{fmtDate(u.created_at)}</td>
+                      <td className="small muted nowrap" data-label="Desde">{fmtDate(u.created_at)}</td>
                     </tr>
                   ))}
                 </tbody>
