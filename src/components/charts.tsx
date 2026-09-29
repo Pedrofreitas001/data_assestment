@@ -83,7 +83,7 @@ export function QualityHeatmap({ domains, matrix }: { domains: OpDomain[]; matri
   const cols = QUALITY_DIMS;
   return (
     <div className="table-wrap">
-      <div className="heat" style={{ gridTemplateColumns: `minmax(150px, 1.4fr) repeat(${cols.length}, minmax(64px, 1fr))`, minWidth: 620 }}>
+      <div className="heat heat-q" style={{ gridTemplateColumns: `minmax(150px, 1.4fr) repeat(${cols.length}, minmax(64px, 1fr))`, minWidth: 620 }}>
         <div />
         {cols.map((c) => (
           <div key={c.key} className="heat-head" title={c.question}>
@@ -136,7 +136,7 @@ export function HeatLegend() {
 export function MatrixHeatmap({ rows, cols }: { rows: { label: string; values: (number | null)[]; onClick?: () => void }[]; cols: string[] }) {
   return (
     <div className="table-wrap">
-      <div className="heat" style={{ gridTemplateColumns: `minmax(180px, 1.6fr) repeat(${cols.length}, minmax(52px, 1fr))`, minWidth: 640 }}>
+      <div className="heat heat-m" style={{ ["--hc" as string]: cols.length, gridTemplateColumns: `minmax(180px, 1.6fr) repeat(${cols.length}, minmax(52px, 1fr))`, minWidth: 640 }}>
         <div />
         {cols.map((c) => (
           <div key={c} className="heat-head">

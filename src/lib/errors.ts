@@ -8,8 +8,12 @@ export function friendlyError(e: unknown, fallback = "Não foi possível conclui
   const code = String(o.code || "");
   const low = msg.toLowerCase();
 
-  if (code === "42501" || low.includes("row-level security") || low.includes("permission denied"))
-    return "Sem permissão para esta ação. Sua conta precisa ser admin/consultor ou estar vinculada à empresa.";
+  if (code === "42501" || low.includes("row-level security") || low.includes("permission denied")) {
+    const table = msg.match(/(?:for )?table ["']?(?:public\.)?(\w+)["']?/i)?.[1];
+    return `Sem permissão para esta ação${table ? ` (tabela ${table})` : ""}. Sua conta precisa ser admin/consultor ou estar vinculada à empresa.`;
+  }
+  if (code === "23503" || low.includes("violates foreign key"))
+    return "Não foi possível salvar: o registro relacionado ainda não existe. Tente de novo em alguns segundos.";
   const col = msg.match(/column ['"]?([\w.]+)['"]? (?:of relation \S+ )?does not exist/i) || msg.match(/find the '([\w]+)' column/i);
   if (code === "PGRST204" || code === "42703" || col)
     return `Banco de dados desatualizado${col ? ` (falta a coluna ${col[1]})` : ""}. ${SETUP}`;

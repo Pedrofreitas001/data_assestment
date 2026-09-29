@@ -541,6 +541,13 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
         threadIdRef.current = tid;
         setThreadId(tid);
       }
+      // A conversa é salva com atraso; a prioridade aponta para ela (chave estrangeira), então grava antes.
+      await store.upsert("chat_threads", {
+        id: tid,
+        organization_id: orgId,
+        title: threadTitle(messagesRef.current),
+        messages: messagesRef.current.slice(-MAX_STORED).map(toStored),
+      });
       const saved = await store.upsert("priorities", {
         organization_id: orgId,
         title: title.trim() || "Prioridade",

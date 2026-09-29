@@ -108,3 +108,12 @@ Os dados são fictícios (nomes e e-mails de exemplo). Para atualizar o conteúd
 - Diagnósticos feitos na versão anterior são convertidos automaticamente ao abrir (escalas antigas mapeadas; perguntas retiradas descartadas). **Não é preciso rodar SQL** — tudo fica nos campos jsonb já existentes.
 - Próximos passos: perfil da empresa + plano em 3 ondas, com como fazer, entregável, responsável, esforço, prazo e critério de pronto, ajustados ao contexto (quem cuida de dados, objetivo, sistemas e dores). Cada passo pode virar uma Prioridade.
 - Para atualizar os dados de apresentação, rode de novo `supabase/seed_showcase.sql`.
+
+## Problemas de permissão (RLS)
+
+Mensagem típica no app: **"Sem permissão para esta ação (tabela X)"** ou, no Supabase, `new row violates row-level security policy`.
+
+1. Rode `supabase/diagnostico_rls.sql` no SQL Editor (só leitura). Ele lista, com as pendências primeiro, o que está ausente ou fora do padrão: RLS ligada, funções `is_staff/my_org…`, políticas, gatilho de perfil, usuários sem perfil, clientes sem empresa, permissões (GRANT) e **políticas antigas** que não são do app.
+2. Políticas antigas (de versões anteriores do banco) podem bloquear o acesso ou causar `infinite recursion detected in policy`. O diagnóstico já mostra o comando `drop policy` de cada uma.
+3. Usuário sem perfil ou sem empresa não vê nada: rode `setup_completo.sql` (cria os perfis que faltam) e vincule a empresa em Clientes → Usuários.
+4. Nota técnica: a tabela `profiles` não tem política de INSERT de propósito (perfis nascem pelo gatilho do cadastro). O app altera perfis com UPDATE, nunca com upsert.

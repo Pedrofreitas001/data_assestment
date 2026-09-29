@@ -1057,7 +1057,7 @@ function ReviewStep({
           </div>
           <div className="small muted">Confiabilidade {s.confidence.label.toLowerCase()} ({s.confidence.pct}%). Você pode reabrir e editar depois.</div>
         </div>
-        <div className="row">
+        <div className="row btn-row">
           <button className="btn" onClick={() => finish("em_revisao")}>
             Marcar em revisão
           </button>
