@@ -43,6 +43,15 @@ const remoteStore: Store = {
     const payload = { ...row, id: row.id || uid() } as Record<string, unknown>;
     delete payload.created_at;
     delete payload.updated_at;
+    // Perfis só existem por convite/cadastro (gatilho do banco) e não têm política de INSERT:
+    // um "upsert" tenta inserir primeiro e o RLS bloqueia. Aqui só se atualiza.
+    if (table === "profiles") {
+      const { id, email: _e, ...patch } = payload;
+      void _e;
+      const { data, error } = await supabase!.from("profiles").update(patch).eq("id", id as string).select("*").single();
+      if (error) throw toError(error);
+      return data as never;
+    }
     const { data, error } = await supabase!.from(table).upsert(payload).select("*").single();
     if (error) throw toError(error);
     return data as never;
