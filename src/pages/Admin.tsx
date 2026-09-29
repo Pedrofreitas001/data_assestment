@@ -248,7 +248,7 @@ function OrgDrawer({ org, canDelete, onClose, onSave, onDelete }: { org: Organiz
         <Field label="Segmento">
           <select className="select" value={f.segment || ""} onChange={(e) => set("segment", e.target.value || null)}>
             <option value="">—</option>
-            {SEGMENTS.map((s) => (
+            {(f.segment && !(SEGMENTS as readonly string[]).includes(f.segment) ? [f.segment, ...SEGMENTS] : [...SEGMENTS]).map((s) => (
               <option key={s}>{s}</option>
             ))}
           </select>

@@ -108,7 +108,7 @@ figcaption { font-size: 8.5pt; color: #6e6e6b; margin-top: 1.5mm; }
   <ol>
     <li>Por que medir a maturidade de dados</li><li>Como o diagnóstico funciona</li><li>Os 5 níveis de maturidade</li>
     <li>Como o resultado é calculado</li><li>As 8 capacidades avaliadas</li><li>Qualidade dos dados por área</li>
-    <li>Conceitos essenciais</li><li>Plano de ação e critérios de sucesso</li>
+    <li>Conceitos essenciais</li><li>Próximos passos e critérios de sucesso</li>
   </ol>
   <div class="part">Parte 2 · Como usar a ferramenta</div>
   <ol style="counter-reset:t 8">
@@ -176,8 +176,8 @@ figcaption { font-size: 8.5pt; color: #6e6e6b; margin-top: 1.5mm; }
 </section>
 
 <section class="page">
-  <h2 style="margin-top:0">Plano de ação e critérios de sucesso</h2>
-  <p>O relatório entrega um plano priorizado pelo que mais limita a maturidade, organizado em três ondas. A ordem importa: dono → fonte oficial → chave mestra → qualidade → automação → IA.</p>
+  <h2 style="margin-top:0">Próximos passos e critérios de sucesso</h2>
+  <p>O relatório começa com o <b>perfil da empresa</b> — a situação em uma frase e o foco — e entrega os próximos passos em três ondas. Cada resposta abaixo do ideal gera o passo que leva ao próximo nível daquela pergunta, com como fazer, entregável, quem conduz, prazo típico e critério de pronto. A Onda 1 cabe na capacidade do time informada no contexto e começa pelo que limita o nível. A ordem importa: responsável → fonte oficial → código comum entre sistemas → qualidade → automação → IA.</p>
   <div class="grid3">${WAVES_DETAIL.map((w) => `<div class="box avoid"><div class="t">${esc(w.wave)}</div><div class="small muted" style="margin-bottom:2mm">${esc(w.focus)}</div><ul class="small" style="padding-left:4.5mm;margin:0">${w.items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul></div>`).join("")}</div>
   <h3>Como saber que deu certo</h3>
   <ul>${SUCCESS.map((s) => `<li>${esc(s)}</li>`).join("")}</ul>
@@ -226,10 +226,10 @@ figcaption { font-size: 8.5pt; color: #6e6e6b; margin-top: 1.5mm; }
 
 <section class="flow">
   <h1>O relatório</h1>
-  <p>Reúne o nível atribuído (e o que o limita), a leitura executiva escrita pelo assistente, as notas por capacidade, o mapa de qualidade por área, os pontos de atenção e o plano de ação. Use “Exportar PDF” para compartilhar.</p>
+  <p>Reúne o nível atribuído (e o que o limita), a leitura executiva escrita pelo assistente, as notas por capacidade, o mapa de qualidade por área, os pontos de atenção e os próximos passos (com botão para transformar cada passo em Prioridade). Use “Exportar PDF” para compartilhar.</p>
   <div class="callout avoid"><b>Anotações do relatório.</b> Peça ao assistente um texto — e-mail para a diretoria, pauta da reunião de resultados, justificativa do nível — e clique em “Salvar no relatório”. O texto passa a fazer parte do relatório e do PDF.</div>
   ${img("08-relatorio", "Nível atribuído e leitura executiva.")}
-  ${img("09-plano", "Plano de ação em três ondas.")}
+  ${img("09-plano", "Próximos passos: perfil da empresa e Onda 1 detalhada.")}
 </section>
 
 <section class="flow">

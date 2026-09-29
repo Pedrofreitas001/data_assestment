@@ -101,3 +101,10 @@ Os dados são fictícios (nomes e e-mails de exemplo). Para atualizar o conteúd
 - Em qualquer resposta, **Priorizar** (aparece ao passar o mouse) salva a pergunta e a resposta como prioridade da empresa (tabela `priorities`). As prioridades aparecem no Início e no relatório, com status Aberta → Em andamento → Concluída (clique no círculo) e o link **Revisitar conversa**.
 - Mesma regra de acesso dos diagnósticos: a equipe Moulis vê todas as empresas; o cliente vê apenas a própria.
 - Bancos já existentes: rode `supabase/setup_completo.sql` de novo (ou só `supabase/migrations/0004_chat_priorities.sql`).
+
+## Questionário v3 (universal) e próximos passos
+
+- O questionário passou a valer para qualquer setor: 26 perguntas de capacidade (todas com 4 níveis), áreas em **núcleo universal** (Comercial, Financeiro, Pessoas & RH, Operações, Compras, Cadastros) + **módulos por setor** (Estoque, Logística, E-commerce, Produção, Projetos & Horas), opção **"Não se aplica"** e exemplos por setor.
+- Diagnósticos feitos na versão anterior são convertidos automaticamente ao abrir (escalas antigas mapeadas; perguntas retiradas descartadas). **Não é preciso rodar SQL** — tudo fica nos campos jsonb já existentes.
+- Próximos passos: perfil da empresa + plano em 3 ondas, com como fazer, entregável, responsável, esforço, prazo e critério de pronto, ajustados ao contexto (quem cuida de dados, objetivo, sistemas e dores). Cada passo pode virar uma Prioridade.
+- Para atualizar os dados de apresentação, rode de novo `supabase/seed_showcase.sql`.

@@ -14,11 +14,19 @@ import {
   CHECK_OPTIONS,
   DIMENSIONS,
   DOMAINS,
+  GOALS,
+  NOT_APPLICABLE,
   QUALITY_DIMS,
+  SECTOR_LABEL,
   SEGMENTS,
   SIZE_BANDS,
   SYSTEM_SUGGESTIONS,
+  TEAM_OPTIONS,
   UNKNOWN,
+  answerLabel,
+  exampleFor,
+  sectorOf,
+  suggestedDomainKeys,
   type AssessmentContext,
   type LevelOption,
 } from "../model/framework";
@@ -29,7 +37,7 @@ import { AiMark, BandScale, Bar, Empty, Field, LoadingPage, Metrics, Spinner } f
 import { ScoreRing } from "../components/charts";
 
 // ---------------------------------------------------------------------
-type Item = { id: string; prompt: string; help?: string; levels: LevelOption[]; tags: string[]; inline?: boolean };
+type Item = { id: string; prompt: string; help?: string; example?: string; na?: string; levels: LevelOption[]; tags: string[]; inline?: boolean };
 type Section =
   | { key: "contexto"; group: string; title: string; kind: "context" }
   | { key: string; group: string; title: string; code?: string; desc: string; kind: "questions"; items: Item[]; refs?: string }
@@ -53,6 +61,7 @@ interface ReviewOutput {
 const QUALITY_LABEL = Object.fromEntries(QUALITY_DIMS.map((q) => [q.key, q.label]));
 
 function buildSections(a: Assessment): Section[] {
+  const seg = a.context?.segmento;
   const dims: Section[] = DIMENSIONS.map((d) => ({
     key: d.key,
     group: "Capacidades",
@@ -61,7 +70,15 @@ function buildSections(a: Assessment): Section[] {
     desc: d.description,
     refs: d.refs,
     kind: "questions",
-    items: d.questions.map((q) => ({ id: q.id, prompt: q.prompt, help: q.help, levels: q.levels, tags: q.gate ? ["Fundamental"] : [] })),
+    items: d.questions.map((q) => ({
+      id: q.id,
+      prompt: q.prompt,
+      help: q.help,
+      example: exampleFor(q.examples, seg),
+      na: q.na,
+      levels: q.levels,
+      tags: [...(q.gate ? ["Fundamental"] : []), ...(q.perception ? ["Percepção"] : [])],
+    })),
   }));
   const doms: Section[] = scopedDomains(a).map((d) => ({
     key: d.key,
@@ -69,7 +86,16 @@ function buildSections(a: Assessment): Section[] {
     title: d.title,
     desc: `${d.description} Fontes típicas: ${d.typicalSources.join(", ")}.`,
     kind: "questions",
-    items: d.checks.map((c) => ({ id: c.id, prompt: c.prompt, help: c.help, levels: CHECK_OPTIONS, tags: [QUALITY_LABEL[c.quality], ...(c.critical ? ["Crítico"] : [])], inline: true })),
+    items: d.checks.map((c) => ({
+      id: c.id,
+      prompt: c.prompt,
+      help: c.help,
+      example: exampleFor(c.examples, seg),
+      na: "Não se aplica",
+      levels: CHECK_OPTIONS,
+      tags: [QUALITY_LABEL[c.quality], ...(c.critical ? ["Crítico"] : [])],
+      inline: true,
+    })),
   }));
   return [
     { key: "contexto", group: "Início", title: "Contexto da empresa", kind: "context" },
@@ -220,7 +246,7 @@ export default function Wizard() {
       descricao_secao: cur && cur.kind === "questions" ? cur.desc : null,
       perguntas_da_secao:
         cur && cur.kind === "questions"
-          ? cur.items.map((q) => ({ pergunta: q.prompt, opcoes: q.levels.map((l) => `${l.v}: ${l.label}`), resposta_atual: a.answers[q.id] === undefined ? null : a.answers[q.id] === 0 ? "Não sei" : a.answers[q.id] }))
+          ? cur.items.map((q) => ({ pergunta: q.prompt, opcoes: q.levels.map((l) => `${l.v}: ${l.label}`), resposta_atual: a.answers[q.id] === undefined ? null : a.answers[q.id] <= 0 ? answerLabel(q.levels, a.answers[q.id], q.na) : a.answers[q.id] }))
           : null,
       progresso: `${Math.round((scoreAssessment(a).progress || 0) * 100)}%`,
     });
@@ -312,7 +338,7 @@ export default function Wizard() {
   const sectionProgress = (s: Section) => {
     if (s.kind === "context") {
       const c = a.context || {};
-      const req = [c.segmento, c.porte, c.dominios?.length ? "x" : ""];
+      const req = [c.segmento, c.porte, c.time_dados, c.objetivo];
       return req.filter(Boolean).length / req.length;
     }
     if (s.kind === "review") return a.status === "concluido" ? 1 : 0;
@@ -519,15 +545,40 @@ function ContextStep({ a, setCtx, update }: { a: Assessment; setCtx: (p: Partial
   const [custom, setCustom] = useState("");
   const systems = c.sistemas || [];
   const toggleSys = (s: string) => setCtx({ sistemas: systems.includes(s) ? systems.filter((x) => x !== s) : [...systems, s] });
-  const domains = c.dominios && c.dominios.length ? c.dominios : [];
+  // Sem escolha explícita valem as áreas sugeridas (núcleo + módulos do setor).
+  const suggested = suggestedDomainKeys(c.segmento);
+  const domains = c.dominios && c.dominios.length ? c.dominios : suggested;
   const toggleDom = (k: string) => setCtx({ dominios: domains.includes(k) ? domains.filter((x) => x !== k) : [...domains, k] });
+  const sector = sectorOf(c.segmento);
+  const segOptions = c.segmento && !(SEGMENTS as readonly string[]).includes(c.segmento) ? [c.segmento, ...SEGMENTS] : [...SEGMENTS];
+
+  const domainButton = (d: (typeof DOMAINS)[number]) => {
+    const on = domains.includes(d.key);
+    const sug = !d.core && d.sectors?.includes(sector);
+    return (
+      <button key={d.key} type="button" className={`opt ${on ? "on" : ""}`} onClick={() => toggleDom(d.key)} style={{ alignItems: "flex-start" }}>
+        <span className="lv">{on ? <Check size={12} /> : ""}</span>
+        <span>
+          <b style={{ fontWeight: 600, color: "inherit" }}>{d.title}</b>
+          {sug && (
+            <span className="badge badge-brand" style={{ marginLeft: 6 }}>
+              Sugerido para {SECTOR_LABEL[sector]}
+            </span>
+          )}
+          <span className="xs" style={{ display: "block", opacity: 0.75 }}>
+            {d.description}
+          </span>
+        </span>
+      </button>
+    );
+  };
 
   return (
     <>
       <div className="section-hero">
         <span className="code">Etapa inicial</span>
         <h2>Contexto da empresa</h2>
-        <p>Algumas informações rápidas para calibrar o diagnóstico.</p>
+        <p>Algumas informações rápidas. Elas ajustam os exemplos das perguntas, as áreas avaliadas e o tamanho do plano de ação.</p>
       </div>
       <div className="card card-pad">
         <div className="form-section">
@@ -542,7 +593,7 @@ function ContextStep({ a, setCtx, update }: { a: Assessment; setCtx: (p: Partial
             <Field label="Segmento">
               <select className="select" value={c.segmento || ""} onChange={(e) => setCtx({ segmento: e.target.value })}>
                 <option value="">Selecione…</option>
-                {SEGMENTS.map((s) => (
+                {segOptions.map((s) => (
                   <option key={s}>{s}</option>
                 ))}
               </select>
@@ -555,6 +606,57 @@ function ContextStep({ a, setCtx, update }: { a: Assessment; setCtx: (p: Partial
                 ))}
               </select>
             </Field>
+            <Field label="Unidades ou locais de operação (opcional)" full>
+              <input className="input" value={c.unidades || c.lojas_cds || ""} onChange={(e) => setCtx({ unidades: e.target.value })} placeholder="Ex.: 3 filiais e 1 fábrica · 12 lojas e 1 CD · escritório único" />
+            </Field>
+          </div>
+        </div>
+        <div className="form-section">
+          <h4>Quem cuida dos dados hoje?</h4>
+          <p className="small muted" style={{ marginTop: -4 }}>
+            Define o tamanho realista do plano: quantos passos cabem nos primeiros 30 dias.
+          </p>
+          <div className="ctx-choices">
+            {TEAM_OPTIONS.map((t) => {
+              const on = c.time_dados === t.key;
+              return (
+                <button key={t.key} type="button" className={`opt ${on ? "on" : ""}`} onClick={() => setCtx({ time_dados: on ? undefined : t.key })} style={{ alignItems: "flex-start" }}>
+                  <span className="lv">{on ? <Check size={12} /> : ""}</span>
+                  <span>
+                    <b style={{ fontWeight: 600, color: "inherit" }}>{t.label}</b>
+                    {"hint" in t && t.hint && (
+                      <span className="xs" style={{ display: "block", opacity: 0.75 }}>
+                        {t.hint}
+                      </span>
+                    )}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="form-section">
+          <h4>Objetivo principal com dados nos próximos 6 meses</h4>
+          <p className="small muted" style={{ marginTop: -4 }}>
+            Os passos que atacam este objetivo sobem na prioridade do plano.
+          </p>
+          <div className="ctx-choices">
+            {GOALS.map((g) => {
+              const on = c.objetivo === g.key;
+              return (
+                <button key={g.key} type="button" className={`opt ${on ? "on" : ""}`} onClick={() => setCtx({ objetivo: on ? undefined : g.key })} style={{ alignItems: "flex-start" }}>
+                  <span className="lv">{on ? <Check size={12} /> : ""}</span>
+                  <span>
+                    <b style={{ fontWeight: 600, color: "inherit" }}>{g.label}</b>
+                    {g.hint && (
+                      <span className="xs" style={{ display: "block", opacity: 0.75 }}>
+                        {g.hint}
+                      </span>
+                    )}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
         <div className="form-section">
@@ -583,32 +685,24 @@ function ContextStep({ a, setCtx, update }: { a: Assessment; setCtx: (p: Partial
           <h4>Principais dificuldades</h4>
           <div className="form-grid">
             <Field label="O que mais incomoda hoje nos dados da empresa?" full>
-              <textarea className="textarea" value={c.dores || ""} onChange={(e) => setCtx({ dores: e.target.value })} placeholder="Ex.: os números de vendas não batem entre sistemas; o relatório leva dias para sair…" />
+              <textarea className="textarea" value={c.dores || ""} onChange={(e) => setCtx({ dores: e.target.value })} placeholder="Ex.: os números não batem entre sistemas; o relatório leva dias para sair; só uma pessoa sabe montar o fechamento…" />
             </Field>
           </div>
         </div>
         <div className="form-section">
           <h4>Áreas avaliadas</h4>
           <p className="small muted" style={{ marginTop: -4 }}>
-            Selecione as áreas da empresa que entram no diagnóstico. Cada uma adiciona 4 ou 5 perguntas.
+            Cada área adiciona 4 a 6 perguntas objetivas. As do núcleo valem para qualquer empresa; os módulos dependem do setor.
           </p>
+          <div className="dom-group-title">Núcleo — toda empresa</div>
           <div className="grid g-2" style={{ gap: 8 }}>
-            {DOMAINS.map((d) => {
-              const on = domains.includes(d.key);
-              return (
-                <button key={d.key} type="button" className={`opt ${on ? "on" : ""}`} onClick={() => toggleDom(d.key)} style={{ alignItems: "flex-start" }}>
-                  <span className="lv">{on ? <Check size={12} /> : ""}</span>
-                  <span>
-                    <b style={{ fontWeight: 600, color: "inherit" }}>{d.title}</b>
-                    <span className="xs" style={{ display: "block", opacity: 0.75 }}>
-                      {d.description}
-                    </span>
-                  </span>
-                </button>
-              );
-            })}
+            {DOMAINS.filter((d) => d.core).map(domainButton)}
           </div>
-          {!domains.length && <p className="xs muted" style={{ marginTop: 8 }}>Nenhuma selecionada = todas as áreas entram.</p>}
+          <div className="dom-group-title">Módulos por setor</div>
+          <div className="grid g-2" style={{ gap: 8 }}>
+            {DOMAINS.filter((d) => !d.core).map(domainButton)}
+          </div>
+          {!c.dominios?.length && <p className="xs muted" style={{ marginTop: 8 }}>Pré-selecionamos o núcleo e os módulos do seu setor. Ajuste se quiser.</p>}
         </div>
       </div>
     </>
@@ -682,13 +776,22 @@ function QuestionsStep({
               <div className="grow">
                 <p className="q-prompt">{q.prompt}</p>
                 {q.help && <p className="q-help">{q.help}</p>}
+                {q.example && <p className="q-example">{q.example}</p>}
                 {q.tags.length > 0 && (
                   <div className="q-tags">
                     {q.tags.map((t) => (
                       <span
                         key={t}
                         className={`badge ${t === "Crítico" ? "badge-risk" : t === "Fundamental" ? "badge-solid" : "badge-brand"}`}
-                        title={t === "Fundamental" ? "Requisito fundamental: uma resposta baixa aqui limita o nível geral a 3." : t === "Crítico" ? "Ponto crítico de consistência dos dados desta área." : `Dimensão de qualidade: ${t}`}
+                        title={
+                          t === "Fundamental"
+                            ? "Requisito fundamental: uma resposta baixa aqui limita o nível geral a 3."
+                            : t === "Crítico"
+                              ? "Ponto crítico de consistência dos dados desta área."
+                              : t === "Percepção"
+                                ? "Pergunta de opinião: registre um caso concreto na evidência para dar peso à resposta."
+                                : `Dimensão de qualidade: ${t}`
+                        }
                       >
                         {t === "Fundamental" && <Lock size={10} />}
                         {t}
@@ -739,6 +842,15 @@ function QuestionsStep({
                 <CircleHelp size={12} style={{ verticalAlign: -2, marginRight: 4 }} />
                 Não sei
               </button>
+              {q.na && (
+                <button
+                  className={`unknown-btn ${v === NOT_APPLICABLE ? "on" : ""}`}
+                  title="Fica fora do cálculo — use quando a pergunta não faz sentido para a empresa."
+                  onClick={() => setAnswer(q.id, v === NOT_APPLICABLE ? undefined : NOT_APPLICABLE)}
+                >
+                  {q.na}
+                </button>
+              )}
               <button className="link-btn" onClick={() => onExplain(q)}>
                 <AiMark size={9} /> Explicar
               </button>

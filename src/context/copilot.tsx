@@ -99,6 +99,8 @@ interface CopilotState {
   priorities: Priority[];
   prioritiesLoading: boolean;
   savePriority: (msgId: string, title: string) => Promise<Priority | null>;
+  /** Cria uma prioridade fora do chat (ex.: a partir de um passo do plano). */
+  addPriority: (p: { title: string; question?: string | null; answer: string; key?: string }) => Promise<Priority | null>;
   updatePriority: (id: string, patch: { title?: string; status?: PriorityStatus }) => Promise<void>;
   removePriority: (id: string) => Promise<void>;
   /** Pergunta do usuário que originou a resposta (para montar a prioridade). */
@@ -556,6 +558,23 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
     [questionFor],
   );
 
+  const addPriority = useCallback(async (p: { title: string; question?: string | null; answer: string; key?: string }) => {
+    const orgId = orgIdRef.current;
+    if (!orgId) return null;
+    const saved = await store.upsert("priorities", {
+      organization_id: orgId,
+      title: p.title.trim() || "Prioridade",
+      question: p.question ?? null,
+      answer: p.answer,
+      status: "aberta",
+      thread_id: null,
+      // Guarda a origem (ex.: "plano:qual_monitor") para não duplicar e marcar o passo.
+      message_id: p.key ?? null,
+    });
+    setPriorities((xs) => [saved, ...xs]);
+    return saved;
+  }, []);
+
   const updatePriority = useCallback(async (id: string, patch: { title?: string; status?: PriorityStatus }) => {
     const cur = prioritiesRef.current.find((x) => x.id === id);
     if (!cur) return;
@@ -579,7 +598,7 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
     isOpen, open, close, messages, busy, send, ask, runAction, applySuggestions, bubble, dismissBubble, acceptBubble, nudge,
     setFocus, registerHandlers, availableActions, interview, startInterview, stopInterview, proactive, setProactive, reset,
     threadId, threads, threadsLoading, loadThreads, openThread, deleteThread,
-    priorities, prioritiesLoading, savePriority, updatePriority, removePriority, questionFor,
+    priorities, prioritiesLoading, savePriority, addPriority, updatePriority, removePriority, questionFor,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

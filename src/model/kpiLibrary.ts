@@ -2,8 +2,8 @@ import type { Kpi } from "./types";
 
 export type KpiTemplate = Omit<Kpi, "id" | "organization_id" | "owner" | "steward" | "status" | "version" | "notes" | "created_at" | "updated_at"> & { key: string };
 
-/** Definições de referência para PMEs de varejo & logística.
- *  Servem de ponto de partida — o owner de cada KPI deve validar premissas. */
+/** Definições de referência para empresas de médio porte (núcleo universal + módulos por setor).
+ *  Servem de ponto de partida — o responsável por cada KPI deve validar as premissas. */
 export const KPI_LIBRARY: KpiTemplate[] = [
   {
     key: "faturamento_liquido", name: "Faturamento líquido", code: "COM-001", domain: "comercial",
@@ -156,9 +156,102 @@ export const KPI_LIBRARY: KpiTemplate[] = [
   },
   {
     key: "completude_cadastro", name: "Completude de cadastro", code: "CAD-001", domain: "cadastro",
-    definition: "Percentual de SKUs ativos com todos os campos obrigatórios preenchidos e válidos.", business_question: "O cadastro sustenta fiscal, logística e e-commerce?",
-    formula: "SKUs ativos com campos obrigatórios válidos ÷ SKUs ativos", numerator: "SKUs completos", denominator: "SKUs ativos", unit: "%", granularity: "Campo × categoria", frequency: "Semanal",
-    direction: "maior_melhor", target: "100% curva A", assumptions: "Campos obrigatórios: NCM, EAN, peso, dimensões, custo, categoria.", exclusions: null,
-    source_tables: "ERP: cadastro de produtos", lineage: null, quality_checks: "EAN inválido (dígito verificador); NCM inexistente.", consumers: "Cadastro, Fiscal, Logística",
+    definition: "Percentual de cadastros ativos (itens, clientes ou fornecedores) com todos os campos obrigatórios preenchidos e válidos.", business_question: "O cadastro sustenta fiscal, operação e relatórios?",
+    formula: "Cadastros ativos com campos obrigatórios válidos ÷ Cadastros ativos", numerator: "Cadastros completos", denominator: "Cadastros ativos", unit: "%", granularity: "Campo × tipo de cadastro", frequency: "Semanal",
+    direction: "maior_melhor", target: "100% nos mais usados", assumptions: "Campos obrigatórios definidos por tipo de cadastro (ex.: itens — NCM, EAN, custo; clientes — CPF/CNPJ, endereço).", exclusions: null,
+    source_tables: "ERP: tabelas de cadastro", lineage: null, quality_checks: "Documento inválido (dígito verificador); código fiscal inexistente.", consumers: "Cadastro, Fiscal, Operações",
+  },
+  // ------------------------------------------------ núcleo universal
+  {
+    key: "taxa_conversao_propostas", name: "Taxa de conversão de propostas", code: "COM-003", domain: "comercial",
+    definition: "Percentual das propostas/oportunidades que viram venda ou contrato.", business_question: "Quanto do esforço comercial vira receita?",
+    formula: "Propostas ganhas ÷ Propostas encerradas (ganhas + perdidas) no período", numerator: "Propostas ganhas", denominator: "Propostas encerradas", unit: "%", granularity: "Mês × vendedor × segmento", frequency: "Mensal",
+    direction: "maior_melhor", target: null, assumptions: "Proposta conta no mês em que foi encerrada, não no mês de envio.", exclusions: "Propostas canceladas pelo próprio time (duplicadas, erro).",
+    source_tables: "CRM: oportunidades com status e data de encerramento", lineage: null, quality_checks: "Propostas abertas há mais de 90 dias sem atualização; propostas sem valor.", consumers: "Comercial, Diretoria",
+  },
+  {
+    key: "inadimplencia", name: "Inadimplência", code: "FIN-003", domain: "financeiro",
+    definition: "Percentual do valor a receber vencido há mais de X dias.", business_question: "Quanto do que vendemos não está entrando no caixa?",
+    formula: "Títulos vencidos há mais de 30 dias ÷ Total de títulos a receber", numerator: "Valor vencido > 30 dias", denominator: "Carteira a receber", unit: "%", granularity: "Mês × cliente × unidade", frequency: "Semanal",
+    direction: "menor_melhor", target: null, assumptions: "Corte de 30 dias (ajustar ao negócio). Renegociações contam como adimplentes a partir da nova data.", exclusions: "Títulos em disputa judicial — reportar à parte.",
+    source_tables: "ERP financeiro: contas a receber", lineage: null, quality_checks: "Títulos sem vencimento; baixas sem data.", consumers: "Financeiro, Comercial, Diretoria",
+  },
+  {
+    key: "prazo_fechamento", name: "Prazo de fechamento gerencial", code: "FIN-004", domain: "financeiro",
+    definition: "Dias úteis entre o fim do mês e a publicação do resultado gerencial.", business_question: "Quanto tempo a gestão espera para saber o resultado do mês?",
+    formula: "Data de publicação da DRE gerencial − último dia útil do mês (em dias úteis)", numerator: null, denominator: null, unit: "dias úteis", granularity: "Mês", frequency: "Mensal",
+    direction: "menor_melhor", target: null, assumptions: "Conta a publicação da versão aprovada pela diretoria.", exclusions: null,
+    source_tables: "Registro de fechamento (data de publicação)", lineage: null, quality_checks: "Republicações após a data oficial.", consumers: "Diretoria, Controladoria",
+  },
+  {
+    key: "turnover", name: "Turnover", code: "RH-001", domain: "pessoas",
+    definition: "Rotatividade de colaboradores no período.", business_question: "Estamos retendo as pessoas?",
+    formula: "((Admissões + Desligamentos) ÷ 2) ÷ Quadro médio do período", numerator: "Média de admissões e desligamentos", denominator: "Quadro médio", unit: "%", granularity: "Mês × área × unidade", frequency: "Mensal",
+    direction: "menor_melhor", target: null, assumptions: "Quadro médio = (início + fim do período) ÷ 2. Definir se inclui estagiários e temporários.", exclusions: "Transferências entre unidades.",
+    source_tables: "Sistema de folha: admissões, desligamentos, quadro", lineage: null, quality_checks: "Desligamento sem data; colaborador ativo sem área.", consumers: "RH, Diretoria, Gestores",
+  },
+  {
+    key: "absenteismo", name: "Absenteísmo", code: "RH-002", domain: "pessoas",
+    definition: "Percentual de horas previstas não trabalhadas por ausências.", business_question: "Quanto da capacidade planejada perdemos com ausências?",
+    formula: "Horas de ausência ÷ Horas previstas de trabalho", numerator: "Horas de ausência", denominator: "Horas previstas", unit: "%", granularity: "Mês × área × tipo de ausência", frequency: "Mensal",
+    direction: "menor_melhor", target: null, assumptions: "Definir quais ausências contam (faltas, atestados; férias não contam).", exclusions: "Férias, licenças programadas.",
+    source_tables: "Ponto eletrônico + folha", lineage: null, quality_checks: "Dias sem marcação de ponto; atestados sem lançamento.", consumers: "RH, Gestores",
+  },
+  {
+    key: "headcount", name: "Quadro de colaboradores", code: "RH-003", domain: "pessoas",
+    definition: "Número de colaboradores ativos no último dia do período.", business_question: "Quantas pessoas temos, onde e em que função?",
+    formula: "Contagem de colaboradores ativos na data de corte", numerator: null, denominator: null, unit: "pessoas", granularity: "Mês × área × unidade × vínculo", frequency: "Mensal",
+    direction: "faixa", target: null, assumptions: "Definir vínculos incluídos (CLT, PJ, estágio, temporário).", exclusions: null,
+    source_tables: "Sistema de folha", lineage: null, quality_checks: "Quadro da folha × ponto × gerencial deve bater.", consumers: "RH, Financeiro, Diretoria",
+  },
+  {
+    key: "cumprimento_prazo", name: "Cumprimento de prazo com o cliente", code: "OPS-001", domain: "operacoes",
+    definition: "Percentual de entregas/atendimentos concluídos dentro do prazo prometido.", business_question: "Estamos cumprindo o que prometemos ao cliente?",
+    formula: "Entregas no prazo ÷ Entregas concluídas", numerator: "Entregas no prazo", denominator: "Entregas concluídas", unit: "%", granularity: "Semana × cliente × tipo de serviço", frequency: "Semanal",
+    direction: "maior_melhor", target: null, assumptions: "Prazo = data prometida no pedido/contrato (não a data replanejada). Tolerância definida por tipo.", exclusions: "Atrasos causados pelo cliente, com registro.",
+    source_tables: "Sistema da operação: data prometida e data de conclusão", lineage: null, quality_checks: "Entregas sem data prometida; conclusão antes do início.", consumers: "Operações, Comercial, Diretoria",
+  },
+  {
+    key: "taxa_retrabalho", name: "Taxa de retrabalho", code: "OPS-002", domain: "operacoes",
+    definition: "Percentual de entregas/atendimentos que precisaram ser refeitos.", business_question: "Quanto do nosso esforço é gasto refazendo?",
+    formula: "Entregas com retrabalho ÷ Entregas concluídas", numerator: "Entregas com retrabalho", denominator: "Entregas concluídas", unit: "%", granularity: "Mês × causa × equipe", frequency: "Mensal",
+    direction: "menor_melhor", target: null, assumptions: "Retrabalho registrado com causa de lista fechada.", exclusions: null,
+    source_tables: "Registro de ocorrências + sistema da operação", lineage: null, quality_checks: "Ocorrências sem causa.", consumers: "Operações, Qualidade",
+  },
+  {
+    key: "tempo_atendimento", name: "Tempo médio de atendimento", code: "OPS-003", domain: "operacoes",
+    definition: "Tempo médio entre a abertura e a conclusão de um atendimento/solicitação.", business_question: "Quanto o cliente espera por uma solução?",
+    formula: "Σ (conclusão − abertura) ÷ Nº de atendimentos concluídos", numerator: "Tempo total", denominator: "Atendimentos concluídos", unit: "horas", granularity: "Semana × canal × tipo", frequency: "Semanal",
+    direction: "menor_melhor", target: null, assumptions: "Conta tempo corrido (ou útil — definir). Reaberturas somam ao original.", exclusions: "Atendimentos cancelados.",
+    source_tables: "Sistema de atendimento / chamados", lineage: null, quality_checks: "Atendimentos sem data de conclusão há mais de 30 dias.", consumers: "Atendimento, Operações",
+  },
+  // ------------------------------------------------ módulos por setor
+  {
+    key: "oee", name: "OEE (eficiência global do equipamento)", code: "PRD-001", domain: "producao",
+    definition: "Disponibilidade × desempenho × qualidade de uma linha ou equipamento.", business_question: "Quanto da capacidade instalada vira produto bom?",
+    formula: "Disponibilidade × Performance × Qualidade", numerator: null, denominator: null, unit: "%", granularity: "Dia × linha × turno", frequency: "Diária",
+    direction: "maior_melhor", target: null, assumptions: "Paradas planejadas saem do tempo disponível. Tempo padrão por produto definido pela engenharia.", exclusions: "Testes e setups de novos produtos (reportar à parte).",
+    source_tables: "Apontamento de produção + paradas", lineage: null, quality_checks: "Turnos sem apontamento; produção acima da capacidade teórica.", consumers: "Produção, Engenharia, Diretoria",
+  },
+  {
+    key: "indice_refugo", name: "Índice de refugo", code: "PRD-002", domain: "producao",
+    definition: "Percentual da produção descartada ou reprovada.", business_question: "Quanto do que produzimos é perdido?",
+    formula: "Quantidade refugada ÷ Quantidade produzida", numerator: "Refugo", denominator: "Produção total", unit: "%", granularity: "Semana × linha × produto × causa", frequency: "Semanal",
+    direction: "menor_melhor", target: null, assumptions: "Retrabalho aprovado não conta como refugo.", exclusions: null,
+    source_tables: "Apontamento de produção + registro de não conformidades", lineage: null, quality_checks: "Refugo apontado × não conformidades registradas.", consumers: "Produção, Qualidade",
+  },
+  {
+    key: "taxa_utilizacao", name: "Taxa de utilização (horas faturáveis)", code: "PRJ-001", domain: "projetos",
+    definition: "Percentual das horas disponíveis da equipe dedicadas a trabalho faturável.", business_question: "A equipe está alocada em trabalho que gera receita?",
+    formula: "Horas faturáveis apontadas ÷ Horas disponíveis", numerator: "Horas faturáveis", denominator: "Horas disponíveis", unit: "%", granularity: "Mês × pessoa × área", frequency: "Mensal",
+    direction: "faixa", target: null, assumptions: "Horas disponíveis descontam férias e feriados.", exclusions: "Horas internas (treinamento, pré-venda) — reportar à parte.",
+    source_tables: "Apontamento de horas + cadastro de colaboradores", lineage: null, quality_checks: "Semanas sem apontamento; horas acima da jornada.", consumers: "Operações, Financeiro, Diretoria",
+  },
+  {
+    key: "margem_contrato", name: "Margem por contrato", code: "PRJ-002", domain: "projetos",
+    definition: "Resultado de cada contrato/projeto após custos diretos de horas e despesas.", business_question: "Quais contratos dão lucro de verdade?",
+    formula: "(Receita do contrato − custo das horas − despesas diretas) ÷ Receita do contrato", numerator: "Resultado do contrato", denominator: "Receita do contrato", unit: "%", granularity: "Mês × contrato", frequency: "Mensal",
+    direction: "maior_melhor", target: null, assumptions: "Custo/hora = salário + encargos ÷ horas disponíveis.", exclusions: "Despesas administrativas rateadas (ver regra de rateio).",
+    source_tables: "Apontamento de horas + faturamento + despesas", lineage: null, quality_checks: "Contratos com receita e sem horas apontadas.", consumers: "Financeiro, Diretoria",
   },
 ];
