@@ -20,6 +20,8 @@ export function friendlyError(e: unknown, fallback = "Não foi possível conclui
   const tbl = msg.match(/relation ['"]?([\w.]+)['"]? does not exist/i) || msg.match(/find the table '([\w.]+)'/i);
   if (code === "PGRST205" || code === "42P01" || tbl) return `Banco de dados incompleto${tbl ? ` (falta a tabela ${tbl[1]})` : ""}. ${SETUP}`;
   if (code === "42883" || low.includes("function") && low.includes("does not exist")) return `Função do banco ausente. ${SETUP}`;
+  if (/importing a module script failed|dynamically imported module|chunkloaderror/.test(low))
+    return "Há uma nova versão do aplicativo. Atualize a página para continuar.";
   if (low.includes("jwt expired") || low.includes("invalid jwt")) return "Sessão expirada. Saia e entre novamente.";
   if (low.includes("failed to fetch") || low.includes("networkerror")) return "Sem conexão com o servidor. Verifique a internet e tente de novo.";
   return msg || fallback;

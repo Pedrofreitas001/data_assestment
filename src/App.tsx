@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./context/auth";
 import { OrgProvider } from "./context/org";
@@ -6,6 +6,7 @@ import { CopilotProvider } from "./context/copilot";
 import Layout from "./components/Layout";
 import { LoadingPage } from "./components/ui";
 import Login from "./pages/Login";
+import { lazyRetry as lazy } from "./lib/chunkRecovery";
 
 const Overview = lazy(() => import("./pages/Overview"));
 const Assessments = lazy(() => import("./pages/Assessments"));
