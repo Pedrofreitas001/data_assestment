@@ -158,7 +158,7 @@ export default function Overview() {
         <div className="card-head">
           <div>
             <h3 className="card-title">Próximos passos</h3>
-            <p className="card-sub">Os 3 passos que mais fazem diferença agora</p>
+            <p className="card-sub">Os 3 passos que mais fazem diferença agora — clique para ver o detalhe</p>
           </div>
           <Link to={`/assessments/${latest.id}/resultado#plano`} className="btn btn-sm btn-ghost">
             Plano completo <ArrowRight size={14} />
