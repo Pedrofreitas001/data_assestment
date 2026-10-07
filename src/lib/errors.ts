@@ -3,6 +3,8 @@ const SETUP = "Rode o arquivo supabase/setup_completo.sql no SQL Editor do Supab
 
 export function friendlyError(e: unknown, fallback = "Não foi possível concluir. Tente novamente."): string {
   if (!e) return fallback;
+  // Já traduzido por toError: não traduz de novo (perderia o detalhe original).
+  if ((e as { friendly?: boolean }).friendly) return String((e as Error).message || fallback);
   const o = e as { message?: string; code?: string; details?: string; hint?: string };
   const msg = String(o.message || (typeof e === "string" ? e : "") || "");
   const code = String(o.code || "");
@@ -32,7 +34,11 @@ export function friendlyError(e: unknown, fallback = "Não foi possível conclui
 
 /** Erro com mensagem amigável preservando o código original. */
 export function toError(e: unknown, fallback?: string): Error {
-  const err = new Error(friendlyError(e, fallback));
-  (err as Error & { code?: string }).code = (e as { code?: string })?.code;
+  const o = e as { code?: string; message?: string; details?: string; hint?: string };
+  const err = new Error(friendlyError(e, fallback)) as Error & { code?: string; friendly?: boolean; raw?: string };
+  err.code = o?.code;
+  err.friendly = true;
+  err.raw = [o?.message, o?.details, o?.hint].filter(Boolean).join(" · ");
+  if (err.raw) console.error("Erro do banco:", err.code, err.raw);
   return err;
 }

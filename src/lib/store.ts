@@ -23,6 +23,12 @@ export function uid(): string {
   return crypto.randomUUID();
 }
 
+/** Garante que o erro cite a tabela (o PostgREST nem sempre informa). */
+function dbError(table: string, e: { message?: string; code?: string; details?: string; hint?: string }) {
+  const msg = e.message || "";
+  return toError(/table/i.test(msg) ? e : { ...e, message: `${msg} for table "${table}"` });
+}
+
 // ---------------------------------------------------------------------
 // Supabase (produção) — RLS no banco garante o isolamento por cliente.
 // ---------------------------------------------------------------------
@@ -31,12 +37,12 @@ const remoteStore: Store = {
     let q = supabase!.from(table).select("*");
     if (filter?.organization_id) q = q.eq("organization_id", filter.organization_id);
     const { data, error } = await q.order("updated_at", { ascending: false });
-    if (error) throw toError(error);
+    if (error) throw dbError(table, error);
     return (data || []).map((r) => upgrade(table, r)) as never;
   },
   async get(table, id) {
     const { data, error } = await supabase!.from(table).select("*").eq("id", id).maybeSingle();
-    if (error) throw toError(error);
+    if (error) throw dbError(table, error);
     return upgrade(table, data) as never;
   },
   async upsert(table, row) {
@@ -49,16 +55,16 @@ const remoteStore: Store = {
       const { id, email: _e, ...patch } = payload;
       void _e;
       const { data, error } = await supabase!.from("profiles").update(patch).eq("id", id as string).select("*").single();
-      if (error) throw toError(error);
+      if (error) throw dbError("profiles", error);
       return data as never;
     }
     const { data, error } = await supabase!.from(table).upsert(payload).select("*").single();
-    if (error) throw toError(error);
+    if (error) throw dbError(table, error);
     return data as never;
   },
   async remove(table, id) {
     const { error } = await supabase!.from(table).delete().eq("id", id);
-    if (error) throw toError(error);
+    if (error) throw dbError(table, error);
   },
 };
 
