@@ -10,7 +10,10 @@ export function friendlyError(e: unknown, fallback = "Não foi possível conclui
 
   if (code === "42501" || low.includes("row-level security") || low.includes("permission denied")) {
     const table = msg.match(/(?:for )?table ["']?(?:public\.)?(\w+)["']?/i)?.[1];
-    return `Sem permissão para esta ação${table ? ` (tabela ${table})` : ""}. Sua conta precisa ser admin/consultor ou estar vinculada à empresa.`;
+    const t = table ? ` (tabela ${table})` : "";
+    if (low.includes("permission denied"))
+      return `O banco não liberou acesso${t} para usuários logados. Rode supabase/diagnostico_rls.sql no SQL Editor do Supabase e aplique o comando indicado.`;
+    return `Sem permissão para esta ação${t}. É preciso ser admin/consultor ou estar vinculado à empresa — se você já é, rode supabase/diagnostico_rls.sql no SQL Editor do Supabase para achar a política que bloqueia.`;
   }
   if (code === "23503" || low.includes("violates foreign key"))
     return "Não foi possível salvar: o registro relacionado ainda não existe. Tente de novo em alguns segundos.";

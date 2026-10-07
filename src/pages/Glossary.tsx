@@ -1,5 +1,6 @@
 import { friendlyError } from "../lib/errors";
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { BookMarked, Plus, Sigma, Sparkles, Trash2 } from "lucide-react";
 import { useOrg } from "../context/org";
 import { useCopilot } from "../context/copilot";
@@ -36,7 +37,13 @@ export default function Glossary() {
   const toast = useToast();
   const kpis = useRows("kpis", orgId);
   const [edit, setEdit] = useState<Kpi | null>(null);
-  const [libOpen, setLibOpen] = useState(false);
+  const [params, setParams] = useSearchParams();
+  const [libOpen, setLibOpen] = useState(params.get("biblioteca") === "1");
+  // O assistente pode pedir para abrir a biblioteca mesmo com o Glossário já aberto.
+  const wantsLib = params.get("biblioteca") === "1";
+  useEffect(() => {
+    if (wantsLib) setLibOpen(true);
+  }, [wantsLib]);
   const [draftOpen, setDraftOpen] = useState(false);
   const [q, setQ] = useState("");
   const [fDomain, setFDomain] = useState("");
@@ -176,16 +183,28 @@ export default function Glossary() {
       {libOpen && (
         <LibraryModal
           existing={kpis.rows}
-          onClose={() => setLibOpen(false)}
-          onImport={async (keys) => {
-            for (const key of keys) {
-              const { key: _k, ...t } = KPI_LIBRARY.find((x) => x.key === key)!;
-              void _k;
-              await store.upsert("kpis", { ...blankKpi(orgId), ...t, id: uid() });
-            }
-            await kpis.reload();
-            toast(`${keys.length} KPI(s) importados — defina owner e valide as premissas`);
+          onClose={() => {
             setLibOpen(false);
+            if (params.has("biblioteca")) setParams({}, { replace: true });
+          }}
+          onImport={async (keys) => {
+            let ok = 0;
+            try {
+              for (const key of keys) {
+                const { key: _k, ...t } = KPI_LIBRARY.find((x) => x.key === key)!;
+                void _k;
+                await store.upsert("kpis", { ...blankKpi(orgId), ...t, id: uid() });
+                ok++;
+              }
+              toast(`${ok} KPI(s) importados — defina owner e valide as premissas`);
+              setLibOpen(false);
+              if (params.has("biblioteca")) setParams({}, { replace: true });
+            } catch (e) {
+              console.error("Importação da biblioteca falhou:", e);
+              toast(`${ok ? `${ok} importado(s); ` : ""}${friendlyError(e, "Não foi possível importar")}`, "err");
+            } finally {
+              await kpis.reload();
+            }
           }}
         />
       )}
@@ -465,8 +484,11 @@ function LibraryModal({ existing, onClose, onImport }: { existing: Kpi[]; onClos
             disabled={!sel.size || busy}
             onClick={async () => {
               setBusy(true);
-              await onImport([...sel]);
-              setBusy(false);
+              try {
+                await onImport([...sel]);
+              } finally {
+                setBusy(false);
+              }
             }}
           >
             {busy ? <Spinner /> : `Importar ${sel.size || ""}`}

@@ -45,7 +45,17 @@ export interface PlanStep {
   id: string;
   kind: "question" | "check" | "discovery";
   title: string;
-  /** Por que este passo, para ESTA empresa. */
+  /** Onde a empresa está hoje — o que o diagnóstico mostrou (com a evidência registrada). */
+  now: string;
+  /** Por que o tema importa para o negócio, em linguagem simples. */
+  matters: string;
+  /** Aonde queremos chegar com este passo. */
+  target: string;
+  /** A ideia do passo, em uma frase, sem jargão. */
+  idea: string;
+  /** Por que agora: limita o nível, seu objetivo, sua dor, ponto crítico. */
+  signals: string[];
+  /** Texto corrido (situação + importância + sinais) — usado em Prioridades e no assistente. */
   why: string;
   how: string[];
   deliverable: string;
@@ -246,8 +256,255 @@ const Q: Record<string, Steps> = {
 };
 
 // ---------------------------------------------------------------------
+// Linguagem simples: por que cada tema importa e a ideia de cada passo
+// (para quem não é da área de dados entender o "porquê" antes do "como").
+// ---------------------------------------------------------------------
+type Plain = { matters: string; goal: string; idea: { 1: string; 2?: string; 3: string } };
+
+const PLAIN: Record<string, Plain> = {
+  est_uso: {
+    matters: "Quando os números não entram nas decisões, a empresa decide pela intuição e só descobre o problema quando ele já custou caro.",
+    goal: "Os números certos olhados em rotina e orientando decisões — não só explicando o passado.",
+    idea: {
+      1: "Começar pequeno: poucos números, sempre os mesmos, olhados juntos em dia fixo.",
+      2: "Os relatórios já existem; falta transformá-los num hábito com meta e com o que fazer quando o número sai do esperado.",
+      3: "Levar os números da reunião da diretoria para as decisões do dia a dia.",
+    },
+  },
+  est_prioridade: {
+    matters: "Sem meta e sem patrocinador, projetos de dados viram 'coisa do TI', perdem prioridade e não mostram retorno.",
+    goal: "Cada iniciativa de dados ligada a uma meta do negócio, com dono e orçamento.",
+    idea: {
+      1: "Escolher um problema de negócio caro e mostrar como o dado ajuda a resolvê-lo, com alguém da diretoria apoiando.",
+      2: "Tratar as iniciativas de dados como qualquer investimento: objetivo, dono e orçamento.",
+      3: "Ter um plano anual de dados ligado ao plano da empresa e revisado com frequência.",
+    },
+  },
+  est_resultado: {
+    matters: "Sem medir o antes e o depois, não dá para saber o que funcionou — a empresa repete erros e abandona acertos.",
+    goal: "Toda decisão importante avaliada com números: o que se esperava × o que aconteceu.",
+    idea: {
+      1: "Antes da próxima mudança importante, anotar o número de hoje e comparar depois.",
+      2: "Usar sempre o mesmo modelo simples para avaliar se uma iniciativa deu resultado.",
+      3: "Revisar os resultados das iniciativas como parte da rotina de gestão.",
+    },
+  },
+  fnt_oficial: {
+    matters: "Quando a mesma informação existe em vários lugares, cada área traz um número diferente e a reunião vira discussão sobre qual está certo.",
+    goal: "Para cada informação importante, todos sabem qual é a fonte que vale.",
+    idea: {
+      1: "Listar onde está cada informação importante — o primeiro passo para escolher qual vale.",
+      2: "Combinar com as áreas qual fonte é a oficial e deixar de usar as concorrentes.",
+      3: "Deixar a lista de fontes oficiais escrita, com responsável, e mantê-la atualizada.",
+    },
+  },
+  fnt_arquitetura: {
+    matters: "Dados espalhados em arquivos pessoais se perdem, ficam desatualizados e fazem cada relatório levar horas para ser montado.",
+    goal: "Os dados da empresa num lugar único e organizado, de onde saem todos os relatórios.",
+    idea: {
+      1: "Dar um endereço único e organizado para os arquivos de dados da empresa.",
+      2: "Juntar os dados principais num só lugar, de onde saem todos os relatórios.",
+      3: "Fazer os dados chegarem sozinhos a esse lugar, com aviso quando algo falhar.",
+    },
+  },
+  fnt_acesso: {
+    matters: "Se tirar dados dos sistemas é difícil ou depende de uma pessoa, todo relatório atrasa e qualquer ausência para a operação.",
+    goal: "Tirar dados dos sistemas é simples, documentado e não depende de uma só pessoa.",
+    idea: {
+      1: "Descobrir como cada sistema permite tirar os dados, e quanto isso custa.",
+      2: "Escrever o passo a passo da extração e garantir que mais de uma pessoa saiba fazer.",
+      3: "Ter acesso direto e seguro aos dados de todos os sistemas importantes.",
+    },
+  },
+  fnt_backup: {
+    matters: "Perder um sistema ou uma planilha crítica sem cópia pode parar a operação e apagar anos de histórico.",
+    goal: "A empresa consegue recuperar seus dados críticos, e isso já foi testado.",
+    idea: {
+      1: "Confirmar que existe cópia de segurança de tudo que é crítico.",
+      2: "Provar que a cópia funciona, recuperando um backup de verdade.",
+      3: "Combinar quanto tempo a empresa aguenta sem cada sistema e testar isso com frequência.",
+    },
+  },
+  qual_confianca: {
+    matters: "Quando os gestores não confiam nos números, eles conferem tudo à mão ou ignoram os relatórios — perde-se tempo e as decisões voltam a ser no 'achismo'.",
+    goal: "Os gestores usam os números sem precisar conferir tudo de novo.",
+    idea: {
+      1: "Mostrar com fatos onde os números erram e por quê, em vez de discutir impressões.",
+      2: "Transformar a conferência que cada um faz por conta própria em regras combinadas, feitas uma vez por um responsável.",
+      3: "Medir a qualidade dos números e mostrá-la junto com eles.",
+    },
+  },
+  qual_monitor: {
+    matters: "Sem conferência em rotina, os erros só aparecem quando alguém já usou o número errado para decidir.",
+    goal: "Os erros são pegos por uma conferência de rotina antes de chegar à gestão.",
+    idea: {
+      1: "Começar com poucas conferências simples, feitas sempre, por alguém definido.",
+      2: "Transformar as conferências de vez em quando em rotina, com responsável.",
+      3: "Deixar o sistema avisar sozinho quando um dado sair do padrão.",
+    },
+  },
+  qual_correcao: {
+    matters: "Corrigir o erro só no relatório faz o mesmo erro voltar todo mês e cada área ficar com uma versão diferente.",
+    goal: "Erro encontrado é corrigido na origem — e não volta no mês seguinte.",
+    idea: {
+      1: "Combinar que todo erro é corrigido no sistema de origem, por quem cuida daquele dado.",
+      2: "Anotar os erros e acompanhar se foram corrigidos no prazo.",
+      3: "Atacar a causa dos erros que mais se repetem, impedindo que entrem no sistema.",
+    },
+  },
+  int_chave: {
+    matters: "Se o mesmo cliente ou produto tem códigos diferentes em cada sistema, não dá para juntar as informações — e cada cruzamento vira trabalho manual sujeito a erro.",
+    goal: "Clientes, produtos e fornecedores reconhecidos como o mesmo em todos os sistemas.",
+    idea: {
+      1: "Criar uma 'tradução' entre os códigos dos sistemas para o cadastro mais importante.",
+      2: "Completar essa tradução para os demais cadastros e dar a alguém a tarefa de mantê-la.",
+      3: "Ter um único lugar onde cada cadastro nasce, e os outros sistemas copiarem dele.",
+    },
+  },
+  int_consol: {
+    matters: "Juntar dados copiando e colando consome horas, depende de quem sabe fazer e abre espaço para erros que ninguém vê.",
+    goal: "Juntar dados de áreas diferentes sem copiar e colar, sempre com as mesmas regras.",
+    idea: {
+      1: "Fazer o primeiro cruzamento entre duas áreas e anotar como foi feito, para repetir.",
+      2: "Trocar o copiar-e-colar por uma consolidação que se atualiza com um clique.",
+      3: "Garantir que todos os relatórios juntem os dados com as mesmas regras.",
+    },
+  },
+  int_linhagem: {
+    matters: "Quando ninguém sabe dizer de onde vem um número, qualquer questionamento trava a reunião e só uma pessoa consegue explicar.",
+    goal: "Qualquer pessoa consegue dizer de onde vem cada número importante.",
+    idea: {
+      1: "Anotar, para os indicadores principais, de onde vem cada número e que ajustes ele sofre.",
+      3: "Manter essa explicação atualizada para todos os indicadores importantes.",
+    },
+  },
+  gov_owner: {
+    matters: "Sem um responsável por cada tipo de dado, ninguém decide as regras: os problemas ficam sem dono e as divergências se arrastam.",
+    goal: "Cada tipo de dado importante tem um responsável que decide as regras.",
+    idea: {
+      1: "Dar nome a quem decide as regras de cada área de dados — como já existe um dono para o caixa ou para o estoque.",
+      2: "Oficializar quem já faz esse papel informalmente.",
+      3: "Garantir apoio e substituto para cada responsável.",
+    },
+  },
+  gov_glossario: {
+    matters: "Sem uma definição escrita, cada área calcula o mesmo indicador de um jeito e os números nunca batem.",
+    goal: "Cada indicador principal tem uma definição escrita que todos seguem.",
+    idea: {
+      1: "Escrever, em linguagem simples, como se calcula cada indicador principal.",
+      2: "Completar as definições e ter o aval de quem responde por cada indicador.",
+      3: "Usar as definições escritas como a palavra final quando houver dúvida.",
+    },
+  },
+  gov_decisao: {
+    matters: "Se divergências de números se resolvem por quem tem mais poder ou fala mais alto, o problema volta na próxima reunião.",
+    goal: "Divergências de números resolvidas por regra combinada, não por discussão.",
+    idea: {
+      1: "Combinar uma regra simples: em caso de divergência, vale a definição escrita e o responsável pelo dado.",
+      2: "Anotar cada decisão sobre dados para não discutir o mesmo assunto de novo.",
+      3: "Ter uma conversa curta e periódica entre os responsáveis para decidir os temas de dados.",
+    },
+  },
+  seg_cred: {
+    matters: "Senhas compartilhadas e acessos de ex-colaboradores são a porta mais comum para vazamentos e fraudes.",
+    goal: "Só quem deve tem acesso aos sistemas, e as senhas estão protegidas.",
+    idea: {
+      1: "Saber quem acessa cada sistema importante e cortar o que não deveria existir.",
+      2: "Guardar as senhas da empresa num cofre seguro, e não em e-mails ou planilhas.",
+      3: "Revisar os acessos com frequência e sempre que alguém sair da empresa.",
+    },
+  },
+  seg_acesso: {
+    matters: "Se todos veem tudo, informações como salários, margens e dados de clientes ficam expostas sem necessidade.",
+    goal: "Cada pessoa vê apenas os dados de que precisa para o trabalho.",
+    idea: {
+      1: "Proteger primeiro as informações mais sensíveis, deixando o acesso só para quem precisa.",
+      2: "Separar os dados por nível de sensibilidade e dar acesso conforme o nível.",
+      3: "Revisar periodicamente quem acessa o quê e manter registro.",
+    },
+  },
+  seg_lgpd: {
+    matters: "A LGPD prevê multas de até 2% do faturamento, e um incidente com dados pessoais afeta a confiança de clientes e colaboradores.",
+    goal: "Os dados pessoais estão mapeados, protegidos e tratados conforme a lei.",
+    idea: {
+      1: "Saber onde estão os dados pessoais que a empresa guarda e para que servem.",
+      2: "Ter justificativa legal para cada uso e limitar quem acessa.",
+      3: "Completar as obrigações da LGPD: encarregado, prazos de guarda e canal para os titulares.",
+    },
+  },
+  pes_skill: {
+    matters: "Se ninguém tem tempo ou preparo para produzir as análises, as perguntas da gestão ficam sem resposta ou demoram semanas.",
+    goal: "A empresa tem gente com tempo e preparo para responder às perguntas da gestão.",
+    idea: {
+      1: "Definir quem vai cuidar das análises e reservar tempo para isso.",
+      2: "Capacitar o time na ferramenta que a empresa já tem, aplicando em casos reais.",
+      3: "Ampliar o time para responder perguntas novas com rapidez.",
+    },
+  },
+  pes_letramento: {
+    matters: "Um painel bem feito não ajuda se os gestores não sabem ler os números — eles voltam a pedir explicação ou ignoram o painel.",
+    goal: "Os gestores leem e explicam os próprios números sem ajuda.",
+    idea: {
+      1: "Ensinar cada gestor a ler os números da própria área, com exemplos reais.",
+      3: "Formar em cada área alguém que ajude os colegas a usar os números.",
+    },
+  },
+  pes_dependencia: {
+    matters: "Se só uma pessoa sabe fazer as rotinas de dados, férias, doença ou saída dela param os relatórios da empresa.",
+    goal: "As rotinas de dados continuam funcionando mesmo se alguém sair.",
+    idea: {
+      1: "Colocar no papel as rotinas que hoje só existem na cabeça de uma pessoa.",
+      2: "Preparar uma segunda pessoa para executar essas rotinas.",
+      3: "Fazer o conhecimento circular entre várias pessoas.",
+    },
+  },
+  pes_adocao: {
+    matters: "Painéis que ninguém usa são investimento perdido — e as planilhas paralelas continuam gerando números diferentes.",
+    goal: "Os painéis oficiais são usados no dia a dia, sem cobrança e sem planilhas paralelas.",
+    idea: {
+      1: "Usar o painel oficial nas reuniões no lugar das planilhas paralelas.",
+      3: "Fazer os painéis chegarem até os gestores, sem depender de cobrança.",
+    },
+  },
+  ia_automacao: {
+    matters: "Rotinas manuais repetitivas consomem horas todo mês e cada etapa manual é uma chance de erro.",
+    goal: "As tarefas repetitivas rodam sozinhas, com aviso quando algo falha.",
+    idea: {
+      1: "Escolher a tarefa manual que mais toma tempo e fazer o computador executá-la.",
+      3: "Garantir que as automações avisem quando falharem.",
+    },
+  },
+  ia_politica: {
+    matters: "Sem regras, colaboradores colam dados de clientes, contratos e senhas em ferramentas de IA públicas — um risco de vazamento invisível.",
+    goal: "Todos sabem o que pode e o que não pode ser feito com IA na empresa.",
+    idea: {
+      1: "Deixar claro, em uma página, o que pode e o que não pode ser usado com IA.",
+      3: "Acompanhar os usos de IA na empresa e aprovar os que usam dados confiáveis.",
+    },
+  },
+  ia_dados: {
+    matters: "IA com dados ruins dá respostas erradas com aparência de certas — o investimento não volta e a confiança cai.",
+    goal: "Os usos de IA apoiados em dados confiáveis e com resultado medido.",
+    idea: {
+      1: "Escolher um uso de IA que resolva uma dor real e já tenha dados disponíveis.",
+      2: "Arrumar os dados desse uso antes de testar a IA.",
+      3: "Testar a IA em pequena escala e comparar com o resultado sem ela.",
+    },
+  },
+};
+
+// ---------------------------------------------------------------------
 // Checagens de área: roteiro por dimensão de qualidade
 // ---------------------------------------------------------------------
+const CHECK_PLAIN: Record<QualityDim, { matters: string; idea: string; target: string }> = {
+  consistencia: { matters: "Quando dois relatórios mostram números diferentes para a mesma coisa, ninguém sabe em qual acreditar e a decisão trava.", idea: "Comparar os dois números em rotina e explicar cada diferença, até que eles batam.", target: "Os números das duas fontes batem todo mês — e, quando não batem, a diferença é conhecida e explicada." },
+  validade: { matters: "Se cada um aplica a regra do seu jeito, o mesmo indicador muda conforme quem faz o relatório.", idea: "Combinar a regra por escrito e fazer todos os relatórios seguirem a mesma.", target: "Uma regra escrita, igual para todos os relatórios." },
+  completude: { matters: "Informação que não é registrada não pode ser analisada: a empresa decide olhando só uma parte da realidade.", idea: "Registrar tudo no sistema oficial, sem controles paralelos, e medir o que falta.", target: "Tudo o que importa registrado no sistema, sem controles paralelos." },
+  acuracidade: { matters: "Se o sistema não reflete a realidade, as decisões tomadas a partir dele também erram.", idea: "Conferir o sistema contra a realidade, por amostra, e corrigir na origem.", target: "O sistema reflete a realidade, conferido por amostragem em rotina." },
+  unicidade: { matters: "Cadastros duplicados distorcem contagens e históricos (o mesmo cliente parece dois) e geram retrabalho.", idea: "Limpar os cadastros duplicados e impedir que novos apareçam.", target: "Cada cliente, item ou pessoa cadastrado uma única vez." },
+  tempestividade: { matters: "Informação que chega tarde só serve para explicar o problema, não para evitá-lo.", idea: "Combinar quando a informação precisa chegar e garantir esse prazo.", target: "A informação chega no prazo combinado com quem decide." },
+};
+
 const CHECK_PLAYBOOK: Record<QualityDim, { how: string[]; deliverable: string; done: string; goals: GoalKey[]; weeks: number }> = {
   consistencia: { how: ["Pegue o último fechamento e coloque os dois números lado a lado.", "Liste cada diferença com a causa (regra, data, cadastro, integração).", "Transforme em rotina com responsável e tolerância definida."], deliverable: "Conciliação com as diferenças explicadas", done: "Duas rotinas seguidas dentro da tolerância, com causas registradas", goals: ["confianca", "visao"], weeks: 3 },
   validade: { how: ["Escreva a regra em uma frase, junto com o responsável da área.", "Aplique a regra nos relatórios existentes e registre no Glossário.", "Revise sempre que a regra mudar."], deliverable: "Regra escrita e registrada no Glossário", done: "Todos os relatórios usam a mesma regra", goals: ["confianca"], weeks: 2 },
@@ -375,9 +632,24 @@ export function profileFor(a: Pick<Assessment, "answers">, s: ScoreResult): Prof
 // ---------------------------------------------------------------------
 // Montagem do plano
 // ---------------------------------------------------------------------
+const GATE_SENTENCE = "Este ponto hoje segura o nível geral da empresa: enquanto ele não avançar, a nota não passa de 'Definido' (3 de 5), mesmo que o resto melhore.";
+
+function evidenceNote(ev?: string) {
+  return ev ? ` Registro do diagnóstico: “${clip(ev, 160).replace(/[.;:,]+$/, "")}”.` : "";
+}
+
+function clip(t: string, n: number) {
+  const x = t.replace(/\s+/g, " ").trim();
+  return x.length > n ? `${x.slice(0, n - 1).trimEnd()}…` : x;
+}
+
+/** Monta a narrativa do passo: onde estamos → por que importa → aonde chegar → o passo. */
+function story(now: string, matters: string, target: string, idea: string, signals: string[]) {
+  return { now, matters, target, idea, signals: [...signals], why: [now, matters, ...signals].filter(Boolean).join(" ") };
+}
 const FOUNDATION_DIMS = new Set(["governanca", "integracao", "fontes", "qualidade"]);
 
-export function buildRoadmap(a: Pick<Assessment, "answers" | "context">, score: ScoreResult): Roadmap {
+export function buildRoadmap(a: Pick<Assessment, "answers" | "context"> & Partial<Pick<Assessment, "evidence">>, score: ScoreResult): Roadmap {
   const ctx = a.context || {};
   const answers = a.answers || {};
   const gateIds = new Set(score.gates.map((g) => g.questionId));
@@ -393,12 +665,12 @@ export function buildRoadmap(a: Pick<Assessment, "answers" | "context">, score: 
     if (goal && main === goal) {
       p *= 1.35;
       tags.push("Seu objetivo");
-      why.push(`Ataca direto o seu objetivo: ${goalLabel?.toLowerCase()}.`);
+      why.push(`Vai direto ao objetivo que vocês escolheram: ${goalLabel?.toLowerCase()}.`);
     } else if (goal && goals.includes(goal)) p *= 1.1;
     if (main && pains.has(main) && main !== goal) {
       p *= 1.2;
       tags.push("Responde à sua dor");
-      why.push("Responde a uma dificuldade que você relatou no contexto.");
+      why.push(ctx.dores ? `Responde a uma dificuldade que vocês relataram: “${clip(ctx.dores, 120)}”.` : "Responde a uma dificuldade que vocês relataram.");
     }
     return p;
   };
@@ -424,7 +696,13 @@ export function buildRoadmap(a: Pick<Assessment, "answers" | "context">, score: 
           id: q.id,
           kind: "discovery",
           title: `Descobrir ${lib.topic}`,
-          why: [`Ninguém soube responder "${q.prompt}" — é um ponto cego.`, ...why].join(" "),
+          ...story(
+            `Na pergunta “${q.prompt}”, a resposta foi “Não sei”. É um ponto cego: hoje a empresa não sabe como está neste tema.`,
+            PLAIN[q.id]?.matters ?? "",
+            "Saber com clareza como a empresa está neste tema, com uma evidência — para escolher o passo certo.",
+            "Antes de mudar qualquer coisa, descobrir como o tema funciona hoje.",
+            isGate ? [GATE_SENTENCE, ...why] : why,
+          ),
           how: [
             `Pergunte a quem opera o assunto no dia a dia: ${lib.topic}.`,
             "Peça uma evidência (relatório, print, planilha, quem faz e com que frequência).",
@@ -448,8 +726,8 @@ export function buildRoadmap(a: Pick<Assessment, "answers" | "context">, score: 
       const def = (level === 2 ? lib[2] ?? lib[1] : lib[level]) as StepDef;
       const cur = answerLabel(q.levels, v);
       const next = q.levels.find((l) => l.v === v + 1)?.label;
-      why.unshift(`Hoje: "${cur}".${next ? ` Próximo nível: "${next}".` : ""}`);
-      if (isGate) why.push("Enquanto isso não avançar, o nível geral fica limitado a 3.");
+      if (isGate) why.unshift(GATE_SENTENCE);
+      const ev = (a.evidence || {})[q.id]?.trim();
 
       const gap = (100 - s) / 100;
       const base = gap * dim.weight * (isGate ? 2 : 1) * (FOUNDATION_DIMS.has(dim.key) ? 1.3 : 1);
@@ -459,7 +737,13 @@ export function buildRoadmap(a: Pick<Assessment, "answers" | "context">, score: 
         id: q.id,
         kind: "question",
         title: fill(def.title, ctx),
-        why: why.join(" "),
+        ...story(
+          `Na pergunta “${q.prompt}”, a resposta foi: “${cur}”.${evidenceNote(ev)}`,
+          PLAIN[q.id]?.matters ?? "",
+          PLAIN[q.id]?.goal ?? (next ? `“${next}”.` : "Manter o nível alcançado."),
+          fill(PLAIN[q.id]?.idea[level === 2 && !PLAIN[q.id]?.idea[2] ? 1 : level] ?? "", ctx),
+          why,
+        ),
         how: def.how.map((h) => fill(h, ctx)),
         deliverable: fill(def.deliverable, ctx),
         owner: ownerLabel(def.owner, ctx),
@@ -485,9 +769,10 @@ export function buildRoadmap(a: Pick<Assessment, "answers" | "context">, score: 
       const pb = CHECK_PLAYBOOK[c.quality];
       const tags: string[] = c.critical ? ["Crítico"] : [];
       const why: string[] = [];
-      if (v === UNKNOWN) why.push(`Ninguém soube dizer se ${c.prompt.charAt(0).toLowerCase()}${c.prompt.slice(1).replace(/\?$/, "")}.`);
-      else why.push(`Hoje: "${v === 1 ? "não existe" : "existe só em parte ou às vezes"}".`);
-      if (c.critical) why.push(`É um ponto crítico de ${d.title.toLowerCase()}: erros aqui contaminam os principais indicadores.`);
+      if (c.critical) why.push(`É um ponto crítico de ${d.title.toLowerCase()}: um erro aqui contamina os principais indicadores da área.`);
+      const ev = (a.evidence || {})[c.id]?.trim();
+      const answerTxt = v === UNKNOWN ? "“Não sei” — ninguém soube dizer" : v === 1 ? "“Não”" : "“Em parte / às vezes”";
+      const cp = CHECK_PLAIN[c.quality];
       const gap = (100 - s) / 100;
       const p = personalize(pb.goals, gap * (c.critical ? 1.6 : 1), tags, why);
       const wave: 1 | 2 | 3 = c.critical && s < 50 ? 1 : s < 50 ? 2 : 3;
@@ -495,7 +780,13 @@ export function buildRoadmap(a: Pick<Assessment, "answers" | "context">, score: 
         id: c.id,
         kind: "check",
         title: c.action.replace(/\.$/, ""),
-        why: why.join(" "),
+        ...story(
+          `Em ${d.title}, perguntamos: “${c.prompt}” A resposta foi ${answerTxt}.${evidenceNote(ev)}`,
+          cp.matters,
+          cp.target,
+          cp.idea,
+          why,
+        ),
         how: v === UNKNOWN ? ["Pergunte ao responsável da área se esse controle existe e como é feito.", ...pb.how.slice(1)] : pb.how,
         deliverable: pb.deliverable,
         owner: ownerLabel("area", ctx, d.title),

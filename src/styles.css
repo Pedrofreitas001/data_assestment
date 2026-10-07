@@ -856,6 +856,19 @@ html { scroll-behavior: smooth; }
 .step-row-title { font-size: 14px; font-weight: 600; line-height: 1.35; }
 .step-row-body { padding: 0 0 14px; }
 .step-row-body .step-why { margin-top: 0; }
+/* Narrativa do passo: onde estamos → por que importa → aonde chegar */
+.step-story { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin-top: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
+.step-story > div { padding: 10px 12px; min-width: 0; }
+.step-story > div + div { border-left: 1px solid var(--line); }
+.step-story .step-txt { margin: 0; color: var(--ink-2); }
+.step-row-body .step-story { margin-top: 0; }
+.step-signals { margin: 6px 0 0; padding-left: 16px; font-size: 12.5px; line-height: 1.45; color: var(--ink); }
+.step-signals li { margin-bottom: 2px; }
+.step-idea { margin: 12px 0 0; font-size: 14px; line-height: 1.5; color: var(--ink); }
+@media (max-width: 860px) {
+  .step-story { grid-template-columns: 1fr; }
+  .step-story > div + div { border-left: none; border-top: 1px solid var(--line); }
+}
 .opt-na { opacity: 0.9; }
 .q-example { margin: 4px 0 0; font-size: 12.5px; color: var(--ink-3); font-style: italic; }
 .ctx-choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }

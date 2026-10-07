@@ -113,7 +113,7 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 // vão para colunas uuid de verdade no banco (chat_threads.id, priorities.thread_id) — usam dbUid().
 const COOLDOWN_MS = 40_000;
 
-const GLOBAL_ACTIONS = ["open_report", "continue_assessment"];
+const GLOBAL_ACTIONS = ["open_report", "continue_assessment", "open_kpi_library", "open_glossary"];
 const MAX_STORED = 80;
 
 const toStored = (m: CopilotMessage): StoredChatMessage => ({
@@ -340,7 +340,7 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
           snapshot,
           prioridades: prioritiesRef.current.map((p) => ({ titulo: p.title, status: p.status })),
           report,
-          usuario: profile?.full_name,
+          usuario: { nome: profile?.full_name, papel: profile?.role },
         },
         turns,
       );
@@ -447,6 +447,8 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
         if (!assessmentId) return nav("/assessments");
         return nav(a.type === "open_report" ? `/assessments/${assessmentId}/resultado` : `/assessments/${assessmentId}`);
       }
+      if (a.type === "open_kpi_library") return nav("/glossario?biblioteca=1");
+      if (a.type === "open_glossary") return nav("/glossario");
       if (a.type === "add_to_report") {
         const h = handlers.current.add_to_report;
         if (h && msg) await h({ body: msg.content });

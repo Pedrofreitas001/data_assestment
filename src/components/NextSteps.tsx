@@ -12,7 +12,10 @@ const planKey = (s: PlanStep) => `plano:${s.id}`;
 
 function stepMarkdown(s: PlanStep) {
   return [
-    `**Por quê:** ${s.why}`,
+    `**Onde estamos:** ${s.now}`,
+    `**Por que importa:** ${[s.matters, ...s.signals].join(" ")}`,
+    `**Aonde chegar:** ${s.target}`,
+    `**O passo:** ${s.idea}`,
     `**Como fazer:**\n${s.how.map((h, i) => `${i + 1}. ${h}`).join("\n")}`,
     `**Entregável:** ${s.deliverable}`,
     `**Quem conduz:** ${s.owner} · **Prazo típico:** ${s.weeks} semana${s.weeks > 1 ? "s" : ""}`,
@@ -96,7 +99,32 @@ function StepMeta({ s }: { s: PlanStep }) {
 function StepBody({ s }: { s: PlanStep }) {
   return (
     <>
-      <p className="step-why">{s.why}</p>
+      <div className="step-story">
+        <div>
+          <div className="step-lbl">Onde vocês estão</div>
+          <p className="step-txt">{s.now}</p>
+        </div>
+        <div>
+          <div className="step-lbl">Por que importa</div>
+          <p className="step-txt">{s.matters}</p>
+          {s.signals.length > 0 && (
+            <ul className="step-signals">
+              {s.signals.map((x) => (
+                <li key={x}>{x}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div>
+          <div className="step-lbl">Aonde chegar</div>
+          <p className="step-txt">{s.target}</p>
+        </div>
+      </div>
+      {s.idea && (
+        <p className="step-idea">
+          <b>O passo:</b> {s.idea}
+        </p>
+      )}
       <div className="step-grid">
         <div>
           <div className="step-lbl">Como fazer</div>
