@@ -393,7 +393,7 @@ export default function Result() {
         <div className="card-head">
           <div>
             <h3 className="card-title">Próximos passos</h3>
-            <p className="card-sub">O que fazer, como, quem conduz e como saber que terminou — ajustado ao contexto da empresa</p>
+            <p className="card-sub">Uma orientação por passo, em ordem de prioridade. Abra para ver o porquê e como fazer.</p>
           </div>
         </div>
         <div className="card-body">

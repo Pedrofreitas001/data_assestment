@@ -1,14 +1,14 @@
-// Próximos passos: perfil da empresa + plano em ondas, com passos executáveis.
+// Próximos passos: leitura leve — uma frase por passo, detalhes só ao abrir.
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Check, ChevronDown, Clock, Pin, User } from "lucide-react";
+import { ChevronDown, Pin } from "lucide-react";
 import { useCopilot } from "../context/copilot";
 import { useToast } from "../context/toast";
 import { friendlyError } from "../lib/errors";
-import { EFFORT_LABEL, WAVES, type PlanStep, type Roadmap } from "../model/roadmap";
-import { AiMark } from "./ui";
+import { WAVES, type PlanStep, type Roadmap } from "../model/roadmap";
 
 const planKey = (s: PlanStep) => `plano:${s.id}`;
+const weeks = (n: number) => `~${n} semana${n > 1 ? "s" : ""}`;
 
 function stepMarkdown(s: PlanStep) {
   return [
@@ -23,19 +23,13 @@ function stepMarkdown(s: PlanStep) {
   ].join("\n\n");
 }
 
-export function ProfileBanner({ roadmap, compact }: { roadmap: Roadmap; compact?: boolean }) {
+/** Situação em uma linha: perfil + foco. */
+export function ProfileBanner({ roadmap }: { roadmap: Roadmap; compact?: boolean }) {
   const p = roadmap.profile;
   return (
-    <div className={`profile-box ${compact ? "compact" : ""}`}>
-      <div className="section-title" style={{ margin: 0 }}>
-        Seu ponto de partida
-      </div>
-      <div className="profile-title">{p.title}</div>
-      <p className="profile-summary">{p.summary}</p>
-      <p className="profile-focus">
-        <b>Foco agora:</b> {p.focus}
-      </p>
-    </div>
+    <p className="ns-profile">
+      <b>{p.title}.</b> {p.focus}
+    </p>
   );
 }
 
@@ -45,14 +39,14 @@ function StepActions({ s }: { s: PlanStep }) {
   const [busy, setBusy] = useState(false);
   const pinned = c.priorities.some((p) => p.message_id === planKey(s));
   return (
-    <div className="step-actions no-print">
+    <div className="ns-actions no-print">
       {pinned ? (
-        <span className="pin-done">
+        <span className="ns-pinned">
           <Pin size={12} /> Em Prioridades
         </span>
       ) : (
         <button
-          className="btn btn-xs"
+          className="link-btn"
           disabled={busy}
           onClick={async () => {
             setBusy(true);
@@ -66,154 +60,81 @@ function StepActions({ s }: { s: PlanStep }) {
             }
           }}
         >
-          <Pin size={12} /> Priorizar
+          Priorizar
         </button>
       )}
-      <button className="btn btn-xs btn-ghost" onClick={() => c.ask(`Como colocar em prática este passo na nossa empresa, considerando o nosso contexto: "${s.title}"?`, `Como fazer: ${s.title}`)}>
-        <AiMark size={9} /> Como fazer aqui?
+      <button className="link-btn" onClick={() => c.ask(`Como colocar em prática este passo na nossa empresa, considerando o nosso contexto: "${s.title}"?`, `Como fazer: ${s.title}`)}>
+        Como fazer aqui?
       </button>
       {s.tool === "glossario" && (
-        <Link className="btn btn-xs btn-ghost" to="/glossario">
-          <BookOpen size={12} /> Abrir Glossário
+        <Link className="link-btn" to="/glossario">
+          Abrir Glossário
         </Link>
       )}
     </div>
   );
 }
 
-function StepMeta({ s }: { s: PlanStep }) {
+function StepDetail({ s }: { s: PlanStep }) {
   return (
-    <div className="step-meta">
-      <span>
-        <User size={12} /> {s.owner}
-      </span>
-      <span>
-        <Clock size={12} /> ~{s.weeks} semana{s.weeks > 1 ? "s" : ""}
-      </span>
-      <span>{EFFORT_LABEL[s.effort]}</span>
-      <span className="muted">{s.origin.replace(/^D\d · /, "")}</span>
+    <div className="ns-detail">
+      <dl className="ns-facts">
+        <dt>Hoje</dt>
+        <dd>{s.today ? `“${s.today}”` : s.now}</dd>
+        <dt>Por quê</dt>
+        <dd>{s.matters}</dd>
+        <dt>Meta</dt>
+        <dd>{s.target}</dd>
+      </dl>
+      <ol className="ns-how">
+        {s.how.map((h) => (
+          <li key={h}>{h}</li>
+        ))}
+      </ol>
+      <p className="ns-done">
+        <b>Pronto quando:</b> {s.done}
+      </p>
+      <p className="ns-meta">
+        {s.owner} · {weeks(s.weeks)}
+      </p>
+      <StepActions s={s} />
     </div>
   );
 }
 
-function StepBody({ s }: { s: PlanStep }) {
-  return (
-    <>
-      <div className="step-story">
-        <div>
-          <div className="step-lbl">Onde vocês estão</div>
-          <p className="step-txt">{s.now}</p>
-        </div>
-        <div>
-          <div className="step-lbl">Por que importa</div>
-          <p className="step-txt">{s.matters}</p>
-          {s.signals.length > 0 && (
-            <ul className="step-signals">
-              {s.signals.map((x) => (
-                <li key={x}>{x}</li>
-              ))}
-            </ul>
-          )}
-        </div>
-        <div>
-          <div className="step-lbl">Aonde chegar</div>
-          <p className="step-txt">{s.target}</p>
-        </div>
-      </div>
-      {s.idea && (
-        <p className="step-idea">
-          <b>O passo:</b> {s.idea}
-        </p>
-      )}
-      <div className="step-grid">
-        <div>
-          <div className="step-lbl">Como fazer</div>
-          <ol className="step-how">
-            {s.how.map((h) => (
-              <li key={h}>{h}</li>
-            ))}
-          </ol>
-        </div>
-        <div>
-          <div className="step-lbl">Entregável</div>
-          <p className="step-txt">{s.deliverable}</p>
-          <div className="step-lbl">Pronto quando</div>
-          <p className="step-txt">
-            <Check size={12} style={{ verticalAlign: -1, marginRight: 4 }} />
-            {s.done}
-          </p>
-        </div>
-      </div>
-      <StepActions s={s} />
-    </>
-  );
-}
-
-function Tags({ s }: { s: PlanStep }) {
-  if (!s.tags.length) return null;
-  return (
-    <span className="step-tags">
-      {s.tags.map((t) => (
-        <span key={t} className={`badge ${t === "Limita o nível" || t === "Crítico" ? "badge-solid" : "badge-brand"}`}>
-          {t}
-        </span>
-      ))}
-    </span>
-  );
-}
-
-export function StepCard({ s, n }: { s: PlanStep; n: number }) {
-  return (
-    <article className="step-card avoid">
-      <div className="step-top">
-        <span className="step-n">{n}</span>
-        <div className="grow">
-          <h4 className="step-title">{s.title}</h4>
-          <StepMeta s={s} />
-          <Tags s={s} />
-        </div>
-      </div>
-      <StepBody s={s} />
-    </article>
-  );
-}
-
-export function StepRow({ s, defaultOpen }: { s: PlanStep; defaultOpen?: boolean }) {
+export function StepRow({ s, n, defaultOpen }: { s: PlanStep; n?: number; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(!!defaultOpen);
+  const gate = s.tags.includes("Limita o nível");
   return (
-    <li className={`step-row ${open ? "open" : ""}`}>
-      <button className="step-row-head" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
-        <span className="grow">
-          <span className="step-row-title">{s.title}</span>
-          <span className="xs muted">
-            {s.owner} · ~{s.weeks} sem · {EFFORT_LABEL[s.effort].toLowerCase()}
+    <li className={`ns-item ${open ? "open" : ""}`}>
+      <button className="ns-head" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+        {n !== undefined && <span className="ns-n">{n}</span>}
+        <span className="ns-text">
+          <span className="ns-title">
+            {s.title}
+            {gate && <span className="ns-flag">limita o nível</span>}
           </span>
+          {s.idea && <span className="ns-idea">{s.idea}</span>}
         </span>
-        <Tags s={s} />
-        <ChevronDown size={16} className="no-print" style={{ flexShrink: 0, color: "var(--ink-3)", transform: open ? "rotate(180deg)" : undefined, transition: "transform .15s" }} />
+        <ChevronDown size={16} className="ns-chev no-print" />
       </button>
-      {open && (
-        <div className="step-row-body">
-          <StepBody s={s} />
-        </div>
-      )}
+      {open && <StepDetail s={s} />}
     </li>
   );
 }
 
-function WaveList({ steps, limit = 6 }: { steps: PlanStep[]; limit?: number }) {
+function StepList({ steps, numbered, limit, firstOpen }: { steps: PlanStep[]; numbered?: boolean; limit?: number; firstOpen?: boolean }) {
   const [all, setAll] = useState(false);
-  const shown = all ? steps : steps.slice(0, limit);
-  if (!steps.length) return <p className="small muted">Nada pendente nesta onda.</p>;
+  const shown = limit && !all ? steps.slice(0, limit) : steps;
   return (
     <>
-      <ul className="step-list">
-        {shown.map((s) => (
-          <StepRow key={s.id} s={s} />
+      <ol className="ns-list">
+        {shown.map((s, i) => (
+          <StepRow key={s.id} s={s} n={numbered ? i + 1 : undefined} defaultOpen={firstOpen && i === 0} />
         ))}
-      </ul>
-      {steps.length > limit && (
-        <button className="link-btn no-print" style={{ marginTop: 6 }} onClick={() => setAll((v) => !v)}>
+      </ol>
+      {limit && steps.length > limit && (
+        <button className="link-btn no-print ns-more" onClick={() => setAll((v) => !v)}>
           {all ? "Mostrar menos" : `Ver todos (${steps.length})`}
         </button>
       )}
@@ -228,50 +149,35 @@ export default function NextSteps({ roadmap }: { roadmap: Roadmap }) {
   return (
     <>
       <ProfileBanner roadmap={roadmap} />
-      <div className="wave-head">
-        <div>
-          <b>{WAVES[1].label}</b> <span className="muted small">· {WAVES[1].focus}</span>
-        </div>
-        <span className="xs muted">{roadmap.capacityNote}</span>
+      <div className="ns-wave">
+        <span className="ns-wave-t">{WAVES[1].short}</span>
+        <span className="ns-wave-n">{roadmap.capacityNote}</span>
       </div>
-      {!w1.length ? (
-        <p className="small muted">Nenhum fundamento pendente — siga para as próximas ondas.</p>
-      ) : (
-        <div className="stack" style={{ gap: 12 }}>
-          {w1.map((s, i) => (
-            <StepCard key={s.id} s={s} n={i + 1} />
-          ))}
-        </div>
-      )}
-      {([2, 3] as const).map((w) => (
-        <div key={w} style={{ marginTop: 26 }}>
-          <div className="wave-head">
-            <div>
-              <b>{WAVES[w].label}</b> <span className="muted small">· {WAVES[w].focus}</span>
+      {w1.length ? <StepList steps={w1} numbered firstOpen /> : <p className="small muted">Nenhum fundamento pendente.</p>}
+      {([2, 3] as const).map((w) => {
+        const ws = byWave(w);
+        if (!ws.length) return null;
+        return (
+          <div key={w}>
+            <div className="ns-wave">
+              <span className="ns-wave-t">{WAVES[w].short}</span>
+              <span className="ns-wave-n">{WAVES[w].focus}</span>
             </div>
+            <StepList steps={ws} limit={4} />
           </div>
-          <WaveList steps={byWave(w)} />
-        </div>
-      ))}
+        );
+      })}
     </>
   );
 }
 
-/** Versão curta para o Início: perfil + 3 primeiros passos. */
+/** Versão curta para o Início: situação + 3 primeiros passos. */
 export function NextStepsCompact({ roadmap, max = 3 }: { roadmap: Roadmap; max?: number }) {
   const first = roadmap.steps.slice(0, max);
   return (
     <>
-      <ProfileBanner roadmap={roadmap} compact />
-      {!first.length ? (
-        <p className="small muted">Nenhuma ação pendente.</p>
-      ) : (
-        <ul className="step-list" style={{ marginTop: 14 }}>
-          {first.map((s) => (
-            <StepRow key={s.id} s={s} />
-          ))}
-        </ul>
-      )}
+      <ProfileBanner roadmap={roadmap} />
+      {first.length ? <StepList steps={first} numbered /> : <p className="small muted">Nenhuma ação pendente.</p>}
     </>
   );
 }

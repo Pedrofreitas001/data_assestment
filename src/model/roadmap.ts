@@ -47,6 +47,8 @@ export interface PlanStep {
   title: string;
   /** Onde a empresa está hoje — o que o diagnóstico mostrou (com a evidência registrada). */
   now: string;
+  /** Versão curta de "onde estão": só a resposta dada. */
+  today: string;
   /** Por que o tema importa para o negócio, em linguagem simples. */
   matters: string;
   /** Aonde queremos chegar com este passo. */
@@ -644,8 +646,8 @@ function clip(t: string, n: number) {
 }
 
 /** Monta a narrativa do passo: onde estamos → por que importa → aonde chegar → o passo. */
-function story(now: string, matters: string, target: string, idea: string, signals: string[]) {
-  return { now, matters, target, idea, signals: [...signals], why: [now, matters, ...signals].filter(Boolean).join(" ") };
+function story(now: string, matters: string, target: string, idea: string, signals: string[], today = "") {
+  return { now, today, matters, target, idea, signals: [...signals], why: [now, matters, ...signals].filter(Boolean).join(" ") };
 }
 const FOUNDATION_DIMS = new Set(["governanca", "integracao", "fontes", "qualidade"]);
 
@@ -702,6 +704,7 @@ export function buildRoadmap(a: Pick<Assessment, "answers" | "context"> & Partia
             "Saber com clareza como a empresa está neste tema, com uma evidência — para escolher o passo certo.",
             "Antes de mudar qualquer coisa, descobrir como o tema funciona hoje.",
             isGate ? [GATE_SENTENCE, ...why] : why,
+            "Ninguém soube responder no diagnóstico",
           ),
           how: [
             `Pergunte a quem opera o assunto no dia a dia: ${lib.topic}.`,
@@ -743,6 +746,7 @@ export function buildRoadmap(a: Pick<Assessment, "answers" | "context"> & Partia
           PLAIN[q.id]?.goal ?? (next ? `“${next}”.` : "Manter o nível alcançado."),
           fill(PLAIN[q.id]?.idea[level === 2 && !PLAIN[q.id]?.idea[2] ? 1 : level] ?? "", ctx),
           why,
+          cur ?? "",
         ),
         how: def.how.map((h) => fill(h, ctx)),
         deliverable: fill(def.deliverable, ctx),
@@ -786,6 +790,7 @@ export function buildRoadmap(a: Pick<Assessment, "answers" | "context"> & Partia
           cp.target,
           cp.idea,
           why,
+          v === UNKNOWN ? "Ninguém soube responder no diagnóstico" : v === 1 ? "Não existe" : "Existe só em parte",
         ),
         how: v === UNKNOWN ? ["Pergunte ao responsável da área se esse controle existe e como é feito.", ...pb.how.slice(1)] : pb.how,
         deliverable: pb.deliverable,
