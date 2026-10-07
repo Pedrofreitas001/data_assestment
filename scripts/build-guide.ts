@@ -19,6 +19,36 @@ const img = (name: string, caption: string) => {
 const today = new Date().toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 const gates = DIMENSIONS.flatMap((d) => d.questions.filter((q) => q.gate).map((q) => q.gate!.reason));
 
+
+// ---------- Introdução: evidências e fontes (cada número tem fonte e tipo de evidência) ----------
+type Ev = "ind" | "for" | "pre" | "est" | "lei" | "aca";
+const EV_LABEL: Record<Ev, string> = { ind: "Pesquisa independente", for: "Pesquisa de fornecedor", pre: "Previsão", est: "Estimativa de especialista", lei: "Lei", aca: "Estudo acadêmico" };
+const EV_CLASS: Record<Ev, string> = { ind: "ind", for: "for", pre: "pre", est: "est", lei: "lei", aca: "ind" };
+const SOURCES: { n: number; ev: Ev; text: string; url: string }[] = [
+  { n: 1, ev: "ind", text: "McKinsey & Company. The state of AI in 2025: Agents, innovation, and transformation (nov/2025) — 1.993 respondentes, 105 países.", url: "https://www.mckinsey.com/capabilities/operations/our-insights/the-state-of-ai" },
+  { n: 2, ev: "ind", text: "IBM Institute for Business Value. 2025 CEO Study (comunicado de 06/05/2025) — 2.000 CEOs, 33 países.", url: "https://newsroom.ibm.com/2025-05-06-ibm-study-ceos-double-down-on-ai-while-navigating-enterprise-hurdles" },
+  { n: 3, ev: "pre", text: "Gartner. Lack of AI-Ready Data Puts AI Projects at Risk (comunicado de 26/02/2025) — previsão e pesquisa de 2024 com líderes de gestão de dados.", url: "https://www.gartner.com/en/newsroom/press-releases/2025-02-26-lack-of-ai-ready-data-puts-ai-projects-at-risk" },
+  { n: 4, ev: "ind", text: "IBM / Ponemon Institute. Cost of a Data Breach Report 2025 — divulgação no Brasil (30/07/2025); 600 organizações no mundo, mar/2024 a fev/2025.", url: "https://brasil.newsroom.ibm.com/2025-07-30-Relatorio-da-IBM-Custo-medio-de-uma-violacao-de-dados-no-Brasil-atinge-R-7,19-milhoes" },
+  { n: 5, ev: "ind", text: "BCG. AI Adoption in 2024: 74% of Companies Struggle to Achieve and Scale Value (24/10/2024) — 1.000 executivos, 59 países.", url: "https://www.bcg.com/press/24october2024-ai-adoption-in-2024-74-of-companies-struggle-to-achieve-and-scale-value" },
+  { n: 6, ev: "for", text: "Informatica. CDO Insights 2025 (comunicado de 28/01/2025) — cerca de 600 diretores de dados.", url: "https://www.informatica.com/about-us/news/news-releases/2025/01/20250128-global-data-leaders-seek-to-harness-the-power-of-genai-for-ai-driven-success.html" },
+  { n: 7, ev: "ind", text: "MIT NANDA. The GenAI Divide: State of AI in Business 2025, conforme Fortune (18/08/2025). Estudo muito citado e com metodologia criticada: use como sinal, não como medida.", url: "https://fortune.com/2025/08/18/mit-report-95-percent-generative-ai-pilots-at-companies-failing-cfo" },
+  { n: 8, ev: "pre", text: "Gartner. 80% of D&A Governance Initiatives Will Fail by 2027… (fev/2024), reprodução do comunicado.", url: "https://www.biztechreports.com/news-archive/2024/2/29/80-of-dampa-governance-initiatives-will-fail-by-2027-due-to-a-lack-of-a-real-or-manufactured-crisis-predicts-gartner" },
+  { n: 9, ev: "pre", text: "Gartner. Worldwide AI Spending Will Total $1.5 Trillion in 2025 (17/09/2025).", url: "https://www.gartner.com/en/newsroom/press-releases/2025-09-17-gartner-says-worldwide-ai-spending-will-total-1-point-5-trillion-in-2025" },
+  { n: 10, ev: "for", text: "Gartner (2020), Magic Quadrant for Data Quality Solutions — 154 clientes de fornecedores de qualidade de dados estimaram o custo da má qualidade (organizações de grande porte). Rastreado em Docsumo.", url: "https://www.docsumo.com/blog/cost-of-bad-data-statistics" },
+  { n: 11, ev: "for", text: "Monte Carlo / Wakefield Research. 2022 State of Data Quality (09/08/2022) — 300 profissionais de dados; pesquisa encomendada por fornecedor.", url: "https://www.businesswire.com/news/home/20220809005223/en/Data-Engineers-Spend-Two-Days-Per-Week-Firefighting-Bad-Data-Monte-Carlo-Survey-Says" },
+  { n: 12, ev: "est", text: "Redman, T. Seizing Opportunity in Data Quality. MIT Sloan Management Review (27/11/2017) — estimativa do autor a partir de Experian e outros dois estudos.", url: "https://sloanreview.mit.edu/article/seizing-opportunity-in-data-quality" },
+  { n: 13, ev: "aca", text: "Brynjolfsson, Hitt & Kim. Strength in Numbers: How Does Data-Driven Decisionmaking Affect Firm Performance? ICIS 2011 — 179 grandes empresas de capital aberto.", url: "https://aisel.aisnet.org/icis2011/proceedings/economicvalueIS/13/" },
+  { n: 14, ev: "lei", text: "Brasil. Lei nº 13.709/2018 (LGPD), art. 52, II — multa simples de até 2% do faturamento, limitada a R$ 50 milhões por infração.", url: "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm" },
+];
+const r = (...ns: number[]) => `<sup class="r">${ns.join(",")}</sup>`;
+const ev = (e: Ev) => `<span class="ev ${EV_CLASS[e]}">${EV_LABEL[e]}</span>`;
+const brl = (v: number) => (v >= 1e6 ? `R$ ${(v / 1e6).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mi` : `R$ ${Math.round(v / 1e3).toLocaleString("pt-BR")} mil`);
+// Exercício de ordem de grandeza (premissas explícitas, para o cliente ajustar)
+const REV = [20e6, 50e6, 100e6, 200e6];
+const PCT = [0.005, 0.01, 0.02];
+const HRS = { pessoas: 10, horas: 6, semanas: 46, custo: 80 };
+const hrsAno = HRS.pessoas * HRS.horas * HRS.semanas * HRS.custo;
+
 const html = `<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"/>
 <title>Moulis · Guia do Diagnóstico de Maturidade de Dados</title>
@@ -53,9 +83,9 @@ p { margin: 0 0 3mm; }
 
 /* sumário */
 .toc ol { padding-left: 0; list-style: none; counter-reset: t; }
-.toc li { counter-increment: t; display: flex; gap: 4mm; padding: 2.4mm 0; border-bottom: 1px solid #e7e7e3; }
+.toc li { counter-increment: t; display: flex; gap: 4mm; padding: 1.5mm 0; border-bottom: 1px solid #e7e7e3; font-size: 10pt; }
 .toc li::before { content: counter(t, decimal-leading-zero); color: #9a9a95; font-variant-numeric: tabular-nums; width: 8mm; }
-.part { font-size: 8pt; letter-spacing: 0.16em; text-transform: uppercase; color: #111; font-weight: 700; margin: 6mm 0 1mm; }
+.part { font-size: 8pt; letter-spacing: 0.16em; text-transform: uppercase; color: #111; font-weight: 700; margin: 4.5mm 0 0.5mm; }
 
 /* blocos */
 .lead { font-size: 12pt; color: #3b3b3b; }
@@ -87,6 +117,33 @@ figcaption { font-size: 8.5pt; color: #6e6e6b; margin-top: 1.5mm; }
 .steplist { counter-reset: s; list-style: none; padding: 0; margin: 0; }
 .steplist li { counter-increment: s; display: grid; grid-template-columns: 8mm 1fr; gap: 2mm; margin-bottom: 2mm; }
 .steplist li::before { content: counter(s); width: 5.5mm; height: 5.5mm; border-radius: 50%; background: #efefec; font-size: 8pt; font-weight: 600; display: grid; place-items: center; margin-top: 0.5mm; }
+
+/* introdução: motivação e valor */
+.stat { border: 1px solid #e3e3df; border-radius: 3mm; padding: 3mm 4mm; break-inside: avoid; }
+.stat .big { font-family: "Plus Jakarta Sans"; font-weight: 800; font-size: 25pt; line-height: 1; letter-spacing: -0.03em; color: #111; }
+.stat p { font-size: 8.8pt; color: #3b3b3b; margin: 1.5mm 0 0; line-height: 1.4; }
+.stat .src { font-size: 7.5pt; color: #8a8a86; margin-top: 1.5mm; }
+sup.r { font-size: 6.5pt; color: #6e6e6b; font-weight: 600; margin-left: 0.4mm; }
+.ev { display: inline-block; font-size: 7.5pt; border-radius: 99px; padding: 0.3mm 2.2mm; white-space: nowrap; }
+.ev.ind { background: #e7f3ec; color: #1d6b41; }
+.ev.for { background: #fff1de; color: #8a4b00; }
+.ev.pre { background: #e8eefd; color: #2a45a6; }
+.ev.est { background: #f3e9f7; color: #7a2f94; }
+.ev.lei { background: #efefec; color: #333; }
+.lever { border: 1px solid #e3e3df; border-radius: 3mm; padding: 4mm 4.5mm; break-inside: avoid; }
+.lever .k { font-size: 7.5pt; letter-spacing: .14em; text-transform: uppercase; color: #6e6e6b; font-weight: 700; }
+.lever h3 { margin: 1mm 0 2mm; font-size: 12pt; }
+.lever ul { margin: 0 0 2mm; padding-left: 4.2mm; font-size: 9pt; }
+.lever li { margin-bottom: 1.2mm; }
+.lever .how { border-top: 1px dashed #d8d8d3; padding-top: 2mm; font-size: 8.8pt; color: #3b3b3b; }
+table.sens td, table.sens th { text-align: right; } table.sens td:first-child, table.sens th:first-child { text-align: left; }
+.sources li { font-size: 7.9pt; margin-bottom: 1mm; line-height: 1.3; break-inside: avoid; }
+.sources a { font-size: 7pt; }
+table.tight td { padding: 1.7mm 2mm; }
+.sources a { color: #1f4fd8; word-break: break-all; }
+.pitch { background: #0b0b0b; color: #fff; border-radius: 3mm; padding: 4mm 5mm; margin: 3mm 0; break-inside: avoid; }
+.pitch .k { font-size: 7.5pt; letter-spacing: .16em; text-transform: uppercase; color: #9a9a95; font-weight: 700; margin-bottom: 1.5mm; }
+.pitch p { color: #f2f2ef; font-size: 10.2pt; margin: 0; line-height: 1.45; }
 .tag { display: inline-block; font-size: 8pt; border-radius: 99px; padding: 0.5mm 2.5mm; background: #efefec; }
 </style></head><body>
 
@@ -104,17 +161,120 @@ figcaption { font-size: 8.5pt; color: #6e6e6b; margin-top: 1.5mm; }
 <section class="page toc">
   <p class="eyebrow">Conteúdo</p>
   <h1>Sumário</h1>
-  <div class="part">Parte 1 · Metodologia</div>
+  <div class="part">Introdução · Por que isso importa agora</div>
   <ol>
+    <li>O cenário: IA em produção, governança atrás</li><li>Por que começar pela governança — e pela medição</li>
+    <li>O custo de não governar</li><li>Onde o diagnóstico gera retorno</li><li>Resumo para apresentar e fontes</li>
+  </ol>
+  <div class="part">Parte 1 · Metodologia</div>
+  <ol style="counter-reset:t 5">
     <li>Por que medir a maturidade de dados</li><li>Como o diagnóstico funciona</li><li>Os 5 níveis de maturidade</li>
     <li>Como o resultado é calculado</li><li>As 8 capacidades avaliadas</li><li>Qualidade dos dados por área</li>
     <li>Conceitos essenciais</li><li>Próximos passos e critérios de sucesso</li>
   </ol>
   <div class="part">Parte 2 · Como usar a ferramenta</div>
-  <ol style="counter-reset:t 8">
+  <ol style="counter-reset:t 13">
     <li>Acesso e perfis</li><li>Passo a passo do diagnóstico</li><li>O relatório</li><li>Glossário de KPIs</li>
     <li>Painel de clientes (equipe Moulis)</li><li>O assistente</li><li>Como conduzir uma sessão com o cliente</li><li>Perguntas frequentes</li>
   </ol>
+</section>
+
+
+<section class="page">
+  <p class="eyebrow">Introdução</p>
+  <h1>IA em produção, governança de dados atrás</h1>
+  <p class="lead">O uso de IA generativa já saiu do piloto e entrou na rotina das empresas. A base que a alimenta não acompanhou: dono do dado, fonte oficial, definição dos indicadores e qualidade conferida. Um modelo de linguagem responde com a mesma segurança sobre um número certo ou errado: sem definição, dono e qualidade conferida, a IA acelera o erro. As pesquisas mostram o resultado — muito uso, pouco retorno — e a causa mais citada é a mesma.</p>
+
+  <h2 style="margin-top:6mm">O cenário em quatro números</h2>
+  <div class="grid2">
+    <div class="stat"><div class="big">88%</div><p>das organizações já usam IA em ao menos uma área do negócio — mas só cerca de um terço começou a escalar.${r(1)}</p><div class="src">McKinsey, 2025 · ${ev("ind")}</div></div>
+    <div class="stat"><div class="big">25%</div><p>das iniciativas de IA entregaram o retorno esperado; 16% foram escaladas na empresa toda.${r(2)}</p><div class="src">IBM, 2.000 CEOs, 2025 · ${ev("ind")}</div></div>
+    <div class="stat"><div class="big">60%</div><p>dos projetos de IA sem dados preparados para IA serão abandonados até 2026; 63% das organizações não têm, ou não sabem se têm, as práticas de dados adequadas.${r(3)}</p><div class="src">Gartner, 2025 · ${ev("pre")}</div></div>
+    <div class="stat"><div class="big">87%</div><p>das organizações brasileiras estudadas não tinham política de governança de IA; 61% sem controle de acesso. O uso não autorizado de IA somou em média R$ 591 mil ao custo de um vazamento.${r(4)}</p><div class="src">IBM/Ponemon, Brasil, 2025 · ${ev("ind")}</div></div>
+  </div>
+
+  <h2>O que as pesquisas apontam como causa</h2>
+  <ul class="small" style="padding-left:5mm;margin-bottom:3mm">
+    <li><b>A trava é de organização, não de algoritmo.</b> Para a BCG (1.000 executivos), cerca de 70% dos desafios de IA são de pessoas e processos, 20% de tecnologia e 10% de algoritmos; 74% das empresas ainda não mostram valor tangível.${r(5)}</li>
+    <li><b>Dado pronto é o gargalo declarado.</b> 43% dos líderes de dados apontam qualidade e prontidão dos dados como maior obstáculo; 67% não levaram nem metade dos pilotos de IA generativa à produção.${r(6)}</li>
+    <li><b>Tecnologia desconectada.</b> 68% dos CEOs veem a arquitetura de dados integrada como crítica; metade admite ter tecnologia fragmentada pelo ritmo dos investimentos.${r(2)}</li>
+    <li><b>O sinal mais forte — e mais contestado.</b> O MIT NANDA reportou 95% dos pilotos de IA generativa sem impacto mensurável no resultado; a metodologia é criticada, então vale como indício, não como medida.${r(7)}</li>
+  </ul>
+
+
+</section>
+
+<section class="page">
+  <h2 style="margin-top:0">Por que começar pela governança — e pela medição</h2>
+  <p>Governar dados não é comprar uma plataforma. A Gartner prevê que 80% das iniciativas de governança de dados e analytics vão fracassar até 2027 — não por falha técnica, mas por não se ligarem a resultados de negócio. A recomendação é reduzir o escopo ao que gera resultado tangível, tratando oportunidade e risco, e avançar de forma ágil.${r(8)}</p>
+  <p>É aqui que a medição de maturidade entra. Antes de investir em BI, automação ou IA, a empresa precisa saber <b>onde está</b>, <b>o que limita seu nível</b> e <b>em que ordem agir</b>. Os modelos de referência (DAMA-DMBOK, DCAM, DGI) colocam a governança — papéis, decisão e definições — no centro, e o DCAM avalia a maturidade por níveis, sem pular etapas: dono, fonte oficial, código comum entre sistemas e qualidade conferida vêm antes de automação e IA. Com um time de dados de uma ou duas pessoas, errar a ordem é o erro mais caro, e há muito dinheiro em jogo: o gasto mundial com IA chegou perto de <b>US$ 1,5 trilhão em 2025</b>${r(9)}, enquanto só um em cada quatro projetos entrega o retorno esperado.${r(2)}</p>
+
+  <h2>O custo de não governar</h2>
+  <p class="small muted">Bases e metodologias diferentes: <b>os números não devem ser somados</b>. Cada um mostra uma face do mesmo problema, com o tipo de evidência indicado; os de grande porte não se transferem direto para empresas médias. O valor de cada cliente se apura no diagnóstico.</p>
+  <table class="tight">
+    <thead><tr><th style="width:44%">O que foi medido</th><th>Número</th><th>Fonte</th></tr></thead>
+    <tbody>
+      <tr><td>Custo médio anual da má qualidade de dados, por organização${r(10)}</td><td><b>US$ 12,9 mi</b></td><td>Gartner, 2020 · ${ev("for")}<br/><span class="small muted">grandes empresas, valor estimado pelos próprios respondentes</span></td></tr>
+      <tr><td>Parte da jornada de times de dados gasta checando e corrigindo qualidade${r(11)}</td><td><b>40%</b></td><td>Monte Carlo/Wakefield, 2022 · ${ev("for")}</td></tr>
+      <tr><td>Parte da receita afetada por problemas de qualidade, segundo os respondentes${r(11)}</td><td><b>26%</b></td><td>Monte Carlo/Wakefield, 2022 · ${ev("for")}</td></tr>
+      <tr><td>Custo da má qualidade como parcela da receita de empresas típicas${r(12)}</td><td><b>15% a 25%</b></td><td>Redman, MIT SMR, 2017 · ${ev("est")}</td></tr>
+      <tr><td>Produtividade de empresas que decidem com base em dados, acima do esperado pelos demais investimentos${r(13)}</td><td><b>+5% a 6%</b></td><td>Brynjolfsson et al., 2011 · ${ev("aca")}</td></tr>
+      <tr><td>Custo médio de um vazamento de dados no Brasil${r(4)}</td><td><b>R$ 7,19 mi</b><br/><span class="small muted">+6,5% sobre 2024</span></td><td>IBM/Ponemon, 2025 · ${ev("ind")}</td></tr>
+      <tr><td>Multa máxima da LGPD${r(14)}</td><td><b>2% do faturamento</b><br/><span class="small muted">até R$ 50 mi por infração</span></td><td>Lei 13.709/2018 · ${ev("lei")}</td></tr>
+    </tbody>
+  </table>
+  
+</section>
+
+<section class="page">
+  <h2 style="margin-top:0">Onde o diagnóstico gera retorno</h2>
+  <p>O diagnóstico não é um fim em si: é o instrumento que decide onde o dinheiro e as horas da empresa vão primeiro. O retorno aparece em três frentes.</p>
+  <div class="grid3">
+    <div class="lever">
+      <div class="k">1 · Recursos</div><h3>Investir na ordem certa</h3>
+      <ul>
+        <li>~US$ 1,5 tri em IA no mundo, com 1 em 4 iniciativas entregando o ROI esperado.${r(9,2)}</li>
+        <li>74% das empresas ainda sem valor tangível; cerca de 70% dos desafios de IA são de pessoas e processos.${r(5)}</li>
+      </ul>
+      <div class="how"><b>No app:</b> o nível e os requisitos fundamentais mostram o que limita a maturidade; o plano em 3 ondas, dimensionado ao tamanho do time, evita comprar BI ou IA antes de dono, fonte oficial e código comum.</div>
+    </div>
+    <div class="lever">
+      <div class="k">2 · Operação</div><h3>Menos retrabalho, mais decisão</h3>
+      <ul>
+        <li>Times de dados gastam cerca de 40% da jornada com qualidade; média de 61 incidentes por mês, 13 h cada.${r(11)}</li>
+        <li>Empresas orientadas por dados têm produtividade 5% a 6% acima do esperado.${r(13)}</li>
+      </ul>
+      <div class="how"><b>No app:</b> o mapa de qualidade por área aponta onde o dado não bate (faturamento × ERP, estoque, cadastro); o Glossário de KPIs com dono encerra o “qual número está certo?”; conciliações viram rotina.</div>
+    </div>
+    <div class="lever">
+      <div class="k">3 · Receita e risco</div><h3>Proteger e destravar receita</h3>
+      <ul>
+        <li>Má qualidade estimada em 15% a 25% da receita; 26% da receita afetada na percepção de times de dados.${r(12,11)}</li>
+        <li>Vazamento médio de R$ 7,19 mi no Brasil; multa LGPD de até 2% do faturamento.${r(4,14)}</li>
+      </ul>
+      <div class="how"><b>No app:</b> aponta onde o dado afeta preço, ruptura, cadastro, cobrança e funil, e cobre acessos, LGPD e regras de uso de IA, que reduzem a exposição.</div>
+    </div>
+  </div>
+
+  <h2>Quanto vale 1% de receita</h2>
+  <p class="small muted">Exercício de ordem de grandeza, não promessa: o tamanho do prêmio se uma base de dados melhor ajudar a recuperar de 0,5% a 2% da receita (ruptura, desconto indevido, inadimplência, retrabalho comercial). O diagnóstico identifica quais frentes se aplicam a cada empresa.</p>
+  <table class="sens tight avoid">
+    <thead><tr><th>Receita anual</th>${PCT.map((x) => `<th>${(x * 100).toLocaleString("pt-BR")}% da receita</th>`).join("")}</tr></thead>
+    <tbody>${REV.map((v) => `<tr><td><b>${brl(v)}</b></td>${PCT.map((x) => `<td>${brl(v * x)}</td>`).join("")}</tr>`).join("")}</tbody>
+  </table>
+  <div class="box avoid" style="margin-top:4mm"><b>Exemplo de horas (premissas ajustáveis).</b> ${HRS.pessoas} pessoas × ${HRS.horas} h por semana em conciliação e retrabalho manual × ${HRS.semanas} semanas × R$ ${HRS.custo}/h = <b>${brl(hrsAno)} por ano</b>. Reduzir à metade libera cerca de <b>${brl(hrsAno / 2)}</b> em capacidade para análise e decisão. Premissas hipotéticas, a validar com cada cliente.</div>
+
+
+</section>
+
+<section class="page">
+  <div class="pitch" style="margin-top:0">
+    <div class="k">Para apresentar em 30 segundos</div>
+    <p>As empresas estão investindo bilhões em IA sobre dados que ninguém governa — e só uma em cada quatro iniciativas entrega o retorno esperado. O passo mais barato e de maior alavancagem é medir onde a base de dados está e atacar o que limita o resultado. É isso que o diagnóstico Moulis faz em cerca de 40 minutos: entrega o nível de maturidade, o mapa do que está quebrado e um plano de 90 dias com responsável, entregável e prazo.</p>
+  </div>
+  <h2 style="margin-top:3mm;margin-bottom:2mm">Fontes e como ler os números</h2>
+  <p class="small muted">Pesquisas têm populações e metodologias diferentes e não se somam. Previsões (Gartner) são projeções, não fatos medidos; pesquisas de fornecedores refletem a percepção de quem já enfrenta o problema; estimativas e exemplos aritméticos estão identificados como tais.</p>
+  <ol class="sources" style="padding-left:5mm">${SOURCES.map((x) => `<li value="${x.n}">${ev(x.ev)} ${esc(x.text)}<br/><a href="${x.url}">${x.url}</a></li>`).join("")}</ol>
 </section>
 
 <section class="page">
