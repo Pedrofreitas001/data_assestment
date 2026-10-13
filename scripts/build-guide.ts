@@ -5,7 +5,7 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { BANDS, DIMENSIONS, DOMAINS } from "../src/model/framework.ts";
-import { CONCEPTS, PRINCIPLES, QUALITY_EXPLAINED, REFERENCES, STEPS, SUCCESS, WAVES_DETAIL, WHY } from "../src/model/concepts.ts";
+import { CONCEPTS, PRINCIPLES, QUALITY_EXPLAINED, REFERENCES, STEPS, SUCCESS, WAVES_DETAIL } from "../src/model/concepts.ts";
 
 const ROOT = join(import.meta.dirname, "..");
 const IMG = join(ROOT, "docs/guia/img");
@@ -144,6 +144,16 @@ table.tight td { padding: 1.7mm 2mm; }
 .pitch { background: #0b0b0b; color: #fff; border-radius: 3mm; padding: 4mm 5mm; margin: 3mm 0; break-inside: avoid; }
 .pitch .k { font-size: 7.5pt; letter-spacing: .16em; text-transform: uppercase; color: #9a9a95; font-weight: 700; margin-bottom: 1.5mm; }
 .pitch p { color: #f2f2ef; font-size: 10.2pt; margin: 0; line-height: 1.45; }
+.kpis4 { margin-top: 5mm; }
+.kpis4 .stat .big { font-size: 22pt; }
+.kpis4 .stat p { font-size: 8.6pt; }
+.cause { border-top: 2px solid #111; padding-top: 2.5mm; break-inside: avoid; }
+.cause b { display: block; font-size: 10pt; margin: 1mm 0 0.5mm; }
+.cause p { font-size: 9pt; color: #3b3b3b; margin: 0; line-height: 1.4; }
+.big2 { font-family: "Plus Jakarta Sans"; font-weight: 800; font-size: 20pt; line-height: 1; letter-spacing: -0.03em; color: #111; }
+.lever .big2 { margin: 1mm 0 1mm; }
+.lever p.small { margin: 0 0 2.5mm; font-size: 9pt; color: #3b3b3b; line-height: 1.4; }
+.xs { font-size: 8pt; }
 .tag { display: inline-block; font-size: 8pt; border-radius: 99px; padding: 0.5mm 2.5mm; background: #efefec; }
 </style></head><body>
 
@@ -163,128 +173,94 @@ table.tight td { padding: 1.7mm 2mm; }
   <h1>Sumário</h1>
   <div class="part">Introdução · Por que isso importa agora</div>
   <ol>
-    <li>O cenário: IA em produção, governança atrás</li><li>Por que começar pela governança — e pela medição</li>
-    <li>O custo de não governar</li><li>Onde o diagnóstico gera retorno</li><li>Resumo para apresentar e fontes</li>
+    <li>A IA já está em produção. A governança de dados, não.</li><li>O que está em jogo — e onde o diagnóstico gera retorno</li>
   </ol>
-  <div class="part">Parte 1 · Metodologia</div>
-  <ol style="counter-reset:t 5">
-    <li>Por que medir a maturidade de dados</li><li>Como o diagnóstico funciona</li><li>Os 5 níveis de maturidade</li>
+  <div class="part">Parte 1 · A ferramenta e a metodologia</div>
+  <ol style="counter-reset:t 2">
+    <li>O Diagnóstico Moulis em uma página</li><li>Os 5 níveis de maturidade</li>
     <li>Como o resultado é calculado</li><li>As 8 capacidades avaliadas</li><li>Qualidade dos dados por área</li>
     <li>Conceitos essenciais</li><li>Próximos passos e critérios de sucesso</li>
   </ol>
   <div class="part">Parte 2 · Como usar a ferramenta</div>
-  <ol style="counter-reset:t 13">
+  <ol style="counter-reset:t 9">
     <li>Acesso e perfis</li><li>Passo a passo do diagnóstico</li><li>O relatório</li><li>Glossário de KPIs</li>
     <li>Painel de clientes (equipe Moulis)</li><li>O assistente</li><li>Como conduzir uma sessão com o cliente</li><li>Perguntas frequentes</li>
   </ol>
+  <div class="part">Anexo</div>
+  <ol style="counter-reset:t 17"><li>Fontes da introdução</li></ol>
 </section>
 
 
 <section class="page">
-  <p class="eyebrow">Introdução</p>
-  <h1>IA em produção, governança de dados atrás</h1>
-  <p class="lead">O uso de IA generativa já saiu do piloto e entrou na rotina das empresas. A base que a alimenta não acompanhou: dono do dado, fonte oficial, definição dos indicadores e qualidade conferida. Um modelo de linguagem responde com a mesma segurança sobre um número certo ou errado: sem definição, dono e qualidade conferida, a IA acelera o erro. As pesquisas mostram o resultado — muito uso, pouco retorno — e a causa mais citada é a mesma.</p>
+  <p class="eyebrow">Introdução · 1 de 2</p>
+  <h1>A IA já está em produção. A governança de dados, não.</h1>
+  <p class="lead">As empresas aceleraram o uso de IA sobre dados sem dono, sem fonte oficial e sem qualidade conferida. Um modelo responde com a mesma segurança sobre um número certo ou errado: sem governança, a IA acelera o erro. O resultado aparece nas pesquisas: muito uso, pouco retorno.</p>
 
-  <h2 style="margin-top:6mm">O cenário em quatro números</h2>
-  <div class="grid2">
-    <div class="stat"><div class="big">88%</div><p>das organizações já usam IA em ao menos uma área do negócio — mas só cerca de um terço começou a escalar.${r(1)}</p><div class="src">McKinsey, 2025 · ${ev("ind")}</div></div>
-    <div class="stat"><div class="big">25%</div><p>das iniciativas de IA entregaram o retorno esperado; 16% foram escaladas na empresa toda.${r(2)}</p><div class="src">IBM, 2.000 CEOs, 2025 · ${ev("ind")}</div></div>
-    <div class="stat"><div class="big">60%</div><p>dos projetos de IA sem dados preparados para IA serão abandonados até 2026; 63% das organizações não têm, ou não sabem se têm, as práticas de dados adequadas.${r(3)}</p><div class="src">Gartner, 2025 · ${ev("pre")}</div></div>
-    <div class="stat"><div class="big">87%</div><p>das organizações brasileiras estudadas não tinham política de governança de IA; 61% sem controle de acesso. O uso não autorizado de IA somou em média R$ 591 mil ao custo de um vazamento.${r(4)}</p><div class="src">IBM/Ponemon, Brasil, 2025 · ${ev("ind")}</div></div>
+  <div class="grid4 kpis4">
+    <div class="stat"><div class="big">88%</div><p>das empresas já usam IA; só cerca de 1/3 começou a escalar.${r(1)}</p><div class="src">McKinsey, 2025</div></div>
+    <div class="stat"><div class="big">25%</div><p>das iniciativas de IA entregaram o retorno esperado.${r(2)}</p><div class="src">IBM, 2.000 CEOs, 2025</div></div>
+    <div class="stat"><div class="big">60%</div><p>dos projetos de IA sem dados preparados serão abandonados até 2026.${r(3)}</p><div class="src">Gartner, 2025 · previsão</div></div>
+    <div class="stat"><div class="big">87%</div><p>das empresas brasileiras estudadas não têm política de governança de IA.${r(4)}</p><div class="src">IBM/Ponemon, Brasil, 2025</div></div>
   </div>
 
-  <h2>O que as pesquisas apontam como causa</h2>
-  <ul class="small" style="padding-left:5mm;margin-bottom:3mm">
-    <li><b>A trava é de organização, não de algoritmo.</b> Para a BCG (1.000 executivos), cerca de 70% dos desafios de IA são de pessoas e processos, 20% de tecnologia e 10% de algoritmos; 74% das empresas ainda não mostram valor tangível.${r(5)}</li>
-    <li><b>Dado pronto é o gargalo declarado.</b> 43% dos líderes de dados apontam qualidade e prontidão dos dados como maior obstáculo; 67% não levaram nem metade dos pilotos de IA generativa à produção.${r(6)}</li>
-    <li><b>Tecnologia desconectada.</b> 68% dos CEOs veem a arquitetura de dados integrada como crítica; metade admite ter tecnologia fragmentada pelo ritmo dos investimentos.${r(2)}</li>
-    <li><b>O sinal mais forte — e mais contestado.</b> O MIT NANDA reportou 95% dos pilotos de IA generativa sem impacto mensurável no resultado; a metodologia é criticada, então vale como indício, não como medida.${r(7)}</li>
-  </ul>
+  <h2>Por que o retorno não vem</h2>
+  <div class="grid3">
+    <div class="cause"><div class="big2">70%</div><b>É organização, não algoritmo.</b><p>dos desafios de IA são de pessoas e processos; só 10% são do algoritmo.${r(5)}</p></div>
+    <div class="cause"><div class="big2">43%</div><b>O dado não está pronto.</b><p>dos líderes de dados apontam qualidade e prontidão dos dados como o maior obstáculo.${r(6)}</p></div>
+    <div class="cause"><div class="big2">80%</div><b>Governança solta fracassa.</b><p>das iniciativas de governança vão falhar até 2027 se não se ligarem a resultado de negócio.${r(8)}</p></div>
+  </div>
 
-
+  <div class="callout avoid" style="margin-top:6mm"><b>A conclusão.</b> Antes de investir em BI, automação ou IA, a empresa precisa saber <b>onde a base de dados está</b>, <b>o que limita o resultado</b> e <b>em que ordem agir</b>. Com times de dados enxutos, errar a ordem é o erro mais caro — e é exatamente isso que o diagnóstico resolve.</div>
 </section>
 
 <section class="page">
-  <h2 style="margin-top:0">Por que começar pela governança — e pela medição</h2>
-  <p>Governar dados não é comprar uma plataforma. A Gartner prevê que 80% das iniciativas de governança de dados e analytics vão fracassar até 2027 — não por falha técnica, mas por não se ligarem a resultados de negócio. A recomendação é reduzir o escopo ao que gera resultado tangível, tratando oportunidade e risco, e avançar de forma ágil.${r(8)}</p>
-  <p>É aqui que a medição de maturidade entra. Antes de investir em BI, automação ou IA, a empresa precisa saber <b>onde está</b>, <b>o que limita seu nível</b> e <b>em que ordem agir</b>. Os modelos de referência (DAMA-DMBOK, DCAM, DGI) colocam a governança — papéis, decisão e definições — no centro, e o DCAM avalia a maturidade por níveis, sem pular etapas: dono, fonte oficial, código comum entre sistemas e qualidade conferida vêm antes de automação e IA. Com um time de dados de uma ou duas pessoas, errar a ordem é o erro mais caro, e há muito dinheiro em jogo: o gasto mundial com IA chegou perto de <b>US$ 1,5 trilhão em 2025</b>${r(9)}, enquanto só um em cada quatro projetos entrega o retorno esperado.${r(2)}</p>
-
-  <h2>O custo de não governar</h2>
-  <p class="small muted">Bases e metodologias diferentes: <b>os números não devem ser somados</b>. Cada um mostra uma face do mesmo problema, com o tipo de evidência indicado; os de grande porte não se transferem direto para empresas médias. O valor de cada cliente se apura no diagnóstico.</p>
-  <table class="tight">
-    <thead><tr><th style="width:44%">O que foi medido</th><th>Número</th><th>Fonte</th></tr></thead>
-    <tbody>
-      <tr><td>Custo médio anual da má qualidade de dados, por organização${r(10)}</td><td><b>US$ 12,9 mi</b></td><td>Gartner, 2020 · ${ev("for")}<br/><span class="small muted">grandes empresas, valor estimado pelos próprios respondentes</span></td></tr>
-      <tr><td>Parte da jornada de times de dados gasta checando e corrigindo qualidade${r(11)}</td><td><b>40%</b></td><td>Monte Carlo/Wakefield, 2022 · ${ev("for")}</td></tr>
-      <tr><td>Parte da receita afetada por problemas de qualidade, segundo os respondentes${r(11)}</td><td><b>26%</b></td><td>Monte Carlo/Wakefield, 2022 · ${ev("for")}</td></tr>
-      <tr><td>Custo da má qualidade como parcela da receita de empresas típicas${r(12)}</td><td><b>15% a 25%</b></td><td>Redman, MIT SMR, 2017 · ${ev("est")}</td></tr>
-      <tr><td>Produtividade de empresas que decidem com base em dados, acima do esperado pelos demais investimentos${r(13)}</td><td><b>+5% a 6%</b></td><td>Brynjolfsson et al., 2011 · ${ev("aca")}</td></tr>
-      <tr><td>Custo médio de um vazamento de dados no Brasil${r(4)}</td><td><b>R$ 7,19 mi</b><br/><span class="small muted">+6,5% sobre 2024</span></td><td>IBM/Ponemon, 2025 · ${ev("ind")}</td></tr>
-      <tr><td>Multa máxima da LGPD${r(14)}</td><td><b>2% do faturamento</b><br/><span class="small muted">até R$ 50 mi por infração</span></td><td>Lei 13.709/2018 · ${ev("lei")}</td></tr>
-    </tbody>
-  </table>
-  
-</section>
-
-<section class="page">
-  <h2 style="margin-top:0">Onde o diagnóstico gera retorno</h2>
-  <p>O diagnóstico não é um fim em si: é o instrumento que decide onde o dinheiro e as horas da empresa vão primeiro. O retorno aparece em três frentes.</p>
+  <p class="eyebrow">Introdução · 2 de 2</p>
+  <h1>O que está em jogo — e onde o diagnóstico gera retorno</h1>
   <div class="grid3">
     <div class="lever">
       <div class="k">1 · Recursos</div><h3>Investir na ordem certa</h3>
-      <ul>
-        <li>~US$ 1,5 tri em IA no mundo, com 1 em 4 iniciativas entregando o ROI esperado.${r(9,2)}</li>
-        <li>74% das empresas ainda sem valor tangível; cerca de 70% dos desafios de IA são de pessoas e processos.${r(5)}</li>
-      </ul>
-      <div class="how"><b>No app:</b> o nível e os requisitos fundamentais mostram o que limita a maturidade; o plano em 3 ondas, dimensionado ao tamanho do time, evita comprar BI ou IA antes de dono, fonte oficial e código comum.</div>
+      <div class="big2">1 em 4</div><p class="small">iniciativas de IA entrega o retorno esperado, num gasto mundial de ~US$ 1,5 tri em 2025.${r(2, 9)}</p>
+      <div class="how"><b>No app:</b> mostra o que limita o nível e a sequência certa — dono, fonte oficial e qualidade antes de BI e IA.</div>
     </div>
     <div class="lever">
-      <div class="k">2 · Operação</div><h3>Menos retrabalho, mais decisão</h3>
-      <ul>
-        <li>Times de dados gastam cerca de 40% da jornada com qualidade; média de 61 incidentes por mês, 13 h cada.${r(11)}</li>
-        <li>Empresas orientadas por dados têm produtividade 5% a 6% acima do esperado.${r(13)}</li>
-      </ul>
-      <div class="how"><b>No app:</b> o mapa de qualidade por área aponta onde o dado não bate (faturamento × ERP, estoque, cadastro); o Glossário de KPIs com dono encerra o “qual número está certo?”; conciliações viram rotina.</div>
+      <div class="k">2 · Operação</div><h3>Menos retrabalho</h3>
+      <div class="big2">40%</div><p class="small">da jornada de times de dados vai para checar e corrigir dados.${r(11)}</p>
+      <div class="how"><b>No app:</b> mapa de qualidade por área e glossário de indicadores com dono — fim do “qual número está certo?”.</div>
     </div>
     <div class="lever">
-      <div class="k">3 · Receita e risco</div><h3>Proteger e destravar receita</h3>
-      <ul>
-        <li>Má qualidade estimada em 15% a 25% da receita; 26% da receita afetada na percepção de times de dados.${r(12,11)}</li>
-        <li>Vazamento médio de R$ 7,19 mi no Brasil; multa LGPD de até 2% do faturamento.${r(4,14)}</li>
-      </ul>
-      <div class="how"><b>No app:</b> aponta onde o dado afeta preço, ruptura, cadastro, cobrança e funil, e cobre acessos, LGPD e regras de uso de IA, que reduzem a exposição.</div>
+      <div class="k">3 · Receita e risco</div><h3>Proteger o resultado</h3>
+      <div class="big2">15–25%</div><p class="small">da receita é o custo estimado da má qualidade de dados; um vazamento custa R$ 7,19 mi em média no Brasil.${r(12, 4)}</p>
+      <div class="how"><b>No app:</b> aponta onde o dado afeta preço, cobrança e cadastro, e cobre acessos, LGPD e regras de uso de IA.</div>
     </div>
   </div>
 
-  <h2>Quanto vale 1% de receita</h2>
-  <p class="small muted">Exercício de ordem de grandeza, não promessa: o tamanho do prêmio se uma base de dados melhor ajudar a recuperar de 0,5% a 2% da receita (ruptura, desconto indevido, inadimplência, retrabalho comercial). O diagnóstico identifica quais frentes se aplicam a cada empresa.</p>
+  <h2>Quanto vale 1% da receita</h2>
+  <p class="small muted" style="margin-bottom:2mm">Ordem de grandeza, não promessa: o prêmio se dados melhores ajudarem a recuperar de 0,5% a 2% da receita (ruptura, desconto indevido, inadimplência, retrabalho).</p>
   <table class="sens tight avoid">
     <thead><tr><th>Receita anual</th>${PCT.map((x) => `<th>${(x * 100).toLocaleString("pt-BR")}% da receita</th>`).join("")}</tr></thead>
     <tbody>${REV.map((v) => `<tr><td><b>${brl(v)}</b></td>${PCT.map((x) => `<td>${brl(v * x)}</td>`).join("")}</tr>`).join("")}</tbody>
   </table>
-  <div class="box avoid" style="margin-top:4mm"><b>Exemplo de horas (premissas ajustáveis).</b> ${HRS.pessoas} pessoas × ${HRS.horas} h por semana em conciliação e retrabalho manual × ${HRS.semanas} semanas × R$ ${HRS.custo}/h = <b>${brl(hrsAno)} por ano</b>. Reduzir à metade libera cerca de <b>${brl(hrsAno / 2)}</b> em capacidade para análise e decisão. Premissas hipotéticas, a validar com cada cliente.</div>
 
-
-</section>
-
-<section class="page">
-  <div class="pitch" style="margin-top:0">
-    <div class="k">Para apresentar em 30 segundos</div>
-    <p>As empresas estão investindo bilhões em IA sobre dados que ninguém governa — e só uma em cada quatro iniciativas entrega o retorno esperado. O passo mais barato e de maior alavancagem é medir onde a base de dados está e atacar o que limita o resultado. É isso que o diagnóstico Moulis faz em cerca de 40 minutos: entrega o nível de maturidade, o mapa do que está quebrado e um plano de 90 dias com responsável, entregável e prazo.</p>
+  <div class="pitch">
+    <div class="k">Em 30 segundos</div>
+    <p>As empresas investem cada vez mais em IA sobre dados que ninguém governa — e só uma em cada quatro iniciativas entrega o retorno esperado. O passo mais barato e de maior alavancagem é medir onde a base de dados está e atacar o que limita o resultado. O diagnóstico Moulis faz isso em cerca de 40 minutos: entrega o nível de maturidade, o mapa do que está quebrado e um plano de 90 dias com responsável, entregável e prazo.</p>
   </div>
-  <h2 style="margin-top:3mm;margin-bottom:2mm">Fontes e como ler os números</h2>
-  <p class="small muted">Pesquisas têm populações e metodologias diferentes e não se somam. Previsões (Gartner) são projeções, não fatos medidos; pesquisas de fornecedores refletem a percepção de quem já enfrenta o problema; estimativas e exemplos aritméticos estão identificados como tais.</p>
-  <ol class="sources" style="padding-left:5mm">${SOURCES.map((x) => `<li value="${x.n}">${ev(x.ev)} ${esc(x.text)}<br/><a href="${x.url}">${x.url}</a></li>`).join("")}</ol>
+  <p class="xs muted">Números de pesquisas diferentes não se somam. Fonte e tipo de evidência de cada número: Anexo, ao final.</p>
 </section>
 
 <section class="page">
-  <p class="eyebrow">Parte 1 · Metodologia</p>
-  <h1>${esc(WHY.title)}</h1>
-  ${WHY.paragraphs.map((p, i) => `<p class="${i === 0 ? "lead" : ""}">${esc(p)}</p>`).join("")}
-  <div class="callout avoid"><b>Premissa de desenho.</b> Os frameworks de mercado (DAMA-DMBOK, DGI, DCAM, NIST) foram pensados para grandes organizações. Aqui eles são adaptados à realidade de empresas com times de dados de uma ou duas pessoas, onde cada passo precisa gerar valor visível rapidamente.</div>
-
-  <h2>Como o diagnóstico funciona</h2>
+  <p class="eyebrow">Parte 1 · A ferramenta</p>
+  <h1>O Diagnóstico Moulis em uma página</h1>
+  <p class="lead">Em cerca de 40 minutos, com as pessoas certas na sala, a empresa sai com quatro entregas:</p>
+  <div class="grid2">
+    <div class="box avoid"><span class="num">1</span><div class="t">Nível de maturidade, de 1 a 5</div><p class="small muted">E, principalmente, o que impede o próximo nível — em linguagem de gestão.</p></div>
+    <div class="box avoid"><span class="num">2</span><div class="t">Mapa do que está quebrado</div><p class="small muted">8 capacidades de gestão de dados e a qualidade dos dados em cada área: comercial, financeiro, pessoas, operação.</p></div>
+    <div class="box avoid"><span class="num">3</span><div class="t">Plano de 90 dias</div><p class="small muted">Passos em três ondas, com onde estamos, por que importa, aonde chegar, responsável, entregável e prazo — do tamanho do time.</p></div>
+    <div class="box avoid"><span class="num">4</span><div class="t">Glossário de indicadores e assistente</div><p class="small muted">Uma definição por KPI, com dono, e um assistente de IA que explica, conduz e redige — sem decidir o nível.</p></div>
+  </div>
+  <h2>Como funciona</h2>
   <div class="grid4">${STEPS.map((s) => `<div class="box avoid"><span class="num">${s.n}</span><div class="t">${esc(s.title)}</div><p class="small muted">${esc(s.text)}</p></div>`).join("")}</div>
+  <div class="callout avoid"><b>Feito para empresas médias.</b> Os frameworks de mercado (DAMA-DMBOK, DGI, DCAM, NIST) foram pensados para grandes organizações. Aqui eles são adaptados a times de dados de uma ou duas pessoas, onde cada passo precisa gerar valor visível rapidamente.</div>
 </section>
 
 <section class="page">
@@ -434,6 +410,12 @@ table.tight td { padding: 1.7mm 2mm; }
   <div class="concept"><b>Por que o nível ficou abaixo da média?</b><div class="small muted">Porque algum requisito fundamental está pendente (owner formal, chave mestra ou conferência de qualidade). O relatório mostra qual.</div></div>
   <div class="concept"><b>A IA decide o nível?</b><div class="small muted">Não. O nível é calculado por regras transparentes. A IA sugere respostas, explica e redige — sempre com confirmação do usuário.</div></div>
   <div class="concept"><b>Os dados de um cliente ficam visíveis para outro?</b><div class="small muted">Não. Cada empresa só acessa os próprios dados; somente a equipe Moulis vê a carteira.</div></div>
+</section>
+<section class="page">
+  <p class="eyebrow">Anexo</p>
+  <h1 style="font-size:20pt">Fontes da introdução</h1>
+  <p class="small muted">Pesquisas têm populações e metodologias diferentes e não se somam. Previsões (Gartner) são projeções, não fatos medidos; pesquisas de fornecedores refletem a percepção de quem já enfrenta o problema; estimativas e exemplos aritméticos estão identificados como tais.</p>
+  <ol class="sources" style="padding-left:5mm">${SOURCES.map((x) => `<li value="${x.n}">${ev(x.ev)} ${esc(x.text)}<br/><a href="${x.url}">${x.url}</a></li>`).join("")}</ol>
 </section>
 </body></html>`;
 
