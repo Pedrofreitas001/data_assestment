@@ -1,5 +1,5 @@
 // Priorização das áreas: valor em jogo × prontidão, com ordem sugerida e ordem decidida.
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { Link } from "react-router-dom";
 import { ArrowDown, ArrowUp, Flag, GripVertical, Pencil, RotateCcw, Target } from "lucide-react";
 import { useOrg } from "../context/org";
@@ -7,6 +7,7 @@ import { useCopilot } from "../context/copilot";
 import { useToast } from "../context/toast";
 import { useRows } from "../lib/useRows";
 import { uid } from "../lib/store";
+import { useSortable } from "../lib/useSortable";
 import { friendlyError } from "../lib/errors";
 import {
   MONEY_BANDS,
@@ -36,14 +37,20 @@ export default function Prioritization() {
   const assessments = useRows("assessments", orgId);
   const maps = useRows("impact_maps", orgId);
   const [edit, setEdit] = useState<string | null>(null);
-  const [dragKey, setDragKey] = useState<string | null>(null);
+  // A lista muda na hora; o banco confirma em seguida (volta atrás se falhar).
+  const [optimistic, setOptimistic] = useState<string[] | null>(null);
   const [saving, setSaving] = useState(false);
 
   const latest = assessments.rows[0] ?? null;
   const map: ImpactMap | null = maps.rows[0] ?? null;
   const results = useMemo(() => analyzeAreas(latest, map), [latest, map]);
-  const ordered = useMemo(() => finalOrder(results, map?.manual_order), [results, map?.manual_order]);
-  const manual = !!map?.manual_order?.length;
+  const ordered = useMemo(() => finalOrder(results, optimistic ?? map?.manual_order), [results, optimistic, map?.manual_order]);
+  const manual = !!(optimistic ?? map?.manual_order)?.length;
+  const reorderRef = useRef<(keys: string[]) => void>(() => {});
+  const sortable = useSortable(
+    ordered.map((r) => r.domain.key),
+    (keys) => reorderRef.current(keys),
+  );
 
   const total = results.reduce((s, r) => ({ low: s.low + r.low, high: s.high + r.high }), { low: 0, high: 0 });
   const estimated = results.filter((r) => r.value > 0).length;
@@ -83,10 +90,18 @@ export default function Prioritization() {
     }
   };
 
+  const reorder = (keys: string[]) => {
+    setOptimistic(keys);
+    void persist({ manual_order: keys })
+      .catch(() => {})
+      .finally(() => setOptimistic(null));
+  };
+  reorderRef.current = reorder;
   const move = (key: string, to: number) => {
     const keys = ordered.map((r) => r.domain.key).filter((k) => k !== key);
     keys.splice(Math.max(0, Math.min(keys.length, to)), 0, key);
-    void persist({ manual_order: keys }).catch(() => {});
+    sortable.snapshot();
+    reorder(keys);
   };
 
   const editing = edit ? results.find((r) => r.domain.key === edit) : null;
@@ -195,13 +210,10 @@ export default function Prioritization() {
                 last={i === ordered.length - 1}
                 manual={manual}
                 justification={map?.justifications?.[r.domain.key] || ""}
-                dragging={dragKey === r.domain.key}
-                onDragStart={() => setDragKey(r.domain.key)}
-                onDragEnd={() => setDragKey(null)}
-                onDropHere={() => {
-                  if (dragKey && dragKey !== r.domain.key) move(dragKey, i);
-                  setDragKey(null);
-                }}
+                dragging={sortable.dragKey === r.domain.key}
+                style={sortable.styleFor(r.domain.key)}
+                liRef={sortable.register(r.domain.key)}
+                onGripDown={sortable.start(r.domain.key)}
                 onUp={() => move(r.domain.key, i - 1)}
                 onDown={() => move(r.domain.key, i + 1)}
                 onEdit={() => setEdit(r.domain.key)}
@@ -238,9 +250,9 @@ function AreaCard(props: {
   manual: boolean;
   justification: string;
   dragging: boolean;
-  onDragStart: () => void;
-  onDragEnd: () => void;
-  onDropHere: () => void;
+  style?: CSSProperties;
+  liRef: (el: HTMLElement | null) => void;
+  onGripDown: (e: ReactPointerEvent<HTMLElement>) => void;
   onUp: () => void;
   onDown: () => void;
   onEdit: () => void;
@@ -252,21 +264,11 @@ function AreaCard(props: {
   const moved = props.manual && r.suggestedRank !== rank;
   const q = QUADRANTS[r.quadrant];
   return (
-    <li
-      className={`pz-card ${props.dragging ? "dragging" : ""}`}
-      draggable
-      onDragStart={props.onDragStart}
-      onDragEnd={props.onDragEnd}
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => {
-        e.preventDefault();
-        props.onDropHere();
-      }}
-    >
+    <li ref={props.liRef} className={`pz-card ${props.dragging ? "dragging" : ""}`} style={props.style}>
       <div className="pz-card-head">
-        <span className="pz-grip no-print" aria-hidden>
-          <GripVertical size={16} />
-        </span>
+        <button type="button" className="pz-grip no-print" aria-label={`Arrastar ${r.domain.title} para reordenar`} title="Arraste para reordenar" onPointerDown={props.onGripDown}>
+          <GripVertical size={18} />
+        </button>
         <span className="pz-rank">{rank}</span>
         <div className="grow" style={{ minWidth: 0 }}>
           <div className="pz-title">{r.domain.title}</div>

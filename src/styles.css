@@ -936,10 +936,12 @@ html { scroll-behavior: smooth; }
 
 .pz-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
 .pz-card { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; background: var(--surface); transition: box-shadow .15s, opacity .15s; }
-.pz-card.dragging { opacity: .45; }
+.pz-card.dragging { border-color: var(--ink); }
 .pz-card:hover { box-shadow: var(--shadow-sm); }
 .pz-card-head { display: flex; align-items: center; gap: 10px; }
-.pz-grip { color: var(--ink-4, var(--ink-3)); cursor: grab; display: grid; }
+.pz-grip { color: var(--ink-3); cursor: grab; display: grid; place-items: center; width: 28px; height: 36px; margin: -4px -4px -4px -8px; background: none; border: 0; border-radius: 8px; touch-action: none; flex-shrink: 0; }
+.pz-grip:hover { color: var(--ink); background: var(--surface-2); }
+.pz-grip:active { cursor: grabbing; }
 .pz-rank { flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; background: var(--ink); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 13px; }
 .pz-title { font-size: 15px; font-weight: 600; line-height: 1.3; }
 .pz-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 3px; }
@@ -968,7 +970,7 @@ html { scroll-behavior: smooth; }
   .pz-matrix { grid-template-columns: 1fr; padding: 0; }
   .pz-axis-x, .pz-axis-y { display: none; }
   .pz-quad { min-height: 0; }
-  .pz-grip { display: none; }
+  .pz-grip { width: 36px; height: 44px; margin-left: -10px; }
   .pz-card { padding: 12px; }
 }
 
