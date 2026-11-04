@@ -92,7 +92,15 @@ function write(t: TableName, rows: unknown[]) {
 
 function ensureSeed() {
   try {
-    if (localStorage.getItem("moulis:v2:seeded")) return;
+    if (localStorage.getItem("moulis:v2:seeded")) {
+      // Tabelas criadas depois do primeiro acesso recebem os dados de exemplo uma vez.
+      const missing = (["impact_maps", "steward_reviews"] as TableName[]).filter((t) => localStorage.getItem(KEY(t)) === null);
+      if (missing.length) {
+        const seed = demoSeed();
+        missing.forEach((t) => write(t, seed[t] as unknown[]));
+      }
+      return;
+    }
     const seed = demoSeed();
     (Object.keys(seed) as TableName[]).forEach((t) => write(t, seed[t] as unknown[]));
     localStorage.setItem("moulis:v2:seeded", "1");

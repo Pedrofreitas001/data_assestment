@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { BookOpen, Briefcase, ClipboardCheck, Home, LogOut, Menu, Sigma } from "lucide-react";
+import { BookOpen, Briefcase, ClipboardCheck, Home, ListOrdered, LogOut, Menu, Sigma, UserCheck } from "lucide-react";
 import { useAuth } from "../context/auth";
 import { useOrg } from "../context/org";
 import { IS_DEMO } from "../lib/supabase";
@@ -41,9 +41,17 @@ export default function Layout({ children }: { children: ReactNode }) {
       <NavLink to="/assessments">
         <ClipboardCheck size={17} /> Diagnósticos
       </NavLink>
+      <NavLink to="/priorizacao">
+        <ListOrdered size={17} /> Priorização
+      </NavLink>
       <NavLink to="/glossario">
         <Sigma size={17} /> Glossário de KPIs
       </NavLink>
+      {isStaff && (
+        <NavLink to="/steward">
+          <UserCheck size={17} /> Steward
+        </NavLink>
+      )}
       {isStaff && (
         <NavLink to="/admin">
           <Briefcase size={17} /> Clientes

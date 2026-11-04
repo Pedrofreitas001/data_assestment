@@ -109,6 +109,16 @@ Os dados são fictícios (nomes e e-mails de exemplo). Para atualizar o conteúd
 - Próximos passos: perfil da empresa + plano em 3 ondas, com como fazer, entregável, responsável, esforço, prazo e critério de pronto, ajustados ao contexto (quem cuida de dados, objetivo, sistemas e dores). Cada passo pode virar uma Prioridade.
 - Para atualizar os dados de apresentação, rode de novo `supabase/seed_showcase.sql`.
 
+## Priorização das áreas e Steward do diagnóstico
+
+- **Antes de usar, rode no SQL Editor do Supabase** `supabase/migrations/0005_priorizacao_steward.sql` (ou `setup_completo.sql` inteiro de novo). Cria as tabelas `impact_maps` e `steward_reviews`. Sem isso, as duas telas mostram "Banco de dados incompleto".
+- **Priorização** (menu próprio): panorama das áreas que entraram no diagnóstico mais recente. Para cada área, campos **em faixas** (receita, verba de marketing, frete, estoque, folha, pessoas e custo médio, gasto com sistemas…) estimam o **valor anual em jogo**. O app cruza esse valor com a **prontidão** (metade maturidade da área, metade patrocinador) e posiciona cada área na matriz: Atacar já, Preparar, Ganho rápido, Depois.
+  - A **ordem sugerida** segue o valor esperado (valor × prontidão × peso estratégico). A gestão pode **arrastar ou usar as setas** para decidir a ordem final; cada área fora da posição sugerida pede uma justificativa. "Voltar à sugestão do app" desfaz.
+  - Os valores são **ordem de grandeza**: ponto médio da faixa × uma parcela recuperável conservadora, mostrada em cada campo. Servem para comparar áreas, não como promessa de ganho.
+  - Mesma regra de acesso dos diagnósticos: o cliente vê e edita a própria empresa; a equipe Moulis vê todas.
+- **Steward** (menu próprio, **só equipe Moulis**): avalia se uma pessoa da empresa consegue conduzir o diagnóstico com as áreas — não se é especialista em dados. São 11 perguntas em 4 blocos (negócio, familiaridade com dados, trânsito entre as áreas, tempo e apoio), cada uma com "como checar" na conversa. O resultado traz um perfil ("Em condições de conduzir", "Forte no negócio, precisa de apoio em dados"…), como apoiar a pessoa e a opção de marcar o steward escolhido. O cliente não vê estas avaliações nem pela API.
+- Nova área **Marketing & Geração de Demanda** no diagnóstico (verba por canal, origem dos contatos, atribuição, base de contatos) e três KPIs na biblioteca: CAC, custo por contato e conversão de contato em venda. Sugerida para comércio, serviços, saúde, educação e indústria; pode ser marcada por qualquer empresa no contexto.
+
 ## Problemas de permissão (RLS)
 
 Mensagem típica no app: **"Sem permissão para esta ação (tabela X)"** ou, no Supabase, `new row violates row-level security policy`.
