@@ -117,7 +117,7 @@ export default function Result() {
         empresa: { nome: org?.name, segmento: org?.segment, porte: org?.size },
         assessment: assessmentForLlm(a),
         perfil: roadmap?.profile,
-        plano_deterministico: plan.slice(0, 20).map((p) => ({ onda: p.wave, acao: p.title, origem: p.origin, por_que: p.why, entregavel: p.deliverable, responsavel: p.owner })),
+        plano_deterministico: plan.slice(0, 20).map((p) => ({ onda: p.wave, acao: p.title, origem: p.origin, situacao: p.now, por_que_importa: p.matters, aonde_chegar: p.target, ideia: p.idea, sinais: p.signals, entregavel: p.deliverable, responsavel: p.owner })),
         glossario: kpiDigest(kpis),
       });
       const output = normInsights(raw);
@@ -393,7 +393,7 @@ export default function Result() {
         <div className="card-head">
           <div>
             <h3 className="card-title">Próximos passos</h3>
-            <p className="card-sub">O que fazer, como, quem conduz e como saber que terminou — ajustado ao contexto da empresa</p>
+            <p className="card-sub">Cada passo mostra onde vocês estão, por que importa, aonde chegar e como fazer.</p>
           </div>
         </div>
         <div className="card-body">

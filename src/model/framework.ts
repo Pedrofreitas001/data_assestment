@@ -658,6 +658,23 @@ export const DOMAINS: OpDomain[] = [
     ],
   },
 
+  {
+    key: "marketing",
+    core: false,
+    sectors: ["comercio", "servicos", "saude", "educacao", "industria"],
+    title: "Marketing & Geração de Demanda",
+    description: "Investimento por canal, origem dos clientes, campanhas, leads e base de contatos.",
+    typicalSources: ["Google Ads / Meta / LinkedIn", "Planilha de verba", "CRM / formulários", "Ferramenta de e-mail/WhatsApp"],
+    kpis: ["cac", "custo_por_lead", "taxa_conversao_leads", "roi_campanha"],
+    checks: [
+      { id: "mkt_verba", quality: "completude", critical: true, prompt: "Todo o investimento de marketing (mídia, agência, eventos, brindes) é registrado por canal e por mês?", action: "Registrar toda a verba de marketing num só lugar, por canal, campanha e mês — inclusive agência e eventos." },
+      { id: "mkt_origem", quality: "completude", critical: true, prompt: "Todo cliente ou contato novo tem a origem registrada (canal, campanha, indicação)?", action: "Tornar obrigatória a origem do contato no CRM ou formulário, com lista fechada de canais." },
+      { id: "mkt_lead_venda", quality: "consistencia", prompt: "Os contatos gerados pelo marketing batem com as oportunidades e vendas registradas pelo comercial?", action: "Cruzar todo mês os contatos do marketing com as vendas pelo mesmo identificador (e-mail, CPF/CNPJ ou telefone)." },
+      { id: "mkt_atribuicao", quality: "validade", prompt: "Existe uma regra escrita de qual canal recebe o crédito por uma venda?", help: "Ex.: primeiro contato, último contato ou divisão entre canais.", action: "Escrever a regra de atribuição de vendas por canal e aplicá-la em todos os relatórios de marketing." },
+      { id: "mkt_base", quality: "unicidade", prompt: "A base de contatos é única, sem duplicados, e registra consentimento e pedidos de descadastro?", action: "Unificar a base de contatos, remover duplicados e registrar consentimento e descadastro (LGPD)." },
+    ],
+  },
+
   // ------------------------------------------------ módulos por setor
   {
     key: "estoque",

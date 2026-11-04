@@ -5,7 +5,7 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { BANDS, DIMENSIONS, DOMAINS } from "../src/model/framework.ts";
-import { CONCEPTS, PRINCIPLES, QUALITY_EXPLAINED, REFERENCES, STEPS, SUCCESS, WAVES_DETAIL, WHY } from "../src/model/concepts.ts";
+import { CONCEPTS, PRINCIPLES, QUALITY_EXPLAINED, REFERENCES, STEPS, SUCCESS, WAVES_DETAIL } from "../src/model/concepts.ts";
 
 const ROOT = join(import.meta.dirname, "..");
 const IMG = join(ROOT, "docs/guia/img");
@@ -18,6 +18,36 @@ const img = (name: string, caption: string) => {
 };
 const today = new Date().toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 const gates = DIMENSIONS.flatMap((d) => d.questions.filter((q) => q.gate).map((q) => q.gate!.reason));
+
+
+// ---------- Introdução: evidências e fontes (cada número tem fonte e tipo de evidência) ----------
+type Ev = "ind" | "for" | "pre" | "est" | "lei" | "aca";
+const EV_LABEL: Record<Ev, string> = { ind: "Pesquisa independente", for: "Pesquisa de fornecedor", pre: "Previsão", est: "Estimativa de especialista", lei: "Lei", aca: "Estudo acadêmico" };
+const EV_CLASS: Record<Ev, string> = { ind: "ind", for: "for", pre: "pre", est: "est", lei: "lei", aca: "ind" };
+const SOURCES: { n: number; ev: Ev; text: string; url: string }[] = [
+  { n: 1, ev: "ind", text: "McKinsey & Company. The state of AI in 2025: Agents, innovation, and transformation (nov/2025) — 1.993 respondentes, 105 países.", url: "https://www.mckinsey.com/capabilities/operations/our-insights/the-state-of-ai" },
+  { n: 2, ev: "ind", text: "IBM Institute for Business Value. 2025 CEO Study (comunicado de 06/05/2025) — 2.000 CEOs, 33 países.", url: "https://newsroom.ibm.com/2025-05-06-ibm-study-ceos-double-down-on-ai-while-navigating-enterprise-hurdles" },
+  { n: 3, ev: "pre", text: "Gartner. Lack of AI-Ready Data Puts AI Projects at Risk (comunicado de 26/02/2025) — previsão e pesquisa de 2024 com líderes de gestão de dados.", url: "https://www.gartner.com/en/newsroom/press-releases/2025-02-26-lack-of-ai-ready-data-puts-ai-projects-at-risk" },
+  { n: 4, ev: "ind", text: "IBM / Ponemon Institute. Cost of a Data Breach Report 2025 — divulgação no Brasil (30/07/2025); 600 organizações no mundo, mar/2024 a fev/2025.", url: "https://brasil.newsroom.ibm.com/2025-07-30-Relatorio-da-IBM-Custo-medio-de-uma-violacao-de-dados-no-Brasil-atinge-R-7,19-milhoes" },
+  { n: 5, ev: "ind", text: "BCG. AI Adoption in 2024: 74% of Companies Struggle to Achieve and Scale Value (24/10/2024) — 1.000 executivos, 59 países.", url: "https://www.bcg.com/press/24october2024-ai-adoption-in-2024-74-of-companies-struggle-to-achieve-and-scale-value" },
+  { n: 6, ev: "for", text: "Informatica. CDO Insights 2025 (comunicado de 28/01/2025) — cerca de 600 diretores de dados.", url: "https://www.informatica.com/about-us/news/news-releases/2025/01/20250128-global-data-leaders-seek-to-harness-the-power-of-genai-for-ai-driven-success.html" },
+  { n: 7, ev: "ind", text: "MIT NANDA. The GenAI Divide: State of AI in Business 2025, conforme Fortune (18/08/2025). Estudo muito citado e com metodologia criticada: use como sinal, não como medida.", url: "https://fortune.com/2025/08/18/mit-report-95-percent-generative-ai-pilots-at-companies-failing-cfo" },
+  { n: 8, ev: "pre", text: "Gartner. 80% of D&A Governance Initiatives Will Fail by 2027… (fev/2024), reprodução do comunicado.", url: "https://www.biztechreports.com/news-archive/2024/2/29/80-of-dampa-governance-initiatives-will-fail-by-2027-due-to-a-lack-of-a-real-or-manufactured-crisis-predicts-gartner" },
+  { n: 9, ev: "pre", text: "Gartner. Worldwide AI Spending Will Total $1.5 Trillion in 2025 (17/09/2025).", url: "https://www.gartner.com/en/newsroom/press-releases/2025-09-17-gartner-says-worldwide-ai-spending-will-total-1-point-5-trillion-in-2025" },
+  { n: 10, ev: "for", text: "Gartner (2020), Magic Quadrant for Data Quality Solutions — 154 clientes de fornecedores de qualidade de dados estimaram o custo da má qualidade (organizações de grande porte). Rastreado em Docsumo.", url: "https://www.docsumo.com/blog/cost-of-bad-data-statistics" },
+  { n: 11, ev: "for", text: "Monte Carlo / Wakefield Research. 2022 State of Data Quality (09/08/2022) — 300 profissionais de dados; pesquisa encomendada por fornecedor.", url: "https://www.businesswire.com/news/home/20220809005223/en/Data-Engineers-Spend-Two-Days-Per-Week-Firefighting-Bad-Data-Monte-Carlo-Survey-Says" },
+  { n: 12, ev: "est", text: "Redman, T. Seizing Opportunity in Data Quality. MIT Sloan Management Review (27/11/2017) — estimativa do autor a partir de Experian e outros dois estudos.", url: "https://sloanreview.mit.edu/article/seizing-opportunity-in-data-quality" },
+  { n: 13, ev: "aca", text: "Brynjolfsson, Hitt & Kim. Strength in Numbers: How Does Data-Driven Decisionmaking Affect Firm Performance? ICIS 2011 — 179 grandes empresas de capital aberto.", url: "https://aisel.aisnet.org/icis2011/proceedings/economicvalueIS/13/" },
+  { n: 14, ev: "lei", text: "Brasil. Lei nº 13.709/2018 (LGPD), art. 52, II — multa simples de até 2% do faturamento, limitada a R$ 50 milhões por infração.", url: "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm" },
+];
+const r = (...ns: number[]) => `<sup class="r">${ns.join(",")}</sup>`;
+const ev = (e: Ev) => `<span class="ev ${EV_CLASS[e]}">${EV_LABEL[e]}</span>`;
+const brl = (v: number) => (v >= 1e6 ? `R$ ${(v / 1e6).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mi` : `R$ ${Math.round(v / 1e3).toLocaleString("pt-BR")} mil`);
+// Exercício de ordem de grandeza (premissas explícitas, para o cliente ajustar)
+const REV = [20e6, 50e6, 100e6, 200e6];
+const PCT = [0.005, 0.01, 0.02];
+const HRS = { pessoas: 10, horas: 6, semanas: 46, custo: 80 };
+const hrsAno = HRS.pessoas * HRS.horas * HRS.semanas * HRS.custo;
 
 const html = `<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"/>
@@ -53,9 +83,9 @@ p { margin: 0 0 3mm; }
 
 /* sumário */
 .toc ol { padding-left: 0; list-style: none; counter-reset: t; }
-.toc li { counter-increment: t; display: flex; gap: 4mm; padding: 2.4mm 0; border-bottom: 1px solid #e7e7e3; }
+.toc li { counter-increment: t; display: flex; gap: 4mm; padding: 1.5mm 0; border-bottom: 1px solid #e7e7e3; font-size: 10pt; }
 .toc li::before { content: counter(t, decimal-leading-zero); color: #9a9a95; font-variant-numeric: tabular-nums; width: 8mm; }
-.part { font-size: 8pt; letter-spacing: 0.16em; text-transform: uppercase; color: #111; font-weight: 700; margin: 6mm 0 1mm; }
+.part { font-size: 8pt; letter-spacing: 0.16em; text-transform: uppercase; color: #111; font-weight: 700; margin: 4.5mm 0 0.5mm; }
 
 /* blocos */
 .lead { font-size: 12pt; color: #3b3b3b; }
@@ -87,6 +117,43 @@ figcaption { font-size: 8.5pt; color: #6e6e6b; margin-top: 1.5mm; }
 .steplist { counter-reset: s; list-style: none; padding: 0; margin: 0; }
 .steplist li { counter-increment: s; display: grid; grid-template-columns: 8mm 1fr; gap: 2mm; margin-bottom: 2mm; }
 .steplist li::before { content: counter(s); width: 5.5mm; height: 5.5mm; border-radius: 50%; background: #efefec; font-size: 8pt; font-weight: 600; display: grid; place-items: center; margin-top: 0.5mm; }
+
+/* introdução: motivação e valor */
+.stat { border: 1px solid #e3e3df; border-radius: 3mm; padding: 3mm 4mm; break-inside: avoid; }
+.stat .big { font-family: "Plus Jakarta Sans"; font-weight: 800; font-size: 25pt; line-height: 1; letter-spacing: -0.03em; color: #111; }
+.stat p { font-size: 8.8pt; color: #3b3b3b; margin: 1.5mm 0 0; line-height: 1.4; }
+.stat .src { font-size: 7.5pt; color: #8a8a86; margin-top: 1.5mm; }
+sup.r { font-size: 6.5pt; color: #6e6e6b; font-weight: 600; margin-left: 0.4mm; }
+.ev { display: inline-block; font-size: 7.5pt; border-radius: 99px; padding: 0.3mm 2.2mm; white-space: nowrap; }
+.ev.ind { background: #e7f3ec; color: #1d6b41; }
+.ev.for { background: #fff1de; color: #8a4b00; }
+.ev.pre { background: #e8eefd; color: #2a45a6; }
+.ev.est { background: #f3e9f7; color: #7a2f94; }
+.ev.lei { background: #efefec; color: #333; }
+.lever { border: 1px solid #e3e3df; border-radius: 3mm; padding: 4mm 4.5mm; break-inside: avoid; }
+.lever .k { font-size: 7.5pt; letter-spacing: .14em; text-transform: uppercase; color: #6e6e6b; font-weight: 700; }
+.lever h3 { margin: 1mm 0 2mm; font-size: 12pt; }
+.lever ul { margin: 0 0 2mm; padding-left: 4.2mm; font-size: 9pt; }
+.lever li { margin-bottom: 1.2mm; }
+.lever .how { border-top: 1px dashed #d8d8d3; padding-top: 2mm; font-size: 8.8pt; color: #3b3b3b; }
+table.sens td, table.sens th { text-align: right; } table.sens td:first-child, table.sens th:first-child { text-align: left; }
+.sources li { font-size: 7.9pt; margin-bottom: 1mm; line-height: 1.3; break-inside: avoid; }
+.sources a { font-size: 7pt; }
+table.tight td { padding: 1.7mm 2mm; }
+.sources a { color: #1f4fd8; word-break: break-all; }
+.pitch { background: #0b0b0b; color: #fff; border-radius: 3mm; padding: 4mm 5mm; margin: 3mm 0; break-inside: avoid; }
+.pitch .k { font-size: 7.5pt; letter-spacing: .16em; text-transform: uppercase; color: #9a9a95; font-weight: 700; margin-bottom: 1.5mm; }
+.pitch p { color: #f2f2ef; font-size: 10.2pt; margin: 0; line-height: 1.45; }
+.kpis4 { margin-top: 5mm; }
+.kpis4 .stat .big { font-size: 22pt; }
+.kpis4 .stat p { font-size: 8.6pt; }
+.cause { border-top: 2px solid #111; padding-top: 2.5mm; break-inside: avoid; }
+.cause b { display: block; font-size: 10pt; margin: 1mm 0 0.5mm; }
+.cause p { font-size: 9pt; color: #3b3b3b; margin: 0; line-height: 1.4; }
+.big2 { font-family: "Plus Jakarta Sans"; font-weight: 800; font-size: 20pt; line-height: 1; letter-spacing: -0.03em; color: #111; }
+.lever .big2 { margin: 1mm 0 1mm; }
+.lever p.small { margin: 0 0 2.5mm; font-size: 9pt; color: #3b3b3b; line-height: 1.4; }
+.xs { font-size: 8pt; }
 .tag { display: inline-block; font-size: 8pt; border-radius: 99px; padding: 0.5mm 2.5mm; background: #efefec; }
 </style></head><body>
 
@@ -104,27 +171,96 @@ figcaption { font-size: 8.5pt; color: #6e6e6b; margin-top: 1.5mm; }
 <section class="page toc">
   <p class="eyebrow">Conteúdo</p>
   <h1>Sumário</h1>
-  <div class="part">Parte 1 · Metodologia</div>
+  <div class="part">Introdução · Por que isso importa agora</div>
   <ol>
-    <li>Por que medir a maturidade de dados</li><li>Como o diagnóstico funciona</li><li>Os 5 níveis de maturidade</li>
+    <li>A IA já está em produção. A governança de dados, não.</li><li>O que está em jogo — e onde o diagnóstico gera retorno</li>
+  </ol>
+  <div class="part">Parte 1 · A ferramenta e a metodologia</div>
+  <ol style="counter-reset:t 2">
+    <li>O Diagnóstico Moulis em uma página</li><li>Os 5 níveis de maturidade</li>
     <li>Como o resultado é calculado</li><li>As 8 capacidades avaliadas</li><li>Qualidade dos dados por área</li>
     <li>Conceitos essenciais</li><li>Próximos passos e critérios de sucesso</li>
   </ol>
   <div class="part">Parte 2 · Como usar a ferramenta</div>
-  <ol style="counter-reset:t 8">
+  <ol style="counter-reset:t 9">
     <li>Acesso e perfis</li><li>Passo a passo do diagnóstico</li><li>O relatório</li><li>Glossário de KPIs</li>
     <li>Painel de clientes (equipe Moulis)</li><li>O assistente</li><li>Como conduzir uma sessão com o cliente</li><li>Perguntas frequentes</li>
   </ol>
+  <div class="part">Anexo</div>
+  <ol style="counter-reset:t 17"><li>Fontes da introdução</li></ol>
+</section>
+
+
+<section class="page">
+  <p class="eyebrow">Introdução · 1 de 2</p>
+  <h1>A IA já está em produção. A governança de dados, não.</h1>
+  <p class="lead">As empresas aceleraram o uso de IA sobre dados sem dono, sem fonte oficial e sem qualidade conferida. Um modelo responde com a mesma segurança sobre um número certo ou errado: sem governança, a IA acelera o erro. O resultado aparece nas pesquisas: muito uso, pouco retorno.</p>
+
+  <div class="grid4 kpis4">
+    <div class="stat"><div class="big">88%</div><p>das empresas já usam IA; só cerca de 1/3 começou a escalar.${r(1)}</p><div class="src">McKinsey, 2025</div></div>
+    <div class="stat"><div class="big">25%</div><p>das iniciativas de IA entregaram o retorno esperado.${r(2)}</p><div class="src">IBM, 2.000 CEOs, 2025</div></div>
+    <div class="stat"><div class="big">60%</div><p>dos projetos de IA sem dados preparados serão abandonados até 2026.${r(3)}</p><div class="src">Gartner, 2025 · previsão</div></div>
+    <div class="stat"><div class="big">87%</div><p>das empresas brasileiras estudadas não têm política de governança de IA.${r(4)}</p><div class="src">IBM/Ponemon, Brasil, 2025</div></div>
+  </div>
+
+  <h2>Por que o retorno não vem</h2>
+  <div class="grid3">
+    <div class="cause"><div class="big2">70%</div><b>É organização, não algoritmo.</b><p>dos desafios de IA são de pessoas e processos; só 10% são do algoritmo.${r(5)}</p></div>
+    <div class="cause"><div class="big2">43%</div><b>O dado não está pronto.</b><p>dos líderes de dados apontam qualidade e prontidão dos dados como o maior obstáculo.${r(6)}</p></div>
+    <div class="cause"><div class="big2">80%</div><b>Governança solta fracassa.</b><p>das iniciativas de governança vão falhar até 2027 se não se ligarem a resultado de negócio.${r(8)}</p></div>
+  </div>
+
+  <div class="callout avoid" style="margin-top:6mm"><b>A conclusão.</b> Antes de investir em BI, automação ou IA, a empresa precisa saber <b>onde a base de dados está</b>, <b>o que limita o resultado</b> e <b>em que ordem agir</b>. Com times de dados enxutos, errar a ordem é o erro mais caro — e é exatamente isso que o diagnóstico resolve.</div>
 </section>
 
 <section class="page">
-  <p class="eyebrow">Parte 1 · Metodologia</p>
-  <h1>${esc(WHY.title)}</h1>
-  ${WHY.paragraphs.map((p, i) => `<p class="${i === 0 ? "lead" : ""}">${esc(p)}</p>`).join("")}
-  <div class="callout avoid"><b>Premissa de desenho.</b> Os frameworks de mercado (DAMA-DMBOK, DGI, DCAM, NIST) foram pensados para grandes organizações. Aqui eles são adaptados à realidade de empresas com times de dados de uma ou duas pessoas, onde cada passo precisa gerar valor visível rapidamente.</div>
+  <p class="eyebrow">Introdução · 2 de 2</p>
+  <h1>O que está em jogo — e onde o diagnóstico gera retorno</h1>
+  <div class="grid3">
+    <div class="lever">
+      <div class="k">1 · Recursos</div><h3>Investir na ordem certa</h3>
+      <div class="big2">1 em 4</div><p class="small">iniciativas de IA entrega o retorno esperado, num gasto mundial de ~US$ 1,5 tri em 2025.${r(2, 9)}</p>
+      <div class="how"><b>No app:</b> mostra o que limita o nível e a sequência certa — dono, fonte oficial e qualidade antes de BI e IA.</div>
+    </div>
+    <div class="lever">
+      <div class="k">2 · Operação</div><h3>Menos retrabalho</h3>
+      <div class="big2">40%</div><p class="small">da jornada de times de dados vai para checar e corrigir dados.${r(11)}</p>
+      <div class="how"><b>No app:</b> mapa de qualidade por área e glossário de indicadores com dono — fim do “qual número está certo?”.</div>
+    </div>
+    <div class="lever">
+      <div class="k">3 · Receita e risco</div><h3>Proteger o resultado</h3>
+      <div class="big2">15–25%</div><p class="small">da receita é o custo estimado da má qualidade de dados; um vazamento custa R$ 7,19 mi em média no Brasil.${r(12, 4)}</p>
+      <div class="how"><b>No app:</b> aponta onde o dado afeta preço, cobrança e cadastro, e cobre acessos, LGPD e regras de uso de IA.</div>
+    </div>
+  </div>
 
-  <h2>Como o diagnóstico funciona</h2>
+  <h2>Quanto vale 1% da receita</h2>
+  <p class="small muted" style="margin-bottom:2mm">Ordem de grandeza, não promessa: o prêmio se dados melhores ajudarem a recuperar de 0,5% a 2% da receita (ruptura, desconto indevido, inadimplência, retrabalho).</p>
+  <table class="sens tight avoid">
+    <thead><tr><th>Receita anual</th>${PCT.map((x) => `<th>${(x * 100).toLocaleString("pt-BR")}% da receita</th>`).join("")}</tr></thead>
+    <tbody>${REV.map((v) => `<tr><td><b>${brl(v)}</b></td>${PCT.map((x) => `<td>${brl(v * x)}</td>`).join("")}</tr>`).join("")}</tbody>
+  </table>
+
+  <div class="pitch">
+    <div class="k">Em 30 segundos</div>
+    <p>As empresas investem cada vez mais em IA sobre dados que ninguém governa — e só uma em cada quatro iniciativas entrega o retorno esperado. O passo mais barato e de maior alavancagem é medir onde a base de dados está e atacar o que limita o resultado. O diagnóstico Moulis faz isso em cerca de 40 minutos: entrega o nível de maturidade, o mapa do que está quebrado e um plano de 90 dias com responsável, entregável e prazo.</p>
+  </div>
+  <p class="xs muted">Números de pesquisas diferentes não se somam. Fonte e tipo de evidência de cada número: Anexo, ao final.</p>
+</section>
+
+<section class="page">
+  <p class="eyebrow">Parte 1 · A ferramenta</p>
+  <h1>O Diagnóstico Moulis em uma página</h1>
+  <p class="lead">Em cerca de 40 minutos, com as pessoas certas na sala, a empresa sai com quatro entregas:</p>
+  <div class="grid2">
+    <div class="box avoid"><span class="num">1</span><div class="t">Nível de maturidade, de 1 a 5</div><p class="small muted">E, principalmente, o que impede o próximo nível — em linguagem de gestão.</p></div>
+    <div class="box avoid"><span class="num">2</span><div class="t">Mapa do que está quebrado</div><p class="small muted">8 capacidades de gestão de dados e a qualidade dos dados em cada área: comercial, financeiro, pessoas, operação.</p></div>
+    <div class="box avoid"><span class="num">3</span><div class="t">Plano de 90 dias</div><p class="small muted">Passos em três ondas, com onde estamos, por que importa, aonde chegar, responsável, entregável e prazo — do tamanho do time.</p></div>
+    <div class="box avoid"><span class="num">4</span><div class="t">Glossário de indicadores e assistente</div><p class="small muted">Uma definição por KPI, com dono, e um assistente de IA que explica, conduz e redige — sem decidir o nível.</p></div>
+  </div>
+  <h2>Como funciona</h2>
   <div class="grid4">${STEPS.map((s) => `<div class="box avoid"><span class="num">${s.n}</span><div class="t">${esc(s.title)}</div><p class="small muted">${esc(s.text)}</p></div>`).join("")}</div>
+  <div class="callout avoid"><b>Feito para empresas médias.</b> Os frameworks de mercado (DAMA-DMBOK, DGI, DCAM, NIST) foram pensados para grandes organizações. Aqui eles são adaptados a times de dados de uma ou duas pessoas, onde cada passo precisa gerar valor visível rapidamente.</div>
 </section>
 
 <section class="page">
@@ -274,6 +410,12 @@ figcaption { font-size: 8.5pt; color: #6e6e6b; margin-top: 1.5mm; }
   <div class="concept"><b>Por que o nível ficou abaixo da média?</b><div class="small muted">Porque algum requisito fundamental está pendente (owner formal, chave mestra ou conferência de qualidade). O relatório mostra qual.</div></div>
   <div class="concept"><b>A IA decide o nível?</b><div class="small muted">Não. O nível é calculado por regras transparentes. A IA sugere respostas, explica e redige — sempre com confirmação do usuário.</div></div>
   <div class="concept"><b>Os dados de um cliente ficam visíveis para outro?</b><div class="small muted">Não. Cada empresa só acessa os próprios dados; somente a equipe Moulis vê a carteira.</div></div>
+</section>
+<section class="page">
+  <p class="eyebrow">Anexo</p>
+  <h1 style="font-size:20pt">Fontes da introdução</h1>
+  <p class="small muted">Pesquisas têm populações e metodologias diferentes e não se somam. Previsões (Gartner) são projeções, não fatos medidos; pesquisas de fornecedores refletem a percepção de quem já enfrenta o problema; estimativas e exemplos aritméticos estão identificados como tais.</p>
+  <ol class="sources" style="padding-left:5mm">${SOURCES.map((x) => `<li value="${x.n}">${ev(x.ev)} ${esc(x.text)}<br/><a href="${x.url}">${x.url}</a></li>`).join("")}</ol>
 </section>
 </body></html>`;
 

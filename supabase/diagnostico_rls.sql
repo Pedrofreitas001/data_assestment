@@ -10,7 +10,7 @@ select item, situacao, detalhe from (
          case when c.relrowsecurity then 'OK' else 'ATENÇÃO' end as situacao,
          case when c.relrowsecurity then '' else 'rode o setup_completo.sql (alter table ... enable row level security)' end as detalhe
   from pg_class c join pg_namespace n on n.oid = c.relnamespace
-  where n.nspname = 'public' and c.relname in ('organizations','profiles','assessments','kpis','chat_threads','priorities')
+  where n.nspname = 'public' and c.relname in ('organizations','profiles','assessments','kpis','chat_threads','priorities','impact_maps','steward_reviews')
 
   union all
   -- 2) funções de permissão
@@ -27,7 +27,7 @@ select item, situacao, detalhe from (
   from (values
     ('organizations','org_select'),('organizations','org_write'),
     ('profiles','prof_select'),('profiles','prof_update_self'),('profiles','prof_admin_delete'),
-    ('assessments','assessments_rw'),('kpis','kpis_rw'),('chat_threads','chat_threads_rw'),('priorities','priorities_rw')
+    ('assessments','assessments_rw'),('kpis','kpis_rw'),('chat_threads','chat_threads_rw'),('priorities','priorities_rw'),('impact_maps','impact_maps_rw'),('steward_reviews','steward_reviews_staff')
   ) as e(tabela, politica)
 
   union all
@@ -36,8 +36,8 @@ select item, situacao, detalhe from (
          p.cmd || case when p.permissive = 'RESTRICTIVE' then ' (restritiva)' else '' end || ' — apague com: drop policy "' || p.policyname || '" on public.' || p.tablename || ';'
   from pg_policies p
   where p.schemaname = 'public'
-    and p.tablename in ('organizations','profiles','assessments','kpis','chat_threads','priorities')
-    and p.policyname not in ('org_select','org_write','prof_select','prof_update_self','prof_admin_delete','assessments_rw','kpis_rw','chat_threads_rw','priorities_rw')
+    and p.tablename in ('organizations','profiles','assessments','kpis','chat_threads','priorities','impact_maps','steward_reviews')
+    and p.policyname not in ('org_select','org_write','prof_select','prof_update_self','prof_admin_delete','assessments_rw','kpis_rw','chat_threads_rw','priorities_rw','impact_maps_rw','steward_reviews_staff')
 
   union all
   -- 5) gatilho que cria o perfil no cadastro
@@ -69,7 +69,7 @@ select item, situacao, detalhe from (
   select 9, 'Acesso (GRANT) de authenticated em ' || t.nome,
          case when has_table_privilege('authenticated', 'public.' || t.nome, 'select,insert,update,delete') then 'OK' else 'ATENÇÃO' end,
          case when has_table_privilege('authenticated', 'public.' || t.nome, 'select,insert,update,delete') then '' else 'rode: grant select, insert, update, delete on public.' || t.nome || ' to authenticated;' end
-  from (values ('organizations'),('profiles'),('assessments'),('kpis'),('chat_threads'),('priorities')) as t(nome)
+  from (values ('organizations'),('profiles'),('assessments'),('kpis'),('chat_threads'),('priorities'),('impact_maps'),('steward_reviews')) as t(nome)
 
 ) r
 order by (situacao = 'OK'), ord, item;

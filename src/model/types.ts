@@ -1,4 +1,6 @@
 import type { AssessmentContext } from "./framework";
+import type { ImpactMap } from "./impact";
+import type { StewardReview } from "./steward";
 
 export type Role = "admin" | "consultor" | "cliente";
 
@@ -137,7 +139,7 @@ export interface Priority {
   updated_at?: string;
 }
 
-export type TableName = "organizations" | "assessments" | "kpis" | "profiles" | "chat_threads" | "priorities";
+export type TableName = "organizations" | "assessments" | "kpis" | "profiles" | "chat_threads" | "priorities" | "impact_maps" | "steward_reviews";
 
 export interface TableRow {
   organizations: Organization;
@@ -146,4 +148,6 @@ export interface TableRow {
   profiles: Profile;
   chat_threads: ChatThread;
   priorities: Priority;
+  impact_maps: ImpactMap;
+  steward_reviews: StewardReview;
 }

@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { isChunkError, reloadForNewVersion } from "../lib/chunkRecovery";
 
 interface Props {
   children: ReactNode;
@@ -16,6 +17,7 @@ export default class ErrorBoundary extends Component<Props, { error: Error | nul
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
+    if (isChunkError(error) && reloadForNewVersion()) return;
     console.error("Falha de renderização isolada:", error, info.componentStack);
     try {
       fetch("/api/log", {
@@ -42,6 +44,16 @@ export default class ErrorBoundary extends Component<Props, { error: Error | nul
 
   render() {
     if (!this.state.error) return this.props.children;
+    if (isChunkError(this.state.error))
+      return (
+        <div className={`error-box ${this.props.compact ? "compact" : ""}`}>
+          <h3>Há uma nova versão do aplicativo</h3>
+          <p className="muted">Atualize a página para continuar. Seus dados estão salvos.</p>
+          <button className="btn btn-primary" onClick={() => location.reload()}>
+            Atualizar agora
+          </button>
+        </div>
+      );
     if (this.props.compact)
       return (
         <div className="error-box compact">

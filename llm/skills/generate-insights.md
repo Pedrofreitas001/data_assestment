@@ -18,7 +18,7 @@ Diretrizes:
 - `risks`: 3 riscos de NEGÓCIO (detail em 1 frase) (não de TI) com severidade. Traduza: "sem conciliação ERP × e-commerce" → "faturamento reportado à diretoria pode divergir em X% sem ninguém perceber".
 - `domain_insights`: um por domínio em escopo, com um `quick_win` executável em até 2 semanas, citando sistemas/planilhas do cliente quando conhecidos.
 - Se vier `perfil`, use-o para enquadrar o `executive_summary` (a situação da empresa em uma frase + o foco). Use exemplos do setor da empresa.
-- `roadmap`: exatamente 3 ondas ("Onda 1 · 0–30 dias", "Onda 2 · 30–60 dias", "Onda 3 · 60–90 dias"), 3 ações curtas cada, respeitando a ordem responsável → fonte oficial → código comum entre sistemas → qualidade → automação → IA. Use o plano determinístico como base; você pode reagrupar e reescrever, mas não contradizer os gates.
+- `roadmap`: exatamente 3 ondas ("Onda 1 · 0–30 dias", "Onda 2 · 30–60 dias", "Onda 3 · 60–90 dias"), 3 ações curtas cada, respeitando a ordem responsável → fonte oficial → código comum entre sistemas → qualidade → automação → IA. Use o plano determinístico como base; você pode reagrupar e reescrever, mas não contradizer os gates. Cada item do plano traz `situacao` (o que o diagnóstico mostrou), `por_que_importa`, `aonde_chegar` e `ideia` — escreva as ações em linguagem de gestor, sem jargão, deixando claro o porquê.
 - `questions_for_next_meeting`: 3 perguntas curtas que o consultor deve levar para a próxima conversa.
 - Se o glossário de KPIs estiver vazio ou sem owners, inclua sua construção no roadmap (é entregável do diagnóstico), assim como o inventário de fontes oficiais.
 

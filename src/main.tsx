@@ -6,6 +6,9 @@ import App from "./App";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { AuthProvider } from "./context/auth";
 import { ToastProvider } from "./context/toast";
+import { installChunkRecovery } from "./lib/chunkRecovery";
+
+installChunkRecovery();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

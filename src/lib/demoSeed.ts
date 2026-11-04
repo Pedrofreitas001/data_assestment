@@ -2,6 +2,8 @@
 import { KPI_LIBRARY } from "../model/kpiLibrary";
 import type { Assessment, ChatThread, Kpi, Organization, Priority, Profile, TableName } from "../model/types";
 import { scoreAssessment } from "../model/scoring";
+import type { ImpactMap } from "../model/impact";
+import type { StewardReview } from "../model/steward";
 
 const ORG_A = "00000000-0000-4000-8000-00000000000a";
 const ORG_B = "00000000-0000-4000-8000-00000000000b";
@@ -42,7 +44,7 @@ export function demoSeed(): Record<TableName, unknown[]> {
       sistemas: ["TOTVS", "VTEX", "Excel / Google Sheets", "Power BI", "Mercado Livre"], time_dados: "um",
       dores: "Faturamento da VTEX não bate com o ERP; ninguém confia no saldo de estoque do site; relatório de vendas leva 2 dias para sair.",
       objetivo: "confianca",
-      dominios: ["comercial", "financeiro", "pessoas", "operacoes", "compras", "cadastro", "estoque", "ecommerce"],
+      dominios: ["comercial", "marketing", "financeiro", "pessoas", "operacoes", "compras", "cadastro", "estoque", "ecommerce"],
       versao: 3,
     },
     answers: answersA,
@@ -106,5 +108,30 @@ export function demoSeed(): Record<TableName, unknown[]> {
     },
   ];
 
-  return { organizations: orgs, assessments: [assessA, assessB], kpis, profiles, chat_threads: threads, priorities };
+  const impact_maps: ImpactMap[] = [
+    {
+      id: "00000000-0000-4000-8000-00000000e001", organization_id: ORG_A, manual_order: null, justifications: {}, created_at: daysAgo(2), updated_at: daysAgo(2),
+      areas: {
+        comercial: { drivers: { receita: 6, descontos: 3, equipe: { p: 4, c: 2 }, sistemas: 2 }, estrategia: 5, patrocinador: "sim", nota: "Diretoria quer margem por loja e por canal até o fim do trimestre." },
+        marketing: { drivers: { verba: 4, receita_mkt: 5, equipe: { p: 2, c: 3 }, sistemas: 2 }, estrategia: 4, patrocinador: "informal" },
+        ecommerce: { drivers: { receita_online: 5, midia_digital: 3, equipe: { p: 2, c: 2 } }, estrategia: 4, patrocinador: "sim" },
+        estoque: { drivers: { valor_estoque: 5, ruptura: 3, equipe: { p: 3, c: 1 } }, estrategia: 3, patrocinador: "informal" },
+        financeiro: { drivers: { inadimplencia: 2, juros: 1, equipe: { p: 2, c: 3 } }, estrategia: 3, patrocinador: "sim" },
+      },
+    },
+  ];
+  const steward_reviews: StewardReview[] = [
+    {
+      id: "00000000-0000-4000-8000-00000000f001", organization_id: ORG_A, name: "Carla Mendes", role: "Coordenadora comercial", area: "Comercial", chosen: false, created_at: daysAgo(3), updated_at: daysAgo(3),
+      notes: "Conhece todas as lojas e conduz bem reunião; monta pouco relatório sozinha.",
+      answers: { neg_fluxo: 4, neg_indicadores: 4, dad_origem: 2, dad_excel: 2, dad_criterio: 3, tra_acesso: 4, tra_conduz: 3, tra_cobra: 3, tem_horas: 3, tem_patrocinio: 3, tem_organizacao: 3 },
+    },
+    {
+      id: "00000000-0000-4000-8000-00000000f002", organization_id: ORG_A, name: "Tiago Ramos", role: "Analista de BI", area: "Controladoria", chosen: false, created_at: daysAgo(3), updated_at: daysAgo(3),
+      notes: "Mantém a planilha de-para VTEX × Winthor; pouco contato com as lojas.",
+      answers: { neg_fluxo: 2, neg_indicadores: 3, dad_origem: 4, dad_excel: 4, dad_criterio: 4, tra_acesso: 2, tra_conduz: 2, tra_cobra: 1, tem_horas: 2, tem_patrocinio: 2, tem_organizacao: 3 },
+    },
+  ];
+
+  return { organizations: orgs, assessments: [assessA, assessB], kpis, profiles, chat_threads: threads, priorities, impact_maps, steward_reviews };
 }

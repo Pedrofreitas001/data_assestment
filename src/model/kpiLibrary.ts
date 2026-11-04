@@ -149,6 +149,27 @@ export const KPI_LIBRARY: KpiTemplate[] = [
     quality_checks: "Pedidos sem UTM; campanhas sem custo.", consumers: "Marketing, RGM",
   },
   {
+    key: "cac", name: "Custo de aquisição de cliente (CAC)", code: "MKT-001", domain: "marketing",
+    definition: "Quanto a empresa gasta, em média, para conquistar um cliente novo.", business_question: "Quanto custa trazer um cliente — e isso se paga?",
+    formula: "(Investimento de marketing + custo comercial de aquisição) ÷ Nº de clientes novos", numerator: "Investimento de marketing e vendas no período", denominator: "Clientes novos no período", unit: "R$", granularity: "Mês × canal", frequency: "Mensal",
+    direction: "menor_melhor", target: null, assumptions: "Definir se entra salário do time comercial. Cliente novo = primeira compra no período.", exclusions: "Recompras de clientes antigos.",
+    source_tables: "Planilha de verba + CRM/ERP (primeira compra)", lineage: null, quality_checks: "Clientes novos sem origem registrada; meses sem verba lançada.", consumers: "Diretoria, Marketing, Comercial",
+  },
+  {
+    key: "custo_por_lead", name: "Custo por contato gerado (CPL)", code: "MKT-002", domain: "marketing",
+    definition: "Investimento de um canal dividido pelos contatos que ele gerou.", business_question: "Qual canal traz contatos mais baratos?",
+    formula: "Investimento no canal ÷ Contatos gerados pelo canal", numerator: "Investimento no canal", denominator: "Contatos gerados", unit: "R$", granularity: "Mês × canal × campanha", frequency: "Semanal",
+    direction: "menor_melhor", target: null, assumptions: "Contato = cadastro com e-mail ou telefone válido. Duplicados contam uma vez.", exclusions: "Contatos de teste e funcionários.",
+    source_tables: "Plataformas de mídia (custo) + CRM/formulários (contatos)", lineage: null, quality_checks: "Contatos sem campanha; custo sem contatos.", consumers: "Marketing",
+  },
+  {
+    key: "taxa_conversao_leads", name: "Conversão de contato em venda", code: "MKT-003", domain: "marketing",
+    definition: "Percentual dos contatos gerados que viram cliente.", business_question: "Os contatos que o marketing traz compram?",
+    formula: "Contatos que compraram em até 90 dias ÷ Contatos gerados", numerator: "Contatos convertidos", denominator: "Contatos gerados", unit: "%", granularity: "Mês de geração × canal", frequency: "Mensal",
+    direction: "maior_melhor", target: null, assumptions: "Janela de 90 dias (ajustar ao ciclo de venda). Cruzamento por e-mail/CPF/CNPJ.", exclusions: "Contatos duplicados.",
+    source_tables: "CRM/formulários + ERP (vendas)", lineage: null, quality_checks: "% de vendas sem contato correspondente.", consumers: "Marketing, Comercial",
+  },
+  {
     key: "taxa_devolucao", name: "Taxa de devolução", code: "ECM-003", domain: "ecommerce",
     definition: "Percentual de itens vendidos que retornam.", business_question: "Quanto da venda volta — e por quê?",
     formula: "Itens devolvidos ÷ Itens vendidos (mesma safra de venda)", numerator: "Itens devolvidos", denominator: "Itens vendidos", unit: "%", granularity: "Mês × categoria × motivo", frequency: "Mensal",

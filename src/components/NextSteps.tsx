@@ -1,7 +1,7 @@
-// Próximos passos: perfil da empresa + plano em ondas, com passos executáveis.
+// Próximos passos: cada passo em cartão, com cada informação no seu quadro.
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Check, ChevronDown, Clock, Pin, User } from "lucide-react";
+import { BookOpen, Check, ChevronDown, Clock, Flag, Gauge, Lightbulb, ListChecks, MapPin, Package, Pin, TriangleAlert, User } from "lucide-react";
 import { useCopilot } from "../context/copilot";
 import { useToast } from "../context/toast";
 import { friendlyError } from "../lib/errors";
@@ -9,10 +9,14 @@ import { EFFORT_LABEL, WAVES, type PlanStep, type Roadmap } from "../model/roadm
 import { AiMark } from "./ui";
 
 const planKey = (s: PlanStep) => `plano:${s.id}`;
+const weeks = (n: number) => `~${n} semana${n > 1 ? "s" : ""}`;
 
 function stepMarkdown(s: PlanStep) {
   return [
-    `**Por quê:** ${s.why}`,
+    `**Onde estamos:** ${s.now}`,
+    `**Por que importa:** ${[s.matters, ...s.signals].join(" ")}`,
+    `**Aonde chegar:** ${s.target}`,
+    `**O passo:** ${s.idea}`,
     `**Como fazer:**\n${s.how.map((h, i) => `${i + 1}. ${h}`).join("\n")}`,
     `**Entregável:** ${s.deliverable}`,
     `**Quem conduz:** ${s.owner} · **Prazo típico:** ${s.weeks} semana${s.weeks > 1 ? "s" : ""}`,
@@ -23,16 +27,30 @@ function stepMarkdown(s: PlanStep) {
 export function ProfileBanner({ roadmap, compact }: { roadmap: Roadmap; compact?: boolean }) {
   const p = roadmap.profile;
   return (
-    <div className={`profile-box ${compact ? "compact" : ""}`}>
-      <div className="section-title" style={{ margin: 0 }}>
-        Seu ponto de partida
+    <div className={`sv-profile ${compact ? "compact" : ""}`}>
+      <div className="sv-profile-main">
+        <span className="sv-kicker">Seu ponto de partida</span>
+        <div className="sv-profile-title">{p.title}</div>
+        {!compact && <p className="sv-profile-sum">{p.summary}</p>}
       </div>
-      <div className="profile-title">{p.title}</div>
-      <p className="profile-summary">{p.summary}</p>
-      <p className="profile-focus">
-        <b>Foco agora:</b> {p.focus}
-      </p>
+      <div className="sv-profile-focus">
+        <span className="sv-kicker">Foco agora</span>
+        <p>{p.focus}</p>
+      </div>
     </div>
+  );
+}
+
+function Tags({ s }: { s: PlanStep }) {
+  if (!s.tags.length) return null;
+  return (
+    <span className="sv-tags">
+      {s.tags.map((t) => (
+        <span key={t} className={`sv-tag ${t === "Limita o nível" || t === "Crítico" ? "strong" : ""}`}>
+          {t}
+        </span>
+      ))}
+    </span>
   );
 }
 
@@ -42,9 +60,9 @@ function StepActions({ s }: { s: PlanStep }) {
   const [busy, setBusy] = useState(false);
   const pinned = c.priorities.some((p) => p.message_id === planKey(s));
   return (
-    <div className="step-actions no-print">
+    <div className="sv-actions no-print">
       {pinned ? (
-        <span className="pin-done">
+        <span className="sv-pinned">
           <Pin size={12} /> Em Prioridades
         </span>
       ) : (
@@ -78,118 +96,151 @@ function StepActions({ s }: { s: PlanStep }) {
   );
 }
 
-function StepMeta({ s }: { s: PlanStep }) {
+/** Corpo visual do passo: ideia → hoje / por quê / meta → como fazer + entregável. */
+function StepVisual({ s }: { s: PlanStep }) {
   return (
-    <div className="step-meta">
-      <span>
-        <User size={12} /> {s.owner}
-      </span>
-      <span>
-        <Clock size={12} /> ~{s.weeks} semana{s.weeks > 1 ? "s" : ""}
-      </span>
-      <span>{EFFORT_LABEL[s.effort]}</span>
-      <span className="muted">{s.origin.replace(/^D\d · /, "")}</span>
+    <div className="sv-body">
+      {s.idea && (
+        <p className="sv-idea">
+          <Lightbulb size={16} />
+          <span>{s.idea}</span>
+        </p>
+      )}
+
+      <div className="sv-trio">
+        <section className="sv-box">
+          <h5 className="sv-lbl">
+            <MapPin size={13} /> Hoje
+          </h5>
+          <p className="sv-quote">“{s.today || "—"}”</p>
+          {s.asked && <p className="sv-note">Pergunta: {s.asked}</p>}
+          {s.evidence && <p className="sv-note sv-ev">Registro: {s.evidence}</p>}
+        </section>
+        <section className="sv-box">
+          <h5 className="sv-lbl">
+            <TriangleAlert size={13} /> Por que importa
+          </h5>
+          <p className="sv-txt">{s.matters}</p>
+        </section>
+        <section className="sv-box sv-goal">
+          <h5 className="sv-lbl">
+            <Flag size={13} /> Aonde chegar
+          </h5>
+          <p className="sv-txt">{s.target}</p>
+        </section>
+      </div>
+
+      <div className="sv-duo">
+        <section className="sv-box">
+          <h5 className="sv-lbl">
+            <ListChecks size={13} /> Como fazer
+          </h5>
+          <ol className="sv-how">
+            {s.how.map((h, i) => (
+              <li key={h}>
+                <span className="sv-how-n">{i + 1}</span>
+                <span>{h}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
+        <div className="sv-side">
+          <section className="sv-box">
+            <h5 className="sv-lbl">
+              <Package size={13} /> Entregável
+            </h5>
+            <p className="sv-txt">{s.deliverable}</p>
+          </section>
+          <section className="sv-box">
+            <h5 className="sv-lbl">
+              <Check size={13} /> Pronto quando
+            </h5>
+            <p className="sv-txt">{s.done}</p>
+          </section>
+          <div className="sv-chips">
+            <span>
+              <User size={12} /> {s.owner}
+            </span>
+            <span>
+              <Clock size={12} /> {weeks(s.weeks)}
+            </span>
+            <span>
+              <Gauge size={12} /> {EFFORT_LABEL[s.effort]}
+            </span>
+          </div>
+        </div>
+      </div>
+      <StepActions s={s} />
     </div>
   );
 }
 
-function StepBody({ s }: { s: PlanStep }) {
-  return (
-    <>
-      <p className="step-why">{s.why}</p>
-      <div className="step-grid">
-        <div>
-          <div className="step-lbl">Como fazer</div>
-          <ol className="step-how">
-            {s.how.map((h) => (
-              <li key={h}>{h}</li>
-            ))}
-          </ol>
-        </div>
-        <div>
-          <div className="step-lbl">Entregável</div>
-          <p className="step-txt">{s.deliverable}</p>
-          <div className="step-lbl">Pronto quando</div>
-          <p className="step-txt">
-            <Check size={12} style={{ verticalAlign: -1, marginRight: 4 }} />
-            {s.done}
-          </p>
-        </div>
-      </div>
-      <StepActions s={s} />
-    </>
-  );
-}
-
-function Tags({ s }: { s: PlanStep }) {
-  if (!s.tags.length) return null;
-  return (
-    <span className="step-tags">
-      {s.tags.map((t) => (
-        <span key={t} className={`badge ${t === "Limita o nível" || t === "Crítico" ? "badge-solid" : "badge-brand"}`}>
-          {t}
-        </span>
-      ))}
-    </span>
-  );
-}
-
+/** Passo sempre aberto (Onda 1 do relatório). */
 export function StepCard({ s, n }: { s: PlanStep; n: number }) {
   return (
-    <article className="step-card avoid">
-      <div className="step-top">
-        <span className="step-n">{n}</span>
-        <div className="grow">
-          <h4 className="step-title">{s.title}</h4>
-          <StepMeta s={s} />
-          <Tags s={s} />
+    <article className="sv-card avoid">
+      <header className="sv-head">
+        <span className="sv-n">{n}</span>
+        <div className="sv-head-text">
+          <h4 className="sv-title">{s.title}</h4>
+          <span className="sv-origin">{s.origin.replace(/^D\d · /, "")}</span>
         </div>
-      </div>
-      <StepBody s={s} />
+        <Tags s={s} />
+      </header>
+      <StepVisual s={s} />
     </article>
   );
 }
 
-export function StepRow({ s, defaultOpen }: { s: PlanStep; defaultOpen?: boolean }) {
+/** Passo recolhido: título + ideia; abre o mesmo conteúdo visual. */
+export function StepRow({ s, n, defaultOpen }: { s: PlanStep; n?: number; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(!!defaultOpen);
   return (
-    <li className={`step-row ${open ? "open" : ""}`}>
-      <button className="step-row-head" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
-        <span className="grow">
-          <span className="step-row-title">{s.title}</span>
-          <span className="xs muted">
-            {s.owner} · ~{s.weeks} sem · {EFFORT_LABEL[s.effort].toLowerCase()}
+    <li className={`sv-row ${open ? "open" : ""}`}>
+      <button className="sv-row-head" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+        {n !== undefined && <span className="sv-n">{n}</span>}
+        <span className="sv-head-text">
+          <span className="sv-title">{s.title}</span>
+          {s.idea && !open && <span className="sv-row-idea">{s.idea}</span>}
+          <span className="sv-row-meta">
+            <Tags s={s} />
+            <span className="sv-row-time">
+              <Clock size={11} /> {weeks(s.weeks)}
+            </span>
           </span>
         </span>
-        <Tags s={s} />
-        <ChevronDown size={16} className="no-print" style={{ flexShrink: 0, color: "var(--ink-3)", transform: open ? "rotate(180deg)" : undefined, transition: "transform .15s" }} />
+        <ChevronDown size={18} className="sv-chev no-print" />
       </button>
-      {open && (
-        <div className="step-row-body">
-          <StepBody s={s} />
-        </div>
-      )}
+      {open && <StepVisual s={s} />}
     </li>
   );
 }
 
-function WaveList({ steps, limit = 6 }: { steps: PlanStep[]; limit?: number }) {
+function WaveList({ steps, limit = 5 }: { steps: PlanStep[]; limit?: number }) {
   const [all, setAll] = useState(false);
   const shown = all ? steps : steps.slice(0, limit);
-  if (!steps.length) return <p className="small muted">Nada pendente nesta onda.</p>;
   return (
     <>
-      <ul className="step-list">
+      <ul className="sv-list">
         {shown.map((s) => (
           <StepRow key={s.id} s={s} />
         ))}
       </ul>
       {steps.length > limit && (
-        <button className="link-btn no-print" style={{ marginTop: 6 }} onClick={() => setAll((v) => !v)}>
+        <button className="link-btn no-print" style={{ marginTop: 8 }} onClick={() => setAll((v) => !v)}>
           {all ? "Mostrar menos" : `Ver todos (${steps.length})`}
         </button>
       )}
     </>
+  );
+}
+
+function WaveHead({ w, note }: { w: 1 | 2 | 3; note?: string }) {
+  return (
+    <div className="sv-wave">
+      <span className="sv-wave-pill">{WAVES[w].short}</span>
+      <span className="sv-wave-focus">{note || WAVES[w].focus}</span>
+    </div>
   );
 }
 
@@ -200,31 +251,26 @@ export default function NextSteps({ roadmap }: { roadmap: Roadmap }) {
   return (
     <>
       <ProfileBanner roadmap={roadmap} />
-      <div className="wave-head">
-        <div>
-          <b>{WAVES[1].label}</b> <span className="muted small">· {WAVES[1].focus}</span>
-        </div>
-        <span className="xs muted">{roadmap.capacityNote}</span>
-      </div>
+      <WaveHead w={1} note={`${WAVES[1].focus}. ${roadmap.capacityNote}`} />
       {!w1.length ? (
         <p className="small muted">Nenhum fundamento pendente — siga para as próximas ondas.</p>
       ) : (
-        <div className="stack" style={{ gap: 12 }}>
+        <div className="sv-stack">
           {w1.map((s, i) => (
             <StepCard key={s.id} s={s} n={i + 1} />
           ))}
         </div>
       )}
-      {([2, 3] as const).map((w) => (
-        <div key={w} style={{ marginTop: 26 }}>
-          <div className="wave-head">
-            <div>
-              <b>{WAVES[w].label}</b> <span className="muted small">· {WAVES[w].focus}</span>
-            </div>
+      {([2, 3] as const).map((w) => {
+        const ws = byWave(w);
+        if (!ws.length) return null;
+        return (
+          <div key={w} className="sv-wave-block">
+            <WaveHead w={w} />
+            <WaveList steps={ws} />
           </div>
-          <WaveList steps={byWave(w)} />
-        </div>
-      ))}
+        );
+      })}
     </>
   );
 }
@@ -238,9 +284,9 @@ export function NextStepsCompact({ roadmap, max = 3 }: { roadmap: Roadmap; max?:
       {!first.length ? (
         <p className="small muted">Nenhuma ação pendente.</p>
       ) : (
-        <ul className="step-list" style={{ marginTop: 14 }}>
-          {first.map((s) => (
-            <StepRow key={s.id} s={s} />
+        <ul className="sv-list sv-list-cards">
+          {first.map((s, i) => (
+            <StepRow key={s.id} s={s} n={i + 1} />
           ))}
         </ul>
       )}
