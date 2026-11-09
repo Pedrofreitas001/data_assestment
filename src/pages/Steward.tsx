@@ -1,6 +1,6 @@
 // Steward do diagnóstico: a pessoa consegue conduzir o assessment junto com as áreas?
 import { useEffect, useMemo, useState } from "react";
-import { Check, Lock, Plus, Star, Trash2, UserCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Lock, Plus, Star, Trash2, UserCheck } from "lucide-react";
 import { useOrg } from "../context/org";
 import { useCopilot } from "../context/copilot";
 import { useToast } from "../context/toast";
@@ -8,6 +8,7 @@ import { useRows } from "../lib/useRows";
 import { uid } from "../lib/store";
 import { friendlyError } from "../lib/errors";
 import { STEWARD_DIMENSIONS, scoreSteward, type StewardResult, type StewardReview } from "../model/steward";
+import Radar from "../components/Radar";
 import { Bar, Drawer, Empty, Field, LoadingPage, PageHead, Spinner } from "../components/ui";
 
 function blank(orgId: string): StewardReview {
@@ -159,7 +160,10 @@ function CandidateCard({ r, s, onOpen, onChoose }: { r: StewardReview; s: Stewar
       </div>
       <ProfileTag s={s} />
       <p className="small muted" style={{ margin: "8px 0 12px" }}>{s.profile.summary}</p>
-      <DimBars s={s} />
+      <div className="sw-viz">
+        <Radar dims={s.dims} size={104} />
+        <DimBars s={s} />
+      </div>
       {s.support.length > 0 && s.profile.key !== "incompleto" && (
         <div className="sw-support">
           <b>Como apoiar</b>
@@ -182,12 +186,23 @@ function CandidateCard({ r, s, onOpen, onChoose }: { r: StewardReview; s: Stewar
   );
 }
 
+type StepKey = "pessoa" | "negocio" | "dados" | "transito" | "tempo" | "resultado";
+const STEPS: { key: StepKey; label: string }[] = [
+  { key: "pessoa", label: "Pessoa" },
+  ...STEWARD_DIMENSIONS.map((d) => ({ key: d.key as StepKey, label: d.short })),
+  { key: "resultado", label: "Resultado" },
+];
+
 function ReviewDrawer({ review, onClose, onSave, onDelete }: { review: StewardReview; onClose: () => void; onSave: (r: StewardReview) => Promise<void>; onDelete: (id: string) => Promise<void> }) {
   const toast = useToast();
   const [f, setF] = useState<StewardReview>(review);
   const [busy, setBusy] = useState(false);
+  const [step, setStep] = useState(review.id ? STEPS.length - 1 : 0);
   const s = scoreSteward(f);
   const setAns = (id: string, v: number) => setF((x) => ({ ...x, answers: { ...x.answers, [id]: x.answers[id] === v ? 0 : v } }));
+  const cur = STEPS[step];
+  const dim = STEWARD_DIMENSIONS.find((d) => d.key === cur.key);
+  const last = step === STEPS.length - 1;
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);
@@ -199,6 +214,13 @@ function ReviewDrawer({ review, onClose, onSave, onDelete }: { review: StewardRe
       setBusy(false);
     }
   };
+  const save = () => run(() => onSave({ ...f, name: f.name.trim() }));
+  const done = (key: StepKey) => {
+    const d = STEWARD_DIMENSIONS.find((x) => x.key === key);
+    if (d) return d.questions.every((q) => (f.answers[q.id] ?? 0) > 0);
+    if (key === "pessoa") return !!f.name.trim();
+    return false;
+  };
 
   return (
     <Drawer
@@ -208,51 +230,70 @@ function ReviewDrawer({ review, onClose, onSave, onDelete }: { review: StewardRe
       onClose={onClose}
       footer={
         <>
+          <span className="sw-live" title={s.profile.summary}>
+            <b>{s.overall ?? "—"}</b>
+            <span>{s.profile.title}</span>
+          </span>
           {review.id && (
-            <button className="btn btn-ghost" style={{ marginRight: "auto", color: "var(--risk)" }} disabled={busy} onClick={() => run(() => onDelete(review.id))}>
-              <Trash2 size={14} /> Remover
+            <button className="btn btn-ghost sw-del" disabled={busy} onClick={() => run(() => onDelete(review.id))} aria-label="Remover avaliação">
+              <Trash2 size={14} />
             </button>
           )}
-          <button className="btn" onClick={onClose}>
-            Cancelar
+          <button className="btn btn-ghost" disabled={step === 0} onClick={() => setStep(step - 1)}>
+            <ArrowLeft size={14} /> Voltar
           </button>
-          <button className="btn btn-primary" disabled={busy || !f.name.trim()} onClick={() => run(() => onSave({ ...f, name: f.name.trim() }))}>
-            {busy ? <Spinner /> : "Salvar"}
-          </button>
+          {last ? (
+            <button className="btn btn-primary" disabled={busy || !f.name.trim()} onClick={save}>
+              {busy ? <Spinner /> : "Salvar avaliação"}
+            </button>
+          ) : (
+            <button className="btn btn-primary" disabled={step === 0 && !f.name.trim()} onClick={() => setStep(step + 1)}>
+              Próximo <ArrowRight size={14} />
+            </button>
+          )}
         </>
       }
     >
-      <div className="form-grid">
-        <Field label="Nome">
-          <input className="input" value={f.name} autoFocus={!review.id} onChange={(e) => setF((x) => ({ ...x, name: e.target.value }))} />
-        </Field>
-        <Field label="Cargo">
-          <input className="input" value={f.role || ""} onChange={(e) => setF((x) => ({ ...x, role: e.target.value || null }))} placeholder="Ex.: coordenadora comercial" />
-        </Field>
-        <Field label="Área onde trabalha hoje" full>
-          <input className="input" value={f.area || ""} onChange={(e) => setF((x) => ({ ...x, area: e.target.value || null }))} placeholder="Ex.: Comercial" />
-        </Field>
-      </div>
+      <ol className="sw-steps" role="tablist" aria-label="Etapas da avaliação">
+        {STEPS.map((st, i) => (
+          <li key={st.key}>
+            <button role="tab" aria-selected={i === step} className={`sw-step ${i === step ? "on" : ""} ${done(st.key) && i !== step ? "done" : ""}`} disabled={i > 0 && !f.name.trim()} onClick={() => setStep(i)}>
+              <span>{done(st.key) && i !== step ? <Check size={12} /> : i + 1}</span>
+              {st.label}
+            </button>
+          </li>
+        ))}
+      </ol>
 
-      <div className="sw-result">
-        <div className="sw-score">{s.overall ?? "—"}</div>
-        <div className="grow">
-          <ProfileTag s={s} />
-          <p className="small" style={{ margin: "6px 0 0" }}>{s.profile.summary}</p>
-          <p className="xs muted" style={{ margin: "4px 0 0" }}>
-            {s.answered} de {s.total} perguntas respondidas
-          </p>
-        </div>
-      </div>
-
-      {STEWARD_DIMENSIONS.map((d) => (
-        <section key={d.key} className="sw-block">
-          <div className="sw-block-head">
-            <b>{d.title}</b>
-            <span className="xs muted">{s.dims[d.key] === null ? "—" : `${Math.round(s.dims[d.key]!)} de 100`}</span>
+      {cur.key === "pessoa" && (
+        <section className="sw-pane">
+          <h3 className="sw-pane-title">Quem está sendo avaliado?</h3>
+          <p className="small muted">Uma conversa de 15 a 20 minutos com a pessoa e com o gestor dela basta. Você responde pelas perguntas das próximas etapas.</p>
+          <div className="form-grid">
+            <Field label="Nome">
+              <input className="input" value={f.name} autoFocus={!review.id} onChange={(e) => setF((x) => ({ ...x, name: e.target.value }))} />
+            </Field>
+            <Field label="Cargo">
+              <input className="input" value={f.role || ""} onChange={(e) => setF((x) => ({ ...x, role: e.target.value || null }))} placeholder="Ex.: coordenadora comercial" />
+            </Field>
+            <Field label="Área onde trabalha hoje" full>
+              <input className="input" value={f.area || ""} onChange={(e) => setF((x) => ({ ...x, area: e.target.value || null }))} placeholder="Ex.: Comercial" />
+            </Field>
           </div>
-          {d.questions.map((q) => (
+        </section>
+      )}
+
+      {dim && (
+        <section className="sw-pane" key={dim.key}>
+          <div className="sw-pane-head">
+            <h3 className="sw-pane-title">{dim.title}</h3>
+            <span className="sw-pane-score">{s.dims[dim.key] === null ? "—" : Math.round(s.dims[dim.key]!)}</span>
+          </div>
+          {dim.questions.map((q, qi) => (
             <div key={q.id} className="sw-q">
+              <div className="sw-q-n">
+                Pergunta {qi + 1} de {dim.questions.length}
+              </div>
               <div className="sw-q-prompt">{q.prompt}</div>
               <div className="sw-q-probe">Como checar: {q.probe}</div>
               <div className="opts opts-inline sw-opts" role="radiogroup">
@@ -266,11 +307,42 @@ function ReviewDrawer({ review, onClose, onSave, onDelete }: { review: StewardRe
             </div>
           ))}
         </section>
-      ))}
+      )}
 
-      <Field label="Observações" full>
-        <textarea className="textarea" value={f.notes || ""} onChange={(e) => setF((x) => ({ ...x, notes: e.target.value || null }))} placeholder="O que você viu na conversa, exemplos concretos, quem mais foi ouvido." />
-      </Field>
+      {cur.key === "resultado" && (
+        <section className="sw-pane">
+          <div className="sw-final">
+            <Radar dims={s.dims} size={150} labels />
+            <div className="grow">
+              <ProfileTag s={s} />
+              <div className="sw-final-score">
+                <b>{s.overall ?? "—"}</b>
+                <span>de 100 · {s.answered} de {s.total} perguntas</span>
+              </div>
+              <p className="small" style={{ margin: "8px 0 0" }}>{s.profile.summary}</p>
+            </div>
+          </div>
+          {s.support.length > 0 && s.profile.key !== "incompleto" && (
+            <div className="sw-support">
+              <b>Como apoiar</b>
+              <ul>
+                {s.support.map((x) => (
+                  <li key={x}>{x}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {s.profile.key === "incompleto" && (
+            <p className="small muted" style={{ marginTop: 12 }}>
+              Faltam respostas: {STEWARD_DIMENSIONS.filter((d) => !done(d.key)).map((d) => d.short).join(", ")}. Use as etapas acima para completar.
+            </p>
+          )}
+          <div style={{ height: 14 }} />
+          <Field label="Observações" full>
+            <textarea className="textarea" value={f.notes || ""} onChange={(e) => setF((x) => ({ ...x, notes: e.target.value || null }))} placeholder="O que você viu na conversa, exemplos concretos, quem mais foi ouvido." />
+          </Field>
+        </section>
+      )}
     </Drawer>
   );
 }

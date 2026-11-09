@@ -193,12 +193,12 @@ export function driverResult(d: Driver, value: DriverValue | undefined): DriverR
 
 export type Quadrant = "atacar" | "preparar" | "rapido" | "depois" | "sem_dados";
 
-export const QUADRANTS: Record<Quadrant, { label: string; hint: string }> = {
-  atacar: { label: "Atacar já", hint: "Muito valor em jogo e condições de executar." },
-  preparar: { label: "Preparar", hint: "Muito valor, mas falta base: patrocinador, responsável ou fundamentos primeiro." },
-  rapido: { label: "Ganho rápido", hint: "Pouco valor, mas fácil de fazer — bom para gerar confiança." },
-  depois: { label: "Depois", hint: "Pouco valor e pouca prontidão agora." },
-  sem_dados: { label: "Sem estimativa", hint: "Preencha ao menos um campo de valor para posicionar a área." },
+export const QUADRANTS: Record<Quadrant, { label: string; hint: string; short: string }> = {
+  atacar: { label: "Atacar já", short: "Muito ganho, pouco esforço", hint: "Muito ganho com esforço menor: comece por aqui." },
+  preparar: { label: "Preparar", short: "Muito ganho, mais esforço", hint: "Muito ganho, mas exige esforço: falta patrocinador, base ou fundamentos." },
+  rapido: { label: "Ganho rápido", short: "Menos ganho, pouco esforço", hint: "Ganho menor com esforço baixo: bom para gerar confiança." },
+  depois: { label: "Depois", short: "Menos ganho, mais esforço", hint: "Ganho menor e esforço alto: deixe para depois." },
+  sem_dados: { label: "Sem estimativa", short: "Falta estimar o ganho", hint: "Preencha ao menos um campo de valor para posicionar a área." },
 };
 
 export interface AreaResult {
@@ -216,6 +216,8 @@ export interface AreaResult {
   value: number;
   /** 0–100: metade maturidade da área, metade patrocinador. */
   readiness: number;
+  /** 0–100: quanto trabalho falta para estruturar a área (inverso da prontidão). */
+  effort: number;
   /** Valor ajustado à prontidão e ao peso estratégico — base do ranking sugerido. */
   expected: number;
   quadrant: Quadrant;
@@ -233,6 +235,19 @@ export function readinessOf(maturity: number | null, sponsor?: Sponsor) {
 
 /** A partir daqui a área tem condições de executar (patrocinador + base mínima). */
 export const READY_CUT = 45;
+/** Esforço acima deste valor cai nos quadrantes de "mais esforço". */
+export const EFFORT_CUT = 100 - READY_CUT;
+
+export function effortLabel(effort: number) {
+  return effort <= 35 ? "Baixo" : effort <= EFFORT_CUT ? "Moderado" : "Alto";
+}
+
+/** O que pesa no esforço da área, em linguagem simples. */
+export function effortWhy(r: Pick<AreaResult, "maturity" | "input" | "answered" | "total">) {
+  const mat = r.maturity === null ? "maturidade ainda não medida" : `maturidade ${Math.round(r.maturity)} de 100`;
+  const sp = r.input.patrocinador === "sim" ? "com patrocinador" : r.input.patrocinador === "informal" ? "patrocínio informal" : "sem patrocinador";
+  return `${mat} · ${sp}`;
+}
 
 function strategyFactor(e?: number) {
   return e ? 0.6 + 0.2 * (e - 1) : 1;
@@ -262,6 +277,7 @@ export function analyzeAreas(assessment: Pick<Assessment, "answers" | "context">
       high,
       value,
       readiness,
+      effort: 100 - readiness,
       expected: value * (0.5 + 0.5 * (readiness / 100)) * strategyFactor(input.estrategia),
     };
   });
@@ -291,6 +307,21 @@ export function finalOrder(results: AreaResult[], manual: string[] | null | unde
   return out;
 }
 
+/**
+ * Posição de uma área no gráfico, em % (0–100). Os quatro quadrantes têm o mesmo tamanho:
+ * o corte de esforço e a mediana de ganho ficam sempre no meio (50%) e as áreas se espalham
+ * proporcionalmente de cada lado. x: esquerda = menos esforço. y: topo = mais ganho.
+ */
+export function chartPos(effort: number, value: number, lo: number, hi: number, med: number) {
+  const x = effort <= EFFORT_CUT ? 8 + (effort / EFFORT_CUT) * 38 : 54 + ((effort - EFFORT_CUT) / (100 - EFFORT_CUT)) * 38;
+  let y = 50;
+  if (value > 0 && med > 0) {
+    if (value >= med) y = hi > med ? 46 - ((Math.log(value) - Math.log(med)) / (Math.log(hi) - Math.log(med))) * 34 : 46;
+    else y = lo < med ? 54 + ((Math.log(med) - Math.log(value)) / (Math.log(med) - Math.log(lo))) * 34 : 54;
+  }
+  return { x, y };
+}
+
 export function brl(v: number) {
   if (v >= 1e6) return `R$ ${(v / 1e6).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mi`;
   if (v >= 1e3) return `R$ ${Math.round(v / 1e3).toLocaleString("pt-BR")} mil`;
@@ -299,5 +330,9 @@ export function brl(v: number) {
 
 export function brlRange(low: number, high: number) {
   if (!high) return "—";
+  const fmt = (v: number, d = 1) => v.toLocaleString("pt-BR", { maximumFractionDigits: d });
+  // Mesma unidade nas duas pontas: "R$ 353–941 mil" ou "R$ 1,3–3,7 mi".
+  if (low >= 1e6) return `R$ ${fmt(low / 1e6)}–${fmt(high / 1e6)} mi`;
+  if (low >= 1e3 && high < 1e6) return `R$ ${fmt(low / 1e3, 0)}–${fmt(high / 1e3, 0)} mil`;
   return `${brl(low)} a ${brl(high)}`;
 }
