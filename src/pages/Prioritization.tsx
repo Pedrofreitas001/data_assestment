@@ -1,12 +1,13 @@
-// Priorização das áreas: valor em jogo × prontidão, com ordem sugerida e ordem decidida.
-import { useEffect, useMemo, useState } from "react";
+// Priorização das áreas: onde vale mais a pena estruturar primeiro (ganho × esforço).
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { Link } from "react-router-dom";
-import { ArrowDown, ArrowUp, Flag, GripVertical, Pencil, RotateCcw, Target } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUp, Check, ChevronDown, GripVertical, Pencil, RotateCcw } from "lucide-react";
 import { useOrg } from "../context/org";
 import { useCopilot } from "../context/copilot";
 import { useToast } from "../context/toast";
 import { useRows } from "../lib/useRows";
 import { uid } from "../lib/store";
+import { useSortable } from "../lib/useSortable";
 import { friendlyError } from "../lib/errors";
 import {
   MONEY_BANDS,
@@ -20,14 +21,18 @@ import {
   brlRange,
   driverResult,
   driversFor,
+  effortLabel,
+  effortWhy,
   finalOrder,
   type AreaInput,
   type AreaResult,
   type DriverValue,
   type ImpactMap,
-  type Quadrant,
 } from "../model/impact";
-import { AiMark, Bar, Drawer, Empty, Field, LoadingPage, Metrics, PageHead, Spinner } from "../components/ui";
+import EffortGainChart from "../components/EffortGainChart";
+import { AiMark, Drawer, Empty, Field, LoadingPage, PageHead, Spinner } from "../components/ui";
+
+const short = (title: string) => title.split(" & ")[0];
 
 export default function Prioritization() {
   const { org, orgId } = useOrg();
@@ -36,29 +41,40 @@ export default function Prioritization() {
   const assessments = useRows("assessments", orgId);
   const maps = useRows("impact_maps", orgId);
   const [edit, setEdit] = useState<string | null>(null);
-  const [dragKey, setDragKey] = useState<string | null>(null);
+  const [openKey, setOpenKey] = useState<string | null>(null);
+  const [hot, setHot] = useState<string | null>(null);
+  // A lista muda na hora; o banco confirma em seguida (volta atrás se falhar).
+  const [optimistic, setOptimistic] = useState<string[] | null>(null);
   const [saving, setSaving] = useState(false);
 
   const latest = assessments.rows[0] ?? null;
   const map: ImpactMap | null = maps.rows[0] ?? null;
   const results = useMemo(() => analyzeAreas(latest, map), [latest, map]);
-  const ordered = useMemo(() => finalOrder(results, map?.manual_order), [results, map?.manual_order]);
-  const manual = !!map?.manual_order?.length;
+  const ordered = useMemo(() => finalOrder(results, optimistic ?? map?.manual_order), [results, optimistic, map?.manual_order]);
+  const manual = !!(optimistic ?? map?.manual_order)?.length;
+  const reorderRef = useRef<(keys: string[]) => void>(() => {});
+  const sortable = useSortable(
+    ordered.map((r) => r.domain.key),
+    (keys) => reorderRef.current(keys),
+  );
 
   const total = results.reduce((s, r) => ({ low: s.low + r.low, high: s.high + r.high }), { low: 0, high: 0 });
   const estimated = results.filter((r) => r.value > 0).length;
+  const maxValue = Math.max(0, ...results.map((r) => r.value));
+  const top = ordered.find((r) => r.value > 0) ?? null;
+  const changed = manual ? ordered.filter((r, i) => r.suggestedRank !== i + 1).length : 0;
 
   useEffect(() => {
     if (!org || maps.loading) return;
     copilot.setFocus({
-      tela: "Priorização das áreas",
+      tela: "Priorização das áreas (esforço × ganho)",
       areas: ordered.map((r, i) => ({
         ordem: i + 1,
         area: r.domain.title,
         quadrante: QUADRANTS[r.quadrant].label,
-        valor_anual_em_jogo: r.value ? brlRange(r.low, r.high) : null,
+        ganho_anual_em_jogo: r.value ? brlRange(r.low, r.high) : null,
+        esforco: effortLabel(r.effort),
         maturidade: r.maturity === null ? null : Math.round(r.maturity),
-        prontidao: r.readiness,
         ordem_sugerida: r.suggestedRank,
         justificativa: map?.justifications?.[r.domain.key] || null,
       })),
@@ -83,10 +99,32 @@ export default function Prioritization() {
     }
   };
 
+  const reorder = (keys: string[]) => {
+    setOptimistic(keys);
+    void persist({ manual_order: keys })
+      .catch(() => {})
+      .finally(() => setOptimistic(null));
+  };
+  reorderRef.current = reorder;
   const move = (key: string, to: number) => {
     const keys = ordered.map((r) => r.domain.key).filter((k) => k !== key);
     keys.splice(Math.max(0, Math.min(keys.length, to)), 0, key);
-    void persist({ manual_order: keys }).catch(() => {});
+    sortable.snapshot();
+    reorder(keys);
+  };
+  const backToSuggestion = () => {
+    sortable.snapshot();
+    setOptimistic([]);
+    void persist({ manual_order: null, justifications: {} })
+      .catch(() => {})
+      .finally(() => setOptimistic(null));
+  };
+
+  const pick = (key: string) => {
+    setOpenKey(key);
+    setHot(key);
+    requestAnimationFrame(() => document.getElementById(`pz-${key}`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
+    window.setTimeout(() => setHot((h) => (h === key ? null : h)), 1800);
   };
 
   const editing = edit ? results.find((r) => r.domain.key === edit) : null;
@@ -96,7 +134,7 @@ export default function Prioritization() {
       <PageHead
         eyebrow={org.name}
         title="Priorização das áreas"
-        desc="A área com pior maturidade nem sempre é a que traz mais resultado. Aqui cruzamos o valor que cada área movimenta com as condições de executar — e decidimos a ordem de ataque."
+        desc="A área com pior maturidade nem sempre é a que traz mais resultado. Veja o ganho que cada área pode trazer contra o esforço para estruturá-la, e decida a ordem de ataque."
         actions={
           <button className="btn btn-ai" onClick={() => copilot.ask("Com base na priorização das áreas, redija um resumo para a diretoria: qual área atacar primeiro, por quê, o ganho estimado e o que precisa estar pronto antes.", "Resumo da priorização")}>
             <AiMark size={11} /> Resumo para a diretoria
@@ -110,62 +148,54 @@ export default function Prioritization() {
         </div>
       )}
 
-      <div style={{ marginBottom: 20 }}>
-        <Metrics
-          items={[
-            { label: "Valor anual em jogo", value: total.high ? brlRange(total.low, total.high) : "—", hint: "Soma das estimativas das áreas" },
-            { label: "Áreas estimadas", value: `${estimated} de ${results.length}` },
-            { label: "Atacar primeiro", value: ordered[0]?.value ? ordered[0].domain.title.split(" & ")[0] : "—" },
-          ]}
-        />
-      </div>
+      {/* Recomendação */}
+      <section className="pz-reco">
+        <div className="pz-reco-main">
+          <span className="pz-kicker">{manual ? "Primeira da sua ordem" : "Comece por"}</span>
+          {top ? (
+            <>
+              <h2 className="pz-reco-title">{short(top.domain.title)}</h2>
+              <p className="pz-reco-sub">
+                Ganho de <b>{brlRange(top.low, top.high)}</b> por ano, com esforço <b>{effortLabel(top.effort).toLowerCase()}</b> ({effortWhy(top)}).
+              </p>
+              <span className={`pz-q pz-q-${top.quadrant}`}>{QUADRANTS[top.quadrant].label}</span>
+            </>
+          ) : (
+            <>
+              <h2 className="pz-reco-title">Estime o ganho das áreas</h2>
+              <p className="pz-reco-sub">Escolha a faixa mais próxima de receita, verba, frete, folha… Começa pelas áreas que você conhece melhor.</p>
+              <button className="btn btn-primary btn-sm" onClick={() => setEdit(results[0]?.domain.key ?? null)}>
+                <Pencil size={13} /> Estimar a primeira área
+              </button>
+            </>
+          )}
+        </div>
+        <div className="pz-reco-side">
+          <div>
+            <span className="pz-kicker">Ganho anual em jogo</span>
+            <b className="pz-reco-total">{total.high ? brlRange(total.low, total.high) : "—"}</b>
+          </div>
+          <div>
+            <span className="pz-kicker">
+              Áreas estimadas · {estimated} de {results.length}
+            </span>
+            <div className="pz-progress">
+              <span style={{ width: `${results.length ? (estimated / results.length) * 100 : 0}%` }} />
+            </div>
+          </div>
+        </div>
+      </section>
 
-      {/* Matriz */}
+      {/* Gráfico */}
       <section className="card" style={{ marginBottom: 20 }}>
         <div className="card-head">
           <div>
-            <h3 className="card-title">Matriz de prioridade</h3>
-            <p className="card-sub">Valor em jogo (alto ou baixo, comparado às outras áreas da empresa) × prontidão para executar</p>
+            <h3 className="card-title">Esforço × ganho</h3>
+            <p className="card-sub">Cada bolha é uma área. Quanto mais alto, mais ganho; quanto mais à esquerda, menos esforço.</p>
           </div>
         </div>
         <div className="card-body">
-          <div className="pz-matrix">
-            <span className="pz-axis-y">Valor em jogo</span>
-            <span className="pz-axis-x">Prontidão para executar</span>
-            {(["preparar", "atacar", "depois", "rapido"] as Quadrant[]).map((q) => {
-              const items = ordered.filter((r) => r.quadrant === q);
-              return (
-                <div key={q} className={`pz-quad pz-${q}`}>
-                  <div className="pz-quad-head">
-                    <b>{QUADRANTS[q].label}</b>
-                    <span>{QUADRANTS[q].hint}</span>
-                  </div>
-                  <div className="pz-chips">
-                    {items.length ? (
-                      items.map((r) => (
-                        <button key={r.domain.key} className="pz-chip" onClick={() => setEdit(r.domain.key)}>
-                          <span className="pz-chip-n">{ordered.indexOf(r) + 1}</span>
-                          {r.domain.title.split(" & ")[0]}
-                        </button>
-                      ))
-                    ) : (
-                      <span className="xs muted">Nenhuma área</span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          {results.some((r) => r.quadrant === "sem_dados") && (
-            <p className="small muted" style={{ marginTop: 12 }}>
-              <b>Sem estimativa:</b>{" "}
-              {results
-                .filter((r) => r.quadrant === "sem_dados")
-                .map((r) => r.domain.title.split(" & ")[0])
-                .join(", ")}{" "}
-              — preencha os valores para posicionar.
-            </p>
-          )}
+          <EffortGainChart ordered={ordered} hot={hot} onHot={setHot} onPick={pick} onEstimate={setEdit} />
         </div>
       </section>
 
@@ -174,34 +204,37 @@ export default function Prioritization() {
         <div className="card-head">
           <div>
             <h3 className="card-title">Ordem de ataque</h3>
-            <p className="card-sub">{manual ? "Ordem decidida pela gestão. Arraste ou use as setas para mudar." : "Sugestão do app pelo valor esperado. Arraste ou use as setas para decidir a ordem final."}</p>
+            <p className="card-sub">Arraste pela alça ⠿ ou use as setas. Clique na área para ver de onde vem o ganho.</p>
           </div>
-          <span className="row" style={{ gap: 8 }}>
+          <span className="row" style={{ gap: 8, flexWrap: "wrap" }}>
             {saving && <Spinner />}
+            <span className={`pz-mode ${manual ? "manual" : ""}`}>{manual ? `Ordem decidida${changed ? ` · ${changed} mudança${changed > 1 ? "s" : ""}` : ""}` : "Sugestão do app"}</span>
             {manual && (
-              <button className="btn btn-sm btn-ghost" onClick={() => void persist({ manual_order: null }).catch(() => {})}>
-                <RotateCcw size={14} /> Voltar à sugestão do app
+              <button className="btn btn-sm" onClick={backToSuggestion}>
+                <RotateCcw size={14} /> Voltar à sugestão
               </button>
             )}
           </span>
         </div>
         <div className="card-body">
-          <ol className="pz-list">
+          <ol className="pz-rows">
             {ordered.map((r, i) => (
-              <AreaCard
+              <AreaRow
                 key={r.domain.key}
                 r={r}
                 rank={i + 1}
                 last={i === ordered.length - 1}
                 manual={manual}
+                maxValue={maxValue}
+                open={openKey === r.domain.key}
+                hot={hot === r.domain.key}
+                dragging={sortable.dragKey === r.domain.key}
+                style={sortable.styleFor(r.domain.key)}
+                liRef={sortable.register(r.domain.key)}
+                onGripDown={sortable.start(r.domain.key)}
                 justification={map?.justifications?.[r.domain.key] || ""}
-                dragging={dragKey === r.domain.key}
-                onDragStart={() => setDragKey(r.domain.key)}
-                onDragEnd={() => setDragKey(null)}
-                onDropHere={() => {
-                  if (dragKey && dragKey !== r.domain.key) move(dragKey, i);
-                  setDragKey(null);
-                }}
+                onToggle={() => setOpenKey(openKey === r.domain.key ? null : r.domain.key)}
+                onHot={(on) => setHot(on ? r.domain.key : null)}
                 onUp={() => move(r.domain.key, i - 1)}
                 onDown={() => move(r.domain.key, i + 1)}
                 onEdit={() => setEdit(r.domain.key)}
@@ -210,20 +243,23 @@ export default function Prioritization() {
             ))}
           </ol>
           <p className="xs muted" style={{ marginTop: 14 }}>
-            Valores são estimativas de ordem de grandeza: ponto médio de cada faixa × uma parcela recuperável conservadora (mostrada em cada campo). Use para comparar áreas, não como promessa de ganho.
+            Ganho = ponto médio de cada faixa × uma parcela recuperável conservadora (mostrada em cada campo). Esforço = quanto falta de maturidade e de patrocínio na área. É ordem de grandeza para comparar áreas, não promessa de ganho.
           </p>
         </div>
       </section>
 
       {editing && (
         <AreaDrawer
+          key={editing.domain.key}
           r={editing}
+          all={ordered}
           onClose={() => setEdit(null)}
-          onSave={async (input) => {
+          onSave={async (input, after) => {
             await persist({ areas: { ...(map?.areas || {}), [editing.domain.key]: input } });
-            toast("Valores da área salvos");
-            setEdit(null);
+            toast("Valores salvos");
+            setEdit(after ?? null);
           }}
+          onJump={setEdit}
         />
       )}
     </>
@@ -231,16 +267,35 @@ export default function Prioritization() {
 }
 
 // ---------------------------------------------------------------------
-function AreaCard(props: {
+function Meter({ label, value, text, kind }: { label: string; value: number; text: string; kind: "gain" | "effort" }) {
+  return (
+    <div className={`pz-meter pz-meter-${kind}`}>
+      <div className="pz-meter-top">
+        <span>{label}</span>
+        <b>{text}</b>
+      </div>
+      <div className="pz-bar">
+        <span style={{ width: `${Math.max(3, Math.min(100, value))}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function AreaRow(props: {
   r: AreaResult;
   rank: number;
   last: boolean;
   manual: boolean;
-  justification: string;
+  maxValue: number;
+  open: boolean;
+  hot: boolean;
   dragging: boolean;
-  onDragStart: () => void;
-  onDragEnd: () => void;
-  onDropHere: () => void;
+  style?: CSSProperties;
+  liRef: (el: HTMLElement | null) => void;
+  onGripDown: (e: ReactPointerEvent<HTMLElement>) => void;
+  justification: string;
+  onToggle: () => void;
+  onHot: (on: boolean) => void;
   onUp: () => void;
   onDown: () => void;
   onEdit: () => void;
@@ -249,31 +304,38 @@ function AreaCard(props: {
   const { r, rank } = props;
   const [just, setJust] = useState(props.justification);
   useEffect(() => setJust(props.justification), [props.justification]);
-  const moved = props.manual && r.suggestedRank !== rank;
+  const delta = props.manual ? r.suggestedRank - rank : 0; // > 0: subiu em relação à sugestão
   const q = QUADRANTS[r.quadrant];
+  const filled = r.drivers.filter((d) => d.base !== null);
+
   return (
     <li
-      className={`pz-card ${props.dragging ? "dragging" : ""}`}
-      draggable
-      onDragStart={props.onDragStart}
-      onDragEnd={props.onDragEnd}
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => {
-        e.preventDefault();
-        props.onDropHere();
-      }}
+      id={`pz-${r.domain.key}`}
+      ref={props.liRef}
+      style={props.style}
+      className={`pz-row ${props.open ? "open" : ""} ${props.hot ? "hot" : ""} ${props.dragging ? "dragging" : ""}`}
+      onMouseEnter={() => props.onHot(true)}
+      onMouseLeave={() => props.onHot(false)}
     >
-      <div className="pz-card-head">
-        <span className="pz-grip no-print" aria-hidden>
-          <GripVertical size={16} />
-        </span>
+      <div className="pz-row-main">
+        <button type="button" className="pz-grip no-print" aria-label={`Arrastar ${r.domain.title} para reordenar`} title="Arraste para reordenar" onPointerDown={props.onGripDown}>
+          <GripVertical size={18} />
+        </button>
         <span className="pz-rank">{rank}</span>
-        <div className="grow" style={{ minWidth: 0 }}>
-          <div className="pz-title">{r.domain.title}</div>
-          <div className="pz-sub">
+        <button type="button" className="pz-row-title" onClick={props.onToggle} aria-expanded={props.open}>
+          <span className="pz-name">{r.domain.title}</span>
+          <span className="pz-sub">
             <span className={`pz-q pz-q-${r.quadrant}`}>{q.label}</span>
-            {moved && <span className="xs muted">sugestão do app: {r.suggestedRank}º</span>}
-          </div>
+            {delta !== 0 && (
+              <span className={`pz-delta ${delta > 0 ? "up" : "down"}`} title={`Sugestão do app: ${r.suggestedRank}º`}>
+                {delta > 0 ? "▲" : "▼"} {Math.abs(delta)}
+              </span>
+            )}
+          </span>
+        </button>
+        <div className="pz-meters">
+          <Meter label="Ganho" kind="gain" value={props.maxValue ? (r.value / props.maxValue) * 100 : 0} text={r.value ? brlRange(r.low, r.high) : "Sem estimativa"} />
+          <Meter label="Esforço" kind="effort" value={r.effort} text={effortLabel(r.effort)} />
         </div>
         <div className="pz-moves no-print">
           <button className="btn btn-icon btn-sm btn-ghost" disabled={rank === 1} onClick={props.onUp} aria-label="Subir">
@@ -282,55 +344,58 @@ function AreaCard(props: {
           <button className="btn btn-icon btn-sm btn-ghost" disabled={props.last} onClick={props.onDown} aria-label="Descer">
             <ArrowDown size={15} />
           </button>
+          <button className="btn btn-icon btn-sm btn-ghost pz-chev" onClick={props.onToggle} aria-label={props.open ? "Fechar detalhes" : "Abrir detalhes"}>
+            <ChevronDown size={16} />
+          </button>
         </div>
       </div>
 
-      <div className="pz-boxes">
-        <div className="pz-box">
-          <span className="pz-lbl">
-            <Target size={12} /> Valor anual em jogo
-          </span>
-          <b className="pz-big">{r.value ? brlRange(r.low, r.high) : "—"}</b>
-          <span className="xs muted">{r.filled ? `${r.filled} campo${r.filled > 1 ? "s" : ""} estimado${r.filled > 1 ? "s" : ""}` : "Nenhum valor preenchido"}</span>
-        </div>
-        <div className="pz-box">
-          <span className="pz-lbl">Maturidade da área</span>
-          <b className="pz-big">{r.maturity === null ? "—" : Math.round(r.maturity)}</b>
-          <Bar value={r.maturity} thin />
-          <span className="xs muted">{r.answered ? `${r.answered} de ${r.total} respondidas` : "Ainda não respondida no diagnóstico"}</span>
-        </div>
-        <div className="pz-box">
-          <span className="pz-lbl">
-            <Flag size={12} /> Prontidão
-          </span>
-          <b className="pz-big">{r.readiness}</b>
-          <Bar value={r.readiness} thin brand />
-          <span className="xs muted">
-            Patrocinador: {SPONSOR_OPTIONS.find((s) => s.key === r.input.patrocinador)?.label.toLowerCase() ?? "não informado"}
-            {r.input.estrategia ? ` · estratégia ${STRATEGY_LABELS[r.input.estrategia].toLowerCase()}` : ""}
-          </span>
-        </div>
-      </div>
-
-      {moved && (
+      {delta !== 0 && (
         <div className="pz-just no-print">
           <input
             className="input"
-            placeholder="Por que esta área ficou nesta posição? (ex.: maior reflexo em receita no trimestre)"
+            placeholder={`Por que ${delta > 0 ? "subiu" : "desceu"}? (a sugestão era ${r.suggestedRank}º)`}
             value={just}
             onChange={(e) => setJust(e.target.value)}
             onBlur={() => just !== props.justification && props.onJustify(just)}
           />
         </div>
       )}
-      {!moved && props.justification && <p className="small muted" style={{ margin: "8px 0 0" }}>{props.justification}</p>}
-      {r.input.nota && <p className="small" style={{ margin: "8px 0 0" }}>{r.input.nota}</p>}
+      {delta === 0 && props.justification && <p className="small muted pz-just-text">{props.justification}</p>}
 
-      <div className="pz-actions no-print">
-        <button className="btn btn-sm" onClick={props.onEdit}>
-          <Pencil size={13} /> {r.filled ? "Editar valores" : "Estimar valor"}
-        </button>
-      </div>
+      {props.open && (
+        <div className="pz-detail">
+          <div className="pz-d-box">
+            <h5>De onde vem o ganho</h5>
+            {filled.length ? (
+              <ul>
+                {filled.map((d) => (
+                  <li key={d.driver.key}>
+                    <span>{d.driver.label}</span>
+                    <b>{brlRange(d.low, d.high)}</b>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="small muted">Nenhum valor preenchido ainda.</p>
+            )}
+          </div>
+          <div className="pz-d-box">
+            <h5>Por que este esforço</h5>
+            <p className="small">{effortWhy(r)}</p>
+            <p className="xs muted">
+              {r.answered ? `${r.answered} de ${r.total} perguntas da área respondidas` : "Ainda não respondida no diagnóstico"}
+              {r.input.estrategia ? ` · estratégia: ${STRATEGY_LABELS[r.input.estrategia].toLowerCase()}` : ""}
+            </p>
+            {r.input.nota && <p className="small">{r.input.nota}</p>}
+          </div>
+          <div className="pz-d-actions no-print">
+            <button className="btn btn-sm btn-primary" onClick={props.onEdit}>
+              <Pencil size={13} /> {r.filled ? "Editar valores" : "Estimar valor"}
+            </button>
+          </div>
+        </div>
+      )}
     </li>
   );
 }
@@ -351,9 +416,13 @@ function BandSelect({ bands, value, onChange, placeholder }: { bands: { v: numbe
 
 const pct = (x: number) => `${(x * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`;
 
-function AreaDrawer({ r, onClose, onSave }: { r: AreaResult; onClose: () => void; onSave: (i: AreaInput) => Promise<void> }) {
+function AreaDrawer({ r, all, onClose, onSave, onJump }: { r: AreaResult; all: AreaResult[]; onClose: () => void; onSave: (i: AreaInput, after?: string) => Promise<void>; onJump: (key: string) => void }) {
   const [f, setF] = useState<AreaInput>(r.input);
   const [busy, setBusy] = useState(false);
+  const activeChip = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    activeChip.current?.scrollIntoView({ inline: "center", block: "nearest" });
+  }, []);
   const drivers = driversFor(r.domain.key);
   const setDriver = (k: string, v: DriverValue | undefined) =>
     setF((x) => {
@@ -366,6 +435,23 @@ function AreaDrawer({ r, onClose, onSave }: { r: AreaResult; onClose: () => void
   const low = results.reduce((s, x) => s + x.low, 0);
   const high = results.reduce((s, x) => s + x.high, 0);
 
+  const idx = all.findIndex((x) => x.domain.key === r.domain.key);
+  const next = all[idx + 1];
+  const dirty = JSON.stringify(f) !== JSON.stringify(r.input);
+
+  const run = async (fn: () => Promise<void>) => {
+    setBusy(true);
+    try {
+      await fn();
+    } catch {
+      /* mensagem já exibida */
+    } finally {
+      setBusy(false);
+    }
+  };
+  // Trocar de área salva o que foi digitado, para não perder nada.
+  const jump = (key: string) => run(async () => (dirty ? onSave(f, key) : onJump(key)));
+
   return (
     <Drawer
       wide
@@ -375,31 +461,32 @@ function AreaDrawer({ r, onClose, onSave }: { r: AreaResult; onClose: () => void
       footer={
         <>
           <span className="small" style={{ marginRight: "auto" }}>
-            Valor anual em jogo: <b>{high ? brlRange(low, high) : "—"}</b>
+            Ganho anual: <b>{high ? brlRange(low, high) : "—"}</b>
           </span>
           <button className="btn" onClick={onClose}>
             Cancelar
           </button>
-          <button
-            className="btn btn-primary"
-            disabled={busy}
-            onClick={async () => {
-              setBusy(true);
-              try {
-                await onSave(f);
-              } catch {
-                /* mensagem já exibida */
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
+          <button className={`btn ${next ? "" : "btn-primary"}`} disabled={busy} onClick={() => run(() => onSave(f))}>
             {busy ? <Spinner /> : "Salvar"}
           </button>
+          {next && (
+            <button className="btn btn-primary" disabled={busy} onClick={() => run(() => onSave(f, next.domain.key))}>
+              Salvar e ir para {short(next.domain.title)} <ArrowRight size={14} />
+            </button>
+          )}
         </>
       }
     >
-      <p className="small muted" style={{ marginTop: 0 }}>
+      <div className="pz-hop" role="tablist" aria-label="Áreas">
+        {all.map((x) => (
+          <button key={x.domain.key} ref={x.domain.key === r.domain.key ? activeChip : undefined} role="tab" aria-selected={x.domain.key === r.domain.key} className={`pz-hop-chip ${x.domain.key === r.domain.key ? "on" : ""}`} disabled={busy} onClick={() => x.domain.key !== r.domain.key && jump(x.domain.key)}>
+            {x.value > 0 && x.domain.key !== r.domain.key && <Check size={11} />}
+            {short(x.domain.title)}
+          </button>
+        ))}
+      </div>
+
+      <p className="small muted" style={{ margin: "14px 0 0" }}>
         Escolha a faixa mais próxima — não precisa de número exato. Deixe em branco o que não souber.
       </p>
 
@@ -418,18 +505,8 @@ function AreaDrawer({ r, onClose, onSave }: { r: AreaResult; onClose: () => void
                 <BandSelect bands={MONEY_BANDS} value={typeof v === "number" ? v : undefined} onChange={(x) => setDriver(d.key, x)} placeholder="Não sei / não se aplica" />
               ) : (
                 <div className="form-grid">
-                  <BandSelect
-                    bands={PEOPLE_BANDS}
-                    value={typeof v === "object" ? v.p : undefined}
-                    onChange={(x) => setDriver(d.key, { ...(typeof v === "object" ? v : {}), p: x })}
-                    placeholder="Pessoas na área"
-                  />
-                  <BandSelect
-                    bands={SALARY_BANDS}
-                    value={typeof v === "object" ? v.c : undefined}
-                    onChange={(x) => setDriver(d.key, { ...(typeof v === "object" ? v : {}), c: x })}
-                    placeholder="Custo médio por pessoa (com encargos)"
-                  />
+                  <BandSelect bands={PEOPLE_BANDS} value={typeof v === "object" ? v.p : undefined} onChange={(x) => setDriver(d.key, { ...(typeof v === "object" ? v : {}), p: x })} placeholder="Pessoas na área" />
+                  <BandSelect bands={SALARY_BANDS} value={typeof v === "object" ? v.c : undefined} onChange={(x) => setDriver(d.key, { ...(typeof v === "object" ? v : {}), c: x })} placeholder="Custo médio por pessoa (com encargos)" />
                 </div>
               )}
               <div className="pz-field-foot">
@@ -454,7 +531,7 @@ function AreaDrawer({ r, onClose, onSave }: { r: AreaResult; onClose: () => void
         </div>
       </Field>
       <div style={{ height: 12 }} />
-      <Field label="A área tem um patrocinador que cobra o resultado?">
+      <Field label="A área tem um patrocinador que cobra o resultado?" hint="Com patrocinador, o esforço da área cai.">
         <div className="chips">
           {SPONSOR_OPTIONS.map((s) => (
             <button key={s.key} type="button" className={`chip ${f.patrocinador === s.key ? "on" : ""}`} onClick={() => setF((x) => ({ ...x, patrocinador: x.patrocinador === s.key ? undefined : s.key }))}>
