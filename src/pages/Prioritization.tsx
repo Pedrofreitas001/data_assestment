@@ -42,7 +42,7 @@ export default function Prioritization() {
   const maps = useRows("impact_maps", orgId);
   const [edit, setEdit] = useState<string | null>(null);
   const [openKey, setOpenKey] = useState<string | null>(null);
-  const [hot, setHot] = useState<string | null>(null);
+  const [flash, setFlash] = useState<string | null>(null);
   // A lista muda na hora; o banco confirma em seguida (volta atrás se falhar).
   const [optimistic, setOptimistic] = useState<string[] | null>(null);
   const [saving, setSaving] = useState(false);
@@ -148,9 +148,9 @@ export default function Prioritization() {
 
   const pick = (key: string) => {
     setOpenKey(key);
-    setHot(key);
+    setFlash(key);
     requestAnimationFrame(() => document.getElementById(`pz-${key}`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
-    window.setTimeout(() => setHot((h) => (h === key ? null : h)), 1800);
+    window.setTimeout(() => setFlash((f) => (f === key ? null : f)), 1800);
   };
 
   const editing = edit ? results.find((r) => r.domain.key === edit) : null;
@@ -226,7 +226,7 @@ export default function Prioritization() {
           </div>
         </div>
         <div className="card-body">
-          <EffortGainChart ordered={ordered} hot={hot} onHot={setHot} onPick={pick} onEstimate={setEdit} />
+          <EffortGainChart ordered={ordered} onPick={pick} onEstimate={setEdit} />
         </div>
       </section>
 
@@ -261,12 +261,11 @@ export default function Prioritization() {
                 manual={manual}
                 maxValue={maxValue}
                 open={openKey === r.domain.key}
-                hot={hot === r.domain.key}
+                flash={flash === r.domain.key}
                 liRef={sortable.register(r.domain.key)}
                 onGripDown={(e) => sortable.start(r.domain.key, e)}
                 justification={map?.justifications?.[r.domain.key] || ""}
                 onToggle={() => setOpenKey(openKey === r.domain.key ? null : r.domain.key)}
-                onHot={(on) => setHot(on ? r.domain.key : null)}
                 onUp={() => move(r.domain.key, i - 1)}
                 onDown={() => move(r.domain.key, i + 1)}
                 onEdit={() => setEdit(r.domain.key)}
@@ -320,12 +319,11 @@ function AreaRow(props: {
   manual: boolean;
   maxValue: number;
   open: boolean;
-  hot: boolean;
+  flash: boolean;
   liRef: (el: HTMLElement | null) => void;
   onGripDown: (e: ReactPointerEvent<HTMLElement>) => void;
   justification: string;
   onToggle: () => void;
-  onHot: (on: boolean) => void;
   onUp: () => void;
   onDown: () => void;
   onEdit: () => void;
@@ -342,9 +340,7 @@ function AreaRow(props: {
     <li
       id={`pz-${r.domain.key}`}
       ref={props.liRef}
-      className={`pz-row ${props.open ? "open" : ""} ${props.hot ? "hot" : ""}`}
-      onMouseEnter={() => props.onHot(true)}
-      onMouseLeave={() => props.onHot(false)}
+      className={`pz-row ${props.open ? "open" : ""} ${props.flash ? "flash" : ""}`}
     >
       <div className="pz-row-main">
         <button type="button" className="pz-grip no-print" aria-label={`Arrastar ${r.domain.title} para reordenar`} title="Arraste para reordenar" onPointerDown={props.onGripDown}>

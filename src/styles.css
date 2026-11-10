@@ -957,7 +957,7 @@ html { scroll-behavior: smooth; }
 .eg-dot.eg-preparar { border-style: dashed; border-color: var(--ink-3); }
 .eg-dot.hot { transform: translate(-50%, -50%) scale(1.1); z-index: 4; box-shadow: 0 8px 20px rgba(0,0,0,.22); }
 .eg-dot.dim { opacity: .3; }
-.eg-info { margin-top: 12px; min-height: 46px; display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; font-size: 13px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); color: var(--ink-2); line-height: 1.45; }
+.eg-info { margin-top: 12px; height: 72px; overflow: hidden; display: flex; flex-wrap: wrap; gap: 4px 14px; align-content: center; align-items: center; font-size: 13px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); color: var(--ink-2); line-height: 1.45; }
 .eg-info.on { border-color: var(--ink); background: var(--surface); }
 .eg-info b { color: var(--ink); }
 .eg-tag { font-size: 11px; font-weight: 600; border: 1px solid var(--line-2); border-radius: 99px; padding: 1px 9px; background: var(--surface-2); }
@@ -976,7 +976,8 @@ html { scroll-behavior: smooth; }
 .pz-mode.manual { background: var(--ink); color: #fff; border-color: var(--ink); }
 .pz-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .pz-row { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); transition: box-shadow .15s, border-color .15s; }
-.pz-row.hot { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(17,17,17,.08); }
+.pz-row.flash { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(17,17,17,.08); animation: pzFlash 1.8s ease-out; }
+@keyframes pzFlash { 0% { box-shadow: 0 0 0 6px rgba(37,99,235,.28); } 100% { box-shadow: 0 0 0 3px rgba(17,17,17,.0); } }
 .pz-row.dragging { border-color: var(--ink); }
 .pz-row-main { display: grid; grid-template-columns: auto auto minmax(0, 1.1fr) minmax(0, 2fr) auto; grid-template-areas: "grip rank title meters moves"; gap: 10px; align-items: center; padding: 10px 12px; }
 .pz-grip { grid-area: grip; color: var(--ink-3); cursor: grab; display: grid; place-items: center; width: 28px; height: 36px; margin: -4px -4px -4px -6px; background: none; border: 0; border-radius: 8px; touch-action: none; }
@@ -1035,6 +1036,7 @@ html { scroll-behavior: smooth; }
   .pz-detail { grid-template-columns: 1fr; }
   .pz-field-foot { flex-direction: column; gap: 4px; }
 }
+@media (max-width: 760px) { .eg-info { height: 108px; } }
 @media (max-width: 600px) {
   .eg-wrap { padding-left: 24px; }
   .eg-x { left: 24px; }

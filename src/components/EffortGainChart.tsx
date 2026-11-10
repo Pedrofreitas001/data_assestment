@@ -7,8 +7,6 @@ import { QUADRANTS, brlRange, chartPos, effortLabel, effortWhy, type AreaResult 
 interface Props {
   /** Áreas na ordem de ataque atual — o número da bolha é a posição nesta lista. */
   ordered: AreaResult[];
-  hot: string | null;
-  onHot: (key: string | null) => void;
   onPick: (key: string) => void;
   onEstimate: (key: string) => void;
 }
@@ -48,7 +46,9 @@ function spread(items: { key: string; x: number; y: number }[], bw: number, bh: 
   return p;
 }
 
-export default function EffortGainChart({ ordered, hot, onHot, onPick, onEstimate }: Props) {
+export default function EffortGainChart({ ordered, onPick, onEstimate }: Props) {
+  // O destaque ao passar o mouse vale só dentro do gráfico: não depende da lista abaixo.
+  const [hot, onHot] = useState<string | null>(null);
   const box = useRef<HTMLDivElement>(null);
   const [w, setW] = useState(720);
   useEffect(() => {
