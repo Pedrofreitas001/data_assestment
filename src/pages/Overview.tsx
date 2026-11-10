@@ -88,7 +88,7 @@ export default function Overview() {
     return (
       <>
         <PageHead eyebrow="Início" title={org.name} />
-        <div className="card">
+        <div className="card" data-tour="home-start">
           <Empty icon={<ClipboardCheck size={20} />} title="Vamos começar pelo diagnóstico" action={<button className="btn btn-primary" onClick={start}><Plus size={16} /> Iniciar diagnóstico</button>}>
             Cerca de 40 minutos de perguntas objetivas. Ao final você recebe o nível de maturidade e um plano de ação priorizado.
           </Empty>
@@ -154,7 +154,7 @@ export default function Overview() {
         </div>
       </section>
 
-      <section className="card" style={{ marginTop: 20 }}>
+      <section data-tour="home-passos" className="card" style={{ marginTop: 20 }}>
         <div className="card-head">
           <div>
             <h3 className="card-title">Próximos passos</h3>
@@ -169,7 +169,7 @@ export default function Overview() {
 
       <PrioritiesCard id="prioridades" style={{ marginTop: 20 }} />
 
-      <div style={{ marginTop: 20 }}>
+      <div data-tour="home-ask" style={{ marginTop: 20 }}>
         <AskBar
           title="Pergunte ao assistente sobre este diagnóstico"
           placeholder="Ex.: por que estamos no nível 2?"
@@ -177,7 +177,7 @@ export default function Overview() {
         />
       </div>
 
-      <section className="card" style={{ marginTop: 20 }}>
+      <section data-tour="home-cap" className="card" style={{ marginTop: 20 }}>
         <div className="card-head">
           <h3 className="card-title">Por capacidade</h3>
         </div>

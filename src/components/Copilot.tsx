@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { ArrowLeft, ArrowUp, Check, History, MessageCircleQuestion, Pin, Plus, Trash2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUp, Check, Compass, History, MessageCircleQuestion, Pin, Plus, Trash2, X } from "lucide-react";
+import { startTour } from "./Tour";
 import { useCopilot, type CopilotMessage } from "../context/copilot";
 import { miniMarkdown, relTime } from "../lib/format";
 import { friendlyError } from "../lib/errors";
@@ -127,6 +128,23 @@ export default function Copilot() {
           <X size={18} />
         </button>
       </header>
+
+      {view === "chat" && !c.interview && (
+        <button
+          className="tour-cta"
+          onClick={() => {
+            c.close();
+            window.setTimeout(startTour, 260);
+          }}
+        >
+          <Compass size={17} />
+          <span className="grow">
+            <b>Tour guiado</b>
+            <span>Conheça esta tela em 1 minuto</span>
+          </span>
+          <ArrowRight size={16} />
+        </button>
+      )}
 
       {view === "history" && <HistoryView onBack={() => setView("chat")} />}
 

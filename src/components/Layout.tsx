@@ -7,6 +7,7 @@ import { IS_DEMO } from "../lib/supabase";
 import { initials } from "../lib/format";
 import { MoulisMark } from "./ui";
 import Copilot from "./Copilot";
+import Tour from "./Tour";
 import ErrorBoundary from "./ErrorBoundary";
 import { useCopilot } from "../context/copilot";
 
@@ -134,6 +135,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       <ErrorBoundary compact onReset={copilot.reset}>
         <Copilot />
       </ErrorBoundary>
+      <Tour />
     </div>
   );
 }

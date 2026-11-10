@@ -214,7 +214,7 @@ export default function Result() {
       </section>
 
       {/* Leitura executiva */}
-      <section className="card" style={{ marginBottom: 20 }}>
+      <section data-tour="res-leitura" className="card" style={{ marginBottom: 20 }}>
         <div className="card-head">
           <div className="row" style={{ gap: 12 }}>
             <AiMark />
@@ -319,7 +319,7 @@ export default function Result() {
       </section>
 
       {/* Capacidades */}
-      <section className="card" style={{ marginBottom: 20 }}>
+      <section data-tour="res-cap" className="card" style={{ marginBottom: 20 }}>
         <div className="card-head">
           <h3 className="card-title">Capacidades</h3>
         </div>
@@ -351,7 +351,7 @@ export default function Result() {
       </section>
 
       {/* Qualidade por área */}
-      <section className="card page-break" style={{ marginBottom: 20 }}>
+      <section data-tour="res-qual" className="card page-break" style={{ marginBottom: 20 }}>
         <div className="card-head">
           <div>
             <h3 className="card-title">Qualidade dos dados por área</h3>
