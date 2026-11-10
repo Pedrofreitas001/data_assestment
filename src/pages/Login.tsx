@@ -66,7 +66,7 @@ export default function Login() {
       <section className="login-form">
         <div className="login-box">
           <h2 className="page-title" style={{ fontSize: 32, marginBottom: 6 }}>
-            {IS_DEMO ? "Bem-vinda" : titles[mode]}
+            {IS_DEMO ? "Boas-vindas" : titles[mode]}
           </h2>
 
           {IS_DEMO ? (

@@ -6,6 +6,8 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { BANDS, DIMENSIONS, DOMAINS } from "../src/model/framework.ts";
 import { CONCEPTS, PRINCIPLES, QUALITY_EXPLAINED, REFERENCES, STEPS, SUCCESS, WAVES_DETAIL } from "../src/model/concepts.ts";
+import { AREA_DRIVERS, QUADRANTS } from "../src/model/impact.ts";
+import { STEWARD_DIMENSIONS } from "../src/model/steward.ts";
 
 const ROOT = join(import.meta.dirname, "..");
 const IMG = join(ROOT, "docs/guia/img");
@@ -48,6 +50,10 @@ const REV = [20e6, 50e6, 100e6, 200e6];
 const PCT = [0.005, 0.01, 0.02];
 const HRS = { pessoas: 10, horas: 6, semanas: 46, custo: 80 };
 const hrsAno = HRS.pessoas * HRS.horas * HRS.semanas * HRS.custo;
+const LEVER_ROWS = [
+  ...Object.entries(AREA_DRIVERS).map(([k, ds]) => ({ area: DOMAINS.find((x) => x.key === k)?.title ?? k, campo: ds[0].label, ganho: `${(ds[0].lever[0] * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% a ${(ds[0].lever[1] * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%` })),
+];
+const pc = (x: number) => `${(x * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`;
 
 const html = `<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"/>
@@ -83,9 +89,9 @@ p { margin: 0 0 3mm; }
 
 /* sumário */
 .toc ol { padding-left: 0; list-style: none; counter-reset: t; }
-.toc li { counter-increment: t; display: flex; gap: 4mm; padding: 1.5mm 0; border-bottom: 1px solid #e7e7e3; font-size: 10pt; }
+.toc li { counter-increment: t; display: flex; gap: 4mm; padding: 1.05mm 0; border-bottom: 1px solid #e7e7e3; font-size: 9.6pt; }
 .toc li::before { content: counter(t, decimal-leading-zero); color: #9a9a95; font-variant-numeric: tabular-nums; width: 8mm; }
-.part { font-size: 8pt; letter-spacing: 0.16em; text-transform: uppercase; color: #111; font-weight: 700; margin: 4.5mm 0 0.5mm; }
+.part { font-size: 8pt; letter-spacing: 0.16em; text-transform: uppercase; color: #111; font-weight: 700; margin: 3.5mm 0 0.5mm; }
 
 /* blocos */
 .lead { font-size: 12pt; color: #3b3b3b; }
@@ -154,6 +160,9 @@ table.tight td { padding: 1.7mm 2mm; }
 .lever .big2 { margin: 1mm 0 1mm; }
 .lever p.small { margin: 0 0 2.5mm; font-size: 9pt; color: #3b3b3b; line-height: 1.4; }
 .xs { font-size: 8pt; }
+.levers2 { gap: 4mm; align-items: start; }
+.quads { gap: 3mm; } .quads .box { padding: 2.5mm 3.5mm; }
+table.mini td, table.mini th { padding: 1.2mm 2mm; font-size: 8.6pt; }
 .tag { display: inline-block; font-size: 8pt; border-radius: 99px; padding: 0.5mm 2.5mm; background: #efefec; }
 </style></head><body>
 
@@ -180,14 +189,16 @@ table.tight td { padding: 1.7mm 2mm; }
     <li>O Diagnóstico Moulis em uma página</li><li>Os 5 níveis de maturidade</li>
     <li>Como o resultado é calculado</li><li>As 8 capacidades avaliadas</li><li>Qualidade dos dados por área</li>
     <li>Conceitos essenciais</li><li>Próximos passos e critérios de sucesso</li>
+    <li>Priorização das áreas: ganho × esforço</li><li>Steward do diagnóstico</li>
   </ol>
   <div class="part">Parte 2 · Como usar a ferramenta</div>
-  <ol style="counter-reset:t 9">
-    <li>Acesso e perfis</li><li>Passo a passo do diagnóstico</li><li>O relatório</li><li>Glossário de KPIs</li>
-    <li>Painel de clientes (equipe Moulis)</li><li>O assistente</li><li>Como conduzir uma sessão com o cliente</li><li>Perguntas frequentes</li>
+  <ol style="counter-reset:t 11">
+    <li>Acesso e perfis</li><li>Passo a passo do diagnóstico</li><li>O relatório</li><li>Priorização das áreas</li>
+    <li>Steward do diagnóstico</li><li>Glossário de KPIs</li><li>Painel de clientes (equipe Moulis)</li><li>O assistente e o tour guiado</li>
+    <li>Roteiro do piloto: duas empresas com autonomia</li><li>Como conduzir uma sessão com o cliente</li><li>Perguntas frequentes</li>
   </ol>
   <div class="part">Anexo</div>
-  <ol style="counter-reset:t 17"><li>Fontes da introdução</li></ol>
+  <ol style="counter-reset:t 22"><li>Fontes da introdução</li></ol>
 </section>
 
 
@@ -220,7 +231,7 @@ table.tight td { padding: 1.7mm 2mm; }
     <div class="lever">
       <div class="k">1 · Recursos</div><h3>Investir na ordem certa</h3>
       <div class="big2">1 em 4</div><p class="small">iniciativas de IA entrega o retorno esperado, num gasto mundial de ~US$ 1,5 tri em 2025.${r(2, 9)}</p>
-      <div class="how"><b>No app:</b> mostra o que limita o nível e a sequência certa — dono, fonte oficial e qualidade antes de BI e IA.</div>
+      <div class="how"><b>No app:</b> a priorização ganho × esforço mostra em que área investir primeiro, e o nível mostra o que vem antes de BI e IA.</div>
     </div>
     <div class="lever">
       <div class="k">2 · Operação</div><h3>Menos retrabalho</h3>
@@ -251,12 +262,14 @@ table.tight td { padding: 1.7mm 2mm; }
 <section class="page">
   <p class="eyebrow">Parte 1 · A ferramenta</p>
   <h1>O Diagnóstico Moulis em uma página</h1>
-  <p class="lead">Em cerca de 40 minutos, com as pessoas certas na sala, a empresa sai com quatro entregas:</p>
-  <div class="grid2">
-    <div class="box avoid"><span class="num">1</span><div class="t">Nível de maturidade, de 1 a 5</div><p class="small muted">E, principalmente, o que impede o próximo nível — em linguagem de gestão.</p></div>
-    <div class="box avoid"><span class="num">2</span><div class="t">Mapa do que está quebrado</div><p class="small muted">8 capacidades de gestão de dados e a qualidade dos dados em cada área: comercial, financeiro, pessoas, operação.</p></div>
-    <div class="box avoid"><span class="num">3</span><div class="t">Plano de 90 dias</div><p class="small muted">Passos em três ondas, com onde estamos, por que importa, aonde chegar, responsável, entregável e prazo — do tamanho do time.</p></div>
-    <div class="box avoid"><span class="num">4</span><div class="t">Glossário de indicadores e assistente</div><p class="small muted">Uma definição por KPI, com dono, e um assistente de IA que explica, conduz e redige — sem decidir o nível.</p></div>
+  <p class="lead">Em cerca de 40 minutos, com as pessoas certas na sala, a empresa sai com:</p>
+  <div class="grid3">
+    <div class="box avoid"><span class="num">1</span><div class="t">Nível de maturidade, de 1 a 5</div><p class="small muted">E o que impede o próximo nível, em linguagem de gestão.</p></div>
+    <div class="box avoid"><span class="num">2</span><div class="t">Mapa do que está quebrado</div><p class="small muted">8 capacidades e a qualidade dos dados em cada área: comercial, marketing, financeiro, operação…</p></div>
+    <div class="box avoid"><span class="num">3</span><div class="t">Plano de 90 dias</div><p class="small muted">Passos em três ondas: onde estamos, por que importa, aonde chegar, responsável e prazo.</p></div>
+    <div class="box avoid"><span class="num">4</span><div class="t">Priorização das áreas</div><p class="small muted">Ganho estimado × esforço por área e a ordem de ataque, decidida pela diretoria.</p></div>
+    <div class="box avoid"><span class="num">5</span><div class="t">Steward escolhido</div><p class="small muted">Quem conduz o diagnóstico na empresa, com o apoio que a pessoa precisa.</p></div>
+    <div class="box avoid"><span class="num">6</span><div class="t">Glossário e assistente</div><p class="small muted">Uma definição por KPI, com dono, e um assistente que explica, conduz e redige.</p></div>
   </div>
   <h2>Como funciona</h2>
   <div class="grid4">${STEPS.map((s) => `<div class="box avoid"><span class="num">${s.n}</span><div class="t">${esc(s.title)}</div><p class="small muted">${esc(s.text)}</p></div>`).join("")}</div>
@@ -322,6 +335,37 @@ table.tight td { padding: 1.7mm 2mm; }
 </section>
 
 <section class="page">
+  <h2 style="margin-top:0">Priorização das áreas: ganho × esforço</h2>
+  <p>A área com pior maturidade nem sempre é a que traz mais resultado: a priorização cruza o <b>ganho</b> que cada área pode trazer com o <b>esforço</b> para estruturá-la.</p>
+  <div class="grid2">
+    <div class="box avoid"><div class="t">Ganho anual em jogo</div><p class="small muted" style="margin:1mm 0 0">A diretoria escolhe <b>faixas</b> (receita, verba, frete, folha…), sem número exato. Ganho = ponto médio da faixa × parcela recuperável conservadora. Ordem de grandeza, não promessa.</p></div>
+    <div class="box avoid"><div class="t">Esforço</div><p class="small muted" style="margin:1mm 0 0">Quanto falta de maturidade na área (do diagnóstico) e se há um patrocinador que cobra o resultado.</p></div>
+  </div>
+  <h3>Os quatro quadrantes</h3>
+  <div class="grid4 quads">${(["atacar", "preparar", "rapido", "depois"] as const).map((q) => `<div class="box avoid"><div class="t">${QUADRANTS[q].label}</div><p class="small muted" style="margin:0.5mm 0 0">${esc(QUADRANTS[q].short)}</p></div>`).join("")}</div>
+  <div class="callout avoid"><b>A decisão final é da diretoria.</b> O app sugere a ordem pelo ganho esperado, mas quem responde pela priorização pode mudá-la por qualquer motivo — estratégia, prazo, pessoas, orçamento —, mesmo sem dados preenchidos. Cada mudança fica registrada com a justificativa.</div>
+  <h3>Parcela recuperável usada em cada área (principal campo)</h3>
+  <p class="small muted" style="margin-bottom:2mm">Em todas as áreas entram também pessoas × custo médio (3% a 8%, retrabalho e conferência manual) e o gasto com sistemas e informação (5% a 15%).</p>
+  <div class="grid2 levers2">${[0, 1].map((half) => `<table class="tight mini"><thead><tr><th>Área e campo principal</th><th style="text-align:right">Ganho</th></tr></thead><tbody>${LEVER_ROWS.filter((_, i) => i % 2 === half).map((r) => `<tr><td><b>${esc(r.area)}</b><br/><span class="muted">${esc(r.campo)}</span></td><td style="text-align:right;white-space:nowrap">${r.ganho}</td></tr>`).join("")}</tbody></table>`).join("")}</div>
+</section>
+
+<section class="page">
+  <h2 style="margin-top:0">Steward do diagnóstico</h2>
+  <p>O steward é a pessoa da empresa que conduz o diagnóstico com as áreas: marca as conversas, junta as evidências e cobra o plano. <b>Não precisa ser especialista em dados.</b> A avaliação mede se ela tem o suficiente de quatro coisas:</p>
+  <div class="grid2">${STEWARD_DIMENSIONS.map((d) => `<div class="box avoid"><div class="t">${esc(d.title)}</div><ul class="small" style="padding-left:4.5mm;margin:1.5mm 0 0">${d.questions.map((q) => `<li>${esc(q.prompt)}</li>`).join("")}</ul></div>`).join("")}</div>
+  <h3>O resultado</h3>
+  <table class="tight avoid"><tbody>
+    <tr><td style="width:34%"><b>Em condições de conduzir</b></td><td class="muted">Negócio, dados, trânsito e tempo suficientes.</td></tr>
+    <tr><td><b>Forte no negócio, precisa de apoio em dados</b></td><td class="muted">Trabalha em dupla com quem monta os relatórios.</td></tr>
+    <tr><td><b>Forte em dados, precisa de trânsito</b></td><td class="muted">Precisa de um padrinho na diretoria e de um gestor ao lado.</td></tr>
+    <tr><td><b>Consegue conduzir com apoio</b></td><td class="muted">Acompanhamento próximo do consultor nas primeiras semanas.</td></tr>
+    <tr><td><b>Sem tempo reservado</b></td><td class="muted">Negociar a agenda antes de começar.</td></tr>
+    <tr><td><b>Ainda não</b></td><td class="muted">Avaliar outra pessoa ou dividir o papel.</td></tr>
+  </tbody></table>
+  <p class="small muted">Visível só para a equipe Moulis. É prontidão para o papel, não avaliação de desempenho.</p>
+</section>
+
+<section class="page">
   <p class="eyebrow">Parte 2 · Como usar a ferramenta</p>
   <h1>Acesso e perfis</h1>
   <table class="avoid"><thead><tr><th style="width:24%">Perfil</th><th>O que vê e faz</th></tr></thead><tbody>
@@ -369,6 +413,26 @@ table.tight td { padding: 1.7mm 2mm; }
 </section>
 
 <section class="flow">
+  <h1>Priorização das áreas</h1>
+  <ol class="steplist">
+    <li><div><b>Estime o ganho</b> das áreas que a diretoria conhece: clique na área (ou no chip “Sem estimativa”) e escolha as faixas. “Salvar e ir para a próxima” passa por todas sem fechar o painel.</div></li>
+    <li><div><b>Leia o gráfico</b>: cada bolha é uma área; quanto mais alto, mais ganho; quanto mais à esquerda, menos esforço. O quadro do topo diz por onde começar.</div></li>
+    <li><div><b>Decida a ordem</b> na seção “Ordem de ataque”: arraste pela alça ⠿ ou use as setas. Cada área fora da posição sugerida mostra ▲/▼ e pede uma justificativa. “Voltar à sugestão” desfaz.</div></li>
+    <li><div><b>Leve para a diretoria</b>: “Resumo para a diretoria” pede ao assistente um texto pronto.</div></li>
+  </ol>
+  ${img("14-priorizacao", "Recomendação e gráfico ganho × esforço.")}
+  ${img("15-ordem", "Ordem de ataque decidida pela gestão, com a justificativa da mudança.")}
+</section>
+
+<section class="flow">
+  <h1>Steward do diagnóstico</h1>
+  <p class="muted">Exclusivo da equipe Moulis.</p>
+  <p>Em “Avaliar pessoa”, preencha nome e cargo e siga as etapas: Negócio, Dados, Trânsito e Tempo. Cada pergunta traz um “como checar” para usar na conversa. A nota e o perfil aparecem ao vivo no rodapé; no fim, marque quem será o steward.</p>
+  ${img("16-steward", "Candidatos com nota, perfil, radar e como apoiar.")}
+  ${img("17-steward-etapas", "Avaliação em etapas, com a nota ao vivo no rodapé.")}
+</section>
+
+<section class="flow">
   <h1>Glossário de KPIs</h1>
   <p>Uma ficha por indicador: definição, fórmula, premissas, exclusões, owner, steward, tabelas de origem e conferências de qualidade. Comece pela <b>Biblioteca Moulis</b> (indicadores de referência) e adapte com o owner de cada um. O assistente redige fichas novas e revisa as existentes.</p>
   ${img("10-glossario", "Glossário de KPIs com completude de cada ficha.")}
@@ -390,18 +454,52 @@ table.tight td { padding: 1.7mm 2mm; }
     <li><b>chama você</b> nos momentos certos — ao começar uma seção, quando você para, ao marcar “Não sei”, ao concluir uma seção e no relatório. Desligue em “Sugestões automáticas”, se preferir.</li>
   </ul>
   ${img("13-assistente", "O assistente aberto ao lado da página de metodologia.")}
+  <h2>Tour guiado</h2>
+  <p>No topo do assistente, o botão azul <b>Tour guiado</b> apresenta a tela em que você está: destaca cada seção, explica em uma frase e segue com “Próximo”. Saia a qualquer momento pelo <b>X</b> ou pela tecla Esc. É a forma mais rápida de alguém novo ganhar autonomia.</p>
+  ${img("18-tour-botao", "O botão do tour guiado no assistente.")}
+  ${img("19-tour", "Tour guiado destacando o gráfico da priorização.")}
   <div class="callout avoid"><b>Privacidade.</b> Nunca cole senhas ou tokens no chat. O sistema bloqueia textos que parecem segredos e remove padrões sensíveis antes de qualquer envio à IA.</div>
+</section>
+
+<section class="page">
+  <h1>Roteiro do piloto: duas empresas com autonomia</h1>
+  <p>O objetivo do piloto é ver o cliente usando o app sozinho, com a equipe Moulis acompanhando de longe.</p>
+  <div class="grid2">
+    <div class="box avoid"><div class="t">Antes (equipe Moulis, 1 hora por empresa)</div><ol class="small" style="padding-left:4.5mm;margin:1.5mm 0 0">
+      <li>Cadastre a empresa em Clientes e convide 1 a 2 pessoas com o perfil <b>Cliente</b>.</li>
+      <li>Avalie o candidato a steward (15 a 20 minutos) e marque o escolhido.</li>
+      <li>Faça um início de 30 minutos com o steward: tour guiado, contexto e uma capacidade juntos.</li>
+    </ol></div>
+    <div class="box avoid"><div class="t">Durante (cliente, 1 a 2 semanas)</div><ol class="small" style="padding-left:4.5mm;margin:1.5mm 0 0">
+      <li>O steward conclui o diagnóstico, se quiser em “Responder conversando”.</li>
+      <li>A diretoria estima o ganho por área e decide a ordem na Priorização.</li>
+      <li>Dúvidas vão para o assistente; a equipe acompanha o progresso pela carteira.</li>
+    </ol></div>
+    <div class="box avoid"><div class="t">Depois (reunião de resultado, 1 hora)</div><ol class="small" style="padding-left:4.5mm;margin:1.5mm 0 0">
+      <li>Revise os alertas de consistência antes de apresentar.</li>
+      <li>Apresente nível, o que o limita, a ordem de ataque e a Onda 1.</li>
+      <li>Transforme os 3 primeiros passos em Prioridades com responsável.</li>
+    </ol></div>
+    <div class="box avoid"><div class="t">O que medir no piloto</div><ul class="small" style="padding-left:4.5mm;margin:1.5mm 0 0">
+      <li>Tempo até concluir o diagnóstico sem ajuda.</li>
+      <li>% de respostas “Não sei” e de evidências registradas.</li>
+      <li>Perguntas feitas ao assistente: onde as pessoas travaram.</li>
+      <li>Se a diretoria mudou a ordem sugerida, e por quê.</li>
+    </ul></div>
+  </div>
 </section>
 
 <section class="flow">
   <h1>Como conduzir uma sessão com o cliente</h1>
   <ol class="steplist">
+    <li><div><b>Escolha o steward antes.</b> A pessoa da empresa que vai conduzir as conversas com as áreas; avalie em Steward.</div></li>
     <li><div><b>Convide as pessoas certas.</b> Quem decide (diretoria/gerência da área) e quem opera os dados (analista, TI). Um gestor sozinho tende a superestimar a maturidade.</div></li>
     <li><div><b>Reserve 60–90 minutos</b> para a primeira sessão. O contexto e 3–4 capacidades cabem numa conversa; o restante pode ser completado depois.</div></li>
     <li><div><b>Peça evidências.</b> “Você consegue me mostrar?” é a pergunta mais valiosa do diagnóstico.</div></li>
     <li><div><b>Não negocie o “Não sei”.</b> Registre e siga em frente — vira item de investigação no plano.</div></li>
     <li><div><b>Revise antes de apresentar.</b> Rode a revisão do assistente e confirme os alertas com o time.</div></li>
     <li><div><b>Apresente com foco em ação.</b> Comece pelo nível e pelo que o limita; termine com as ações dos próximos 30 dias e seus responsáveis.</div></li>
+    <li><div><b>Priorize com a diretoria.</b> Estimem juntos o ganho por área e decidam a ordem de ataque — a diretoria tem a palavra final.</div></li>
   </ol>
 
   <h2>Perguntas frequentes</h2>
@@ -409,6 +507,9 @@ table.tight td { padding: 1.7mm 2mm; }
   <div class="concept"><b>Posso refazer depois?</b><div class="small muted">Sim. Duplique o diagnóstico a cada semestre para medir a evolução com as mesmas perguntas.</div></div>
   <div class="concept"><b>Por que o nível ficou abaixo da média?</b><div class="small muted">Porque algum requisito fundamental está pendente (owner formal, chave mestra ou conferência de qualidade). O relatório mostra qual.</div></div>
   <div class="concept"><b>A IA decide o nível?</b><div class="small muted">Não. O nível é calculado por regras transparentes. A IA sugere respostas, explica e redige — sempre com confirmação do usuário.</div></div>
+  <div class="concept"><b>Posso mudar a ordem sugerida na Priorização?</b><div class="small muted">Sim, por qualquer motivo e a qualquer momento — arrastando ou pelas setas. O app registra a justificativa e “Voltar à sugestão” desfaz.</div></div>
+  <div class="concept"><b>Preciso preencher todos os valores da Priorização?</b><div class="small muted">Não. Escolha faixas só das áreas que conhece; as demais ficam “sem estimativa” e podem ser ordenadas mesmo assim.</div></div>
+  <div class="concept"><b>Quem vê a avaliação do steward?</b><div class="small muted">Só a equipe Moulis. O cliente não vê, nem pelo app nem consultando o banco.</div></div>
   <div class="concept"><b>Os dados de um cliente ficam visíveis para outro?</b><div class="small muted">Não. Cada empresa só acessa os próprios dados; somente a equipe Moulis vê a carteira.</div></div>
 </section>
 <section class="page">

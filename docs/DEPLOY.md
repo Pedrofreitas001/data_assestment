@@ -121,6 +121,11 @@ Os dados são fictícios (nomes e e-mails de exemplo). Para atualizar o conteúd
 - **Steward** (menu próprio, **só equipe Moulis**): avalia se uma pessoa da empresa consegue conduzir o diagnóstico com as áreas — não se é especialista em dados. São 11 perguntas em 4 blocos (negócio, familiaridade com dados, trânsito entre as áreas, tempo e apoio), cada uma com "como checar" na conversa. A avaliação é feita em etapas (pessoa, os 4 blocos e resultado), com a nota ao vivo no rodapé e um radar do perfil. O resultado traz um perfil ("Em condições de conduzir", "Forte no negócio, precisa de apoio em dados"…), como apoiar a pessoa e a opção de marcar o steward escolhido. O cliente não vê estas avaliações nem pela API.
 - Nova área **Marketing & Geração de Demanda** no diagnóstico (verba por canal, origem dos contatos, atribuição, base de contatos) e três KPIs na biblioteca: CAC, custo por contato e conversão de contato em venda. Sugerida para comércio, serviços, saúde, educação e indústria; pode ser marcada por qualquer empresa no contexto.
 
+## Tour guiado
+
+- No topo do assistente há o botão azul **Tour guiado**. Ele apresenta a tela atual: destaca cada seção (o resto da tela escurece), explica em uma frase e segue com "Próximo". Sai pelo **X**, pela tecla Esc ou ao concluir.
+- Os roteiros ficam em `src/lib/tourSteps.ts` (um por tela). Para apontar um novo elemento, use um seletor CSS ou marque o elemento com `data-tour="…"`. Passos cujo elemento não está na tela são pulados (no celular, por exemplo, o seletor de empresa fica no menu recolhido).
+
 ## Problemas de permissão (RLS)
 
 Mensagem típica no app: **"Sem permissão para esta ação (tabela X)"** ou, no Supabase, `new row violates row-level security policy`.

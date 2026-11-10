@@ -421,7 +421,7 @@ export default function Wizard() {
         </nav>
 
         {/* Conteúdo */}
-        <section style={{ minWidth: 0 }}>
+        <section data-tour="wiz-main" style={{ minWidth: 0 }}>
           <select className="select step-select" value={step} onChange={(e) => go(Number(e.target.value))} aria-label="Seção">
             {sections.map((s, i) => (
               <option key={s.key} value={i}>
@@ -759,7 +759,7 @@ function QuestionsStep({
             Aplicar sugestões ({pendingSugs.length})
           </button>
         )}
-        <button className="btn btn-sm btn-primary" onClick={onInterview}>
+        <button data-tour="wiz-conversa" className="btn btn-sm btn-primary" onClick={onInterview}>
           Responder conversando
         </button>
       </div>

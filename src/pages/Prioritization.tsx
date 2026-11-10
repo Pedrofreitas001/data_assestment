@@ -1,5 +1,5 @@
 // Priorização das áreas: onde vale mais a pena estruturar primeiro (ganho × esforço).
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Link } from "react-router-dom";
 import { ArrowDown, ArrowRight, ArrowUp, Check, ChevronDown, GripVertical, Pencil, RotateCcw } from "lucide-react";
 import { useOrg } from "../context/org";
@@ -46,9 +46,24 @@ export default function Prioritization() {
   // A lista muda na hora; o banco confirma em seguida (volta atrás se falhar).
   const [optimistic, setOptimistic] = useState<string[] | null>(null);
   const [saving, setSaving] = useState(false);
+  const draft = useRef<ImpactMap | null>(null);
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
+  const pending = useRef(0);
+  const newId = useRef(uid());
 
   const latest = assessments.rows[0] ?? null;
   const map: ImpactMap | null = maps.rows[0] ?? null;
+  const mapRef = useRef(map);
+  mapRef.current = map;
+  // Troca de empresa: começa do zero.
+  useEffect(() => {
+    draft.current = null;
+    newId.current = uid();
+  }, [orgId]);
+  // Sem salvamento pendente, o rascunho segue o que veio do banco.
+  useEffect(() => {
+    if (!pending.current) draft.current = null;
+  }, [map]);
   const results = useMemo(() => analyzeAreas(latest, map), [latest, map]);
   const ordered = useMemo(() => finalOrder(results, optimistic ?? map?.manual_order), [results, optimistic, map?.manual_order]);
   const manual = !!(optimistic ?? map?.manual_order)?.length;
@@ -87,18 +102,29 @@ export default function Prioritization() {
   if (assessments.loading || maps.loading) return <LoadingPage />;
   if (!orgId || !org) return <Empty title="Selecione uma empresa" />;
 
-  const persist = async (patch: Partial<ImpactMap>) => {
+  // Salvamentos em fila, sempre a partir da versão mais recente: evita que uma justificativa
+  // salva logo depois de arrastar desfaça a nova ordem, ou que dois salvamentos criem dois mapas.
+  const persist = (patch: Partial<ImpactMap>) => {
+    const base: ImpactMap = draft.current ?? mapRef.current ?? { id: newId.current, organization_id: orgId, areas: {}, manual_order: null, justifications: {} };
+    const next: ImpactMap = { ...base, ...patch, id: base.id || newId.current, organization_id: orgId };
+    draft.current = next;
+    pending.current++;
     setSaving(true);
-    try {
-      await maps.save({ id: map?.id || uid(), organization_id: orgId, areas: map?.areas || {}, manual_order: map?.manual_order ?? null, justifications: map?.justifications || {}, ...patch });
-    } catch (e) {
-      toast(friendlyError(e, "Não foi possível salvar"), "err");
-      throw e;
-    } finally {
-      setSaving(false);
-    }
+    const run = queue.current.then(() => maps.save(next));
+    queue.current = run.catch(() => {});
+    return run
+      .catch((e) => {
+        toast(friendlyError(e, "Não foi possível salvar"), "err");
+        draft.current = null; // volta a seguir o que está no banco
+        throw e;
+      })
+      .finally(() => {
+        pending.current--;
+        if (!pending.current) setSaving(false);
+      });
   };
 
+  const latestMap = () => draft.current ?? mapRef.current;
   const reorder = (keys: string[]) => {
     setOptimistic(keys);
     void persist({ manual_order: keys })
@@ -149,7 +175,7 @@ export default function Prioritization() {
       )}
 
       {/* Recomendação */}
-      <section className="pz-reco">
+      <section className="pz-reco" data-tour="pz-reco">
         <div className="pz-reco-main">
           <span className="pz-kicker">{manual ? "Primeira da sua ordem" : "Comece por"}</span>
           {top ? (
@@ -158,7 +184,12 @@ export default function Prioritization() {
               <p className="pz-reco-sub">
                 Ganho de <b>{brlRange(top.low, top.high)}</b> por ano, com esforço <b>{effortLabel(top.effort).toLowerCase()}</b> ({effortWhy(top)}).
               </p>
-              <span className={`pz-q pz-q-${top.quadrant}`}>{QUADRANTS[top.quadrant].label}</span>
+              <span className="pz-reco-foot">
+                <span className={`pz-q pz-q-${top.quadrant}`}>{QUADRANTS[top.quadrant].label}</span>
+                <a className="pz-reco-link" href="#ordem" onClick={(e) => { e.preventDefault(); document.getElementById("ordem")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>
+                  Mudar a ordem ↓
+                </a>
+              </span>
             </>
           ) : (
             <>
@@ -187,7 +218,7 @@ export default function Prioritization() {
       </section>
 
       {/* Gráfico */}
-      <section className="card" style={{ marginBottom: 20 }}>
+      <section className="card" style={{ marginBottom: 20 }} data-tour="pz-matriz">
         <div className="card-head">
           <div>
             <h3 className="card-title">Esforço × ganho</h3>
@@ -199,12 +230,15 @@ export default function Prioritization() {
         </div>
       </section>
 
-      {/* Ordem */}
-      <section className="card">
+      {/* Ordem: a decisão final é de quem responde pela priorização */}
+      <section className="card pz-order" id="ordem" data-tour="pz-ordem">
         <div className="card-head">
           <div>
+            <span className="pz-order-kicker">A decisão final é sua</span>
             <h3 className="card-title">Ordem de ataque</h3>
-            <p className="card-sub">Arraste pela alça ⠿ ou use as setas. Clique na área para ver de onde vem o ganho.</p>
+            <p className="card-sub">
+              O app sugere uma ordem a partir dos valores estimados, mas quem responde pela priorização pode mudá-la a qualquer momento e por qualquer motivo — estratégia, prazo, pessoas, orçamento —, mesmo sem dados preenchidos. Arraste pela alça <b>⠿</b> ou use as setas.
+            </p>
           </div>
           <span className="row" style={{ gap: 8, flexWrap: "wrap" }}>
             {saving && <Spinner />}
@@ -228,17 +262,15 @@ export default function Prioritization() {
                 maxValue={maxValue}
                 open={openKey === r.domain.key}
                 hot={hot === r.domain.key}
-                dragging={sortable.dragKey === r.domain.key}
-                style={sortable.styleFor(r.domain.key)}
                 liRef={sortable.register(r.domain.key)}
-                onGripDown={sortable.start(r.domain.key)}
+                onGripDown={(e) => sortable.start(r.domain.key, e)}
                 justification={map?.justifications?.[r.domain.key] || ""}
                 onToggle={() => setOpenKey(openKey === r.domain.key ? null : r.domain.key)}
                 onHot={(on) => setHot(on ? r.domain.key : null)}
                 onUp={() => move(r.domain.key, i - 1)}
                 onDown={() => move(r.domain.key, i + 1)}
                 onEdit={() => setEdit(r.domain.key)}
-                onJustify={(text) => void persist({ justifications: { ...(map?.justifications || {}), [r.domain.key]: text } }).catch(() => {})}
+                onJustify={(text) => void persist({ justifications: { ...(latestMap()?.justifications || {}), [r.domain.key]: text } }).catch(() => {})}
               />
             ))}
           </ol>
@@ -255,7 +287,7 @@ export default function Prioritization() {
           all={ordered}
           onClose={() => setEdit(null)}
           onSave={async (input, after) => {
-            await persist({ areas: { ...(map?.areas || {}), [editing.domain.key]: input } });
+            await persist({ areas: { ...(latestMap()?.areas || {}), [editing.domain.key]: input } });
             toast("Valores salvos");
             setEdit(after ?? null);
           }}
@@ -289,8 +321,6 @@ function AreaRow(props: {
   maxValue: number;
   open: boolean;
   hot: boolean;
-  dragging: boolean;
-  style?: CSSProperties;
   liRef: (el: HTMLElement | null) => void;
   onGripDown: (e: ReactPointerEvent<HTMLElement>) => void;
   justification: string;
@@ -312,8 +342,7 @@ function AreaRow(props: {
     <li
       id={`pz-${r.domain.key}`}
       ref={props.liRef}
-      style={props.style}
-      className={`pz-row ${props.open ? "open" : ""} ${props.hot ? "hot" : ""} ${props.dragging ? "dragging" : ""}`}
+      className={`pz-row ${props.open ? "open" : ""} ${props.hot ? "hot" : ""}`}
       onMouseEnter={() => props.onHot(true)}
       onMouseLeave={() => props.onHot(false)}
     >
